@@ -135,9 +135,43 @@ def log_interaction(eingabe, antworten):
             flog.write(f"     Originalsatz: {corpus_original[idx]}\n")
         flog.write("\n")
 
+# Feedback-Funktion für Antworten
+
+def feedback_interaction(eingabe, antworten):
+    feedback = input("Feedback zu den Antworten (z.B. 1=korrekt, 2=falsch, 3=unpassend, Enter für Überspringen): ")
+    with open("feedback.txt", "a", encoding="utf-8") as fback:
+        fback.write(f"Eingabe: {eingabe}\n")
+        fback.write(f"Antworten: {[(corpus[idx], wahrscheinlichkeit) for idx, wahrscheinlichkeit in antworten]}\n")
+        fback.write(f"Feedback: {feedback}\n\n")
+
+# Erweiterte Fehlerbehandlung: spezifische Hinweise
+
+def print_error_hint(e):
+    if isinstance(e, FileNotFoundError):
+        print("Datei nicht gefunden. Prüfe den Dateinamen und Pfad.")
+    elif isinstance(e, ValueError):
+        print("Wertfehler: Prüfe die Eingabedaten und das Format.")
+    elif isinstance(e, ImportError):
+        print("Importfehler: Prüfe, ob alle Pakete installiert sind (z.B. tensorflow, numpy, nltk).")
+    else:
+        print(f"Unerwarteter Fehler: {e}")
+
+# Export der Batch-Inferenz-Ergebnisse als CSV
+import csv
+
+def export_batch_results_csv(results, filename="batch_results.csv"):
+    with open(filename, "w", encoding="utf-8", newline='') as fcsv:
+        writer = csv.writer(fcsv)
+        writer.writerow(["Eingabe", "Antwort-Index", "Antwort", "Wahrscheinlichkeit", "Originalsatz"])
+        for res in results:
+            eingabe, antworten = res
+            for i, (idx, wahrscheinlichkeit) in enumerate(antworten):
+                writer.writerow([eingabe, idx, corpus[idx], wahrscheinlichkeit, corpus_original[idx]])
+
 # Batch-Inferenz: Eingaben aus Datei verarbeiten
 if os.path.exists(args.input):
     print(f"Batch-Inferenz: Verarbeite {args.input} ...")
+    batch_results = []
     with open(args.input, "r", encoding="utf-8") as fin:
         for line in fin:
             seed_text = line.strip()
@@ -159,9 +193,12 @@ if os.path.exists(args.input):
                     print(f"   Originalsatz: {corpus_original[idx]}")
                     antworten.append((idx, output[idx]*100))
                 log_interaction(seed_text, antworten)
+                batch_results.append((seed_text, antworten))
                 print()
             except Exception as e:
-                print(f"Fehler bei Eingabe '{seed_text}': {e}")
+                print_error_hint(e)
+    export_batch_results_csv(batch_results)
+    print("Batch-Ergebnisse wurden als batch_results.csv exportiert.")
 else:
     # Verbesserte interaktive Eingabe: Preprocessing, Prozentwerte, Endlosschleife
     print("Bundeskanzler-KI: Geben Sie eine Frage oder Aussage ein (Abbruch mit 'exit')")
@@ -185,5 +222,38 @@ else:
                 print(f"   Originalsatz: {corpus_original[idx]}")
                 antworten.append((idx, output[idx]*100))
             log_interaction(seed_text, antworten)
+            feedback_interaction(seed_text, antworten)
         except Exception as e:
-            print(f"Fehler: {e}")
+            print_error_hint(e)
+
+# Validierungsfunktion für Testdaten
+
+def validate_model(test_file="test.txt"):
+    if not os.path.exists(test_file):
+        print(f"Keine Testdatei '{test_file}' gefunden. Validierung übersprungen.")
+        return
+    print(f"Validiere Modell mit Testdaten aus '{test_file}' ...")
+    correct = 0
+    total = 0
+    with open(test_file, "r", encoding="utf-8") as ftest:
+        for line in ftest:
+            parts = line.strip().split("\t")
+            if len(parts) != 2:
+                continue
+            input_text, expected_idx = parts
+            lang = detect_lang(input_text)
+            input_pp = preprocess(input_text, lang=lang)
+            input_seq = tokenizer.texts_to_sequences([input_pp])
+            input_seq = pad_sequences(input_seq, maxlen=maxlen, padding='post')
+            output = model.predict(input_seq)[0]
+            pred_idx = int(np.argmax(output))
+            if str(pred_idx) == expected_idx:
+                correct += 1
+            total += 1
+    if total > 0:
+        print(f"Test-Genauigkeit: {correct}/{total} = {correct/total*100:.1f}%")
+    else:
+        print("Keine gültigen Testdaten gefunden.")
+
+# Validierung beim Start (optional, falls test.txt existiert)
+validate_model()
