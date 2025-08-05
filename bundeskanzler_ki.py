@@ -6,6 +6,20 @@ import os
 import argparse
 import datetime
 import csv
+# Globale Korpus-Variablen für Tests und andere Module
+corpus_original = [
+    "The chancellor said he will increase taxes for the rich.",
+    "The German chancellor believes that the economy is growing.",
+    "Angela Merkel has announced that Germany will take in more refugees.",
+    "Der Kanzler sagt, er wird die Steuern für Reiche erhöhen.",
+    "Die deutsche Kanzlerin glaubt, dass die Wirtschaft wächst.",
+    "Angela Merkel hat angekündigt, dass Deutschland mehr Flüchtlinge aufnehmen wird.",
+    "Die Regierung plant Investitionen in Bildung und Infrastruktur.",
+    "Die Arbeitslosigkeit in Deutschland ist gesunken.",
+    "Die Inflation bleibt stabil.",
+    "Die Bundesregierung diskutiert über neue Klimaschutzmaßnahmen."
+]
+corpus = corpus_original.copy()
 
 # Preprocessing auslagern
 from preprocessing import preprocess, detect_lang
@@ -13,8 +27,7 @@ from preprocessing import preprocess, detect_lang
 from feedback import log_interaction, feedback_interaction, export_batch_results_csv, analyze_feedback
 # Modell-Funktionen auslagern
 from model import build_model, load_or_train_model
-# Validierungsfunktion auslagern
-from validation import validate_model
+
 
 def print_error_hint(e):
     if isinstance(e, FileNotFoundError):
@@ -23,8 +36,6 @@ def print_error_hint(e):
         print("Wertfehler: Prüfe die Eingabedaten und das Format.")
     elif isinstance(e, ImportError):
         print("Importfehler: Prüfe, ob alle Pakete installiert sind (z.B. tensorflow, numpy, nltk).")
-    else:
-        print(f"Unerwarteter Fehler: {e}")
 
 def main():
     # Kommandozeilenargumente für konfigurierbare Parameter
@@ -37,32 +48,21 @@ def main():
     parser.add_argument('--log', type=str, default='log.txt', help='Logdatei')
     args = parser.parse_args()
 
+    global corpus_original, corpus
     # Datensammlung
     # Erweiterter Korpus mit deutschen und englischen Sätzen
-    corpus_original = []
+    corpus_original_local = []
     try:
         with open(args.corpus, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    corpus_original.append(line)
-        print(f"Korpus aus Datei geladen: {len(corpus_original)} Sätze.")
+                    corpus_original_local.append(line)
+        print(f"Korpus aus Datei geladen: {len(corpus_original_local)} Sätze.")
     except FileNotFoundError:
         print(f"{args.corpus} nicht gefunden, Standardkorpus wird verwendet.")
-        corpus_original = [
-            "The chancellor said he will increase taxes for the rich.",
-            "The German chancellor believes that the economy is growing.",
-            "Angela Merkel has announced that Germany will take in more refugees.",
-            "Der Kanzler sagt, er wird die Steuern für Reiche erhöhen.",
-            "Die deutsche Kanzlerin glaubt, dass die Wirtschaft wächst.",
-            "Angela Merkel hat angekündigt, dass Deutschland mehr Flüchtlinge aufnehmen wird.",
-            "Die Regierung plant Investitionen in Bildung und Infrastruktur.",
-            "Die Arbeitslosigkeit in Deutschland ist gesunken.",
-            "Die Inflation bleibt stabil.",
-            "Die Bundesregierung diskutiert über neue Klimaschutzmaßnahmen."
-        ]
-    corpus = corpus_original.copy()
-
+        corpus_original_local = corpus_original.copy()
+    corpus = corpus_original_local.copy()
     # Preprocess Korpus mit Spracherkennung
     corpus_pp = []
     for s in corpus:
@@ -165,6 +165,9 @@ def main():
     # Validierungsfunktion für Testdaten
     validate_model(tokenizer, model, maxlen, preprocess, detect_lang)
     analyze_feedback()
+    # Exportiere corpus_original und corpus als global
+    globals()["corpus_original"] = corpus_original
+    globals()["corpus"] = corpus
 
 if __name__ == "__main__":
     main()
