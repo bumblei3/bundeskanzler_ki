@@ -6,107 +6,15 @@ import os
 import argparse
 import datetime
 import csv
-import string
-import nltk
-from nltk.stem import WordNetLemmatizer
-from nltk.stem.snowball import GermanStemmer
 
-nltk.download('wordnet', quiet=True)
-nltk.download('omw-1.4', quiet=True)
-
-# Stoppwort-Liste (deutsch/englisch, minimal)
-STOPWORDS = set([
-    "the", "is", "in", "and", "for", "will", "has", "that", "he", "she", "of", "an", "zu", "die", "der", "das", "ist", "und", "wird", "hat", "dass", "er", "sie", "in", "auf", "mit", "mehr", "als", "den", "dem", "des", "ein", "eine", "im", "am", "von", "auf", "zu", "für"
-])
-
-def preprocess(text, lang='de'):
-    text = text.lower()
-    text = text.translate(str.maketrans('', '', string.punctuation))
-    tokens = text.split()
-    tokens = [t for t in tokens if t not in STOPWORDS]
-    # Lemmatization/Stemming
-    if lang == 'de':
-        stemmer = GermanStemmer()
-        tokens = [stemmer.stem(t) for t in tokens]
-    else:
-        lemmatizer = WordNetLemmatizer()
-        tokens = [lemmatizer.lemmatize(t) for t in tokens]
-    return " ".join(tokens)
-
-# Erweiterte Spracherkennung mit langdetect
-try:
-    from langdetect import detect as langdetect_detect
-except ImportError:
-    langdetect_detect = None
-    print("Warnung: langdetect nicht installiert. Erweiterte Spracherkennung deaktiviert.")
-
-def detect_lang(text):
-    # Nutze langdetect, falls verfügbar
-    if langdetect_detect:
-        try:
-            lang_code = langdetect_detect(text)
-            if lang_code.startswith('de'):
-                return 'de'
-            else:
-                return 'en'
-        except Exception:
-            pass
-    # Fallback: Sehr einfache Spracherkennung
-    deutsch = ["kanzler", "regierung", "deutschland", "arbeitslosigkeit", "klimaschutz", "flüchtlinge", "wirtschaft", "bildung", "infrastruktur", "bundesregierung", "steuern"]
-    if any(w in text.lower() for w in deutsch):
-        return 'de'
-    return 'en'
-
-def log_interaction(eingabe, antworten, log_file, corpus, corpus_original):
-    with open(log_file, "a", encoding="utf-8") as flog:
-        flog.write(f"[{datetime.datetime.now().isoformat()}] Eingabe: {eingabe}\n")
-        for i, (idx, wahrscheinlichkeit) in enumerate(antworten):
-            flog.write(f"  {i+1}. {corpus[idx]} (Wahrscheinlichkeit: {wahrscheinlichkeit:.1f}%)\n")
-            flog.write(f"     Originalsatz: {corpus_original[idx]}\n")
-        flog.write("\n")
-
-def feedback_interaction(eingabe, antworten, corpus):
-    feedback = input("Feedback zu den Antworten (z.B. 1=korrekt, 2=falsch, 3=unpassend, Enter für Überspringen): ")
-    with open("feedback.txt", "a", encoding="utf-8") as fback:
-        fback.write(f"Eingabe: {eingabe}\n")
-        fback.write(f"Antworten: {[(corpus[idx], wahrscheinlichkeit) for idx, wahrscheinlichkeit in antworten]}\n")
-        fback.write(f"Feedback: {feedback}\n\n")
-
-def export_batch_results_csv(results, corpus, corpus_original, filename="batch_results.csv"):
-    with open(filename, "w", encoding="utf-8", newline='') as fcsv:
-        writer = csv.writer(fcsv)
-        writer.writerow(["Eingabe", "Antwort-Index", "Antwort", "Wahrscheinlichkeit", "Originalsatz"])
-        for res in results:
-            eingabe, antworten = res
-            for i, (idx, wahrscheinlichkeit) in enumerate(antworten):
-                writer.writerow([eingabe, idx, corpus[idx], wahrscheinlichkeit, corpus_original[idx]])
-
-def validate_model(tokenizer, model, maxlen, preprocess, detect_lang, test_file="test.txt"):
-    if not os.path.exists(test_file):
-        print(f"Keine Testdatei '{test_file}' gefunden. Validierung übersprungen.")
-        return
-    print(f"Validiere Modell mit Testdaten aus '{test_file}' ...")
-    correct = 0
-    total = 0
-    with open(test_file, "r", encoding="utf-8") as ftest:
-        for line in ftest:
-            parts = line.strip().split("\t")
-            if len(parts) != 2:
-                continue
-            input_text, expected_idx = parts
-            lang = detect_lang(input_text)
-            input_pp = preprocess(input_text, lang=lang)
-            input_seq = tokenizer.texts_to_sequences([input_pp])
-            input_seq = pad_sequences(input_seq, maxlen=maxlen, padding='post')
-            output = model.predict(input_seq)[0]
-            pred_idx = int(np.argmax(output))
-            if str(pred_idx) == expected_idx:
-                correct += 1
-            total += 1
-    if total > 0:
-        print(f"Test-Genauigkeit: {correct}/{total} = {correct/total*100:.1f}%")
-    else:
-        print("Keine gültigen Testdaten gefunden.")
+# Preprocessing auslagern
+from preprocessing import preprocess, detect_lang
+# Feedback-Funktionen auslagern
+from feedback import log_interaction, feedback_interaction, export_batch_results_csv, analyze_feedback
+# Modell-Funktionen auslagern
+from model import build_model, load_or_train_model
+# Validierungsfunktion auslagern
+from validation import validate_model
 
 def print_error_hint(e):
     if isinstance(e, FileNotFoundError):
@@ -256,6 +164,7 @@ def main():
                 print_error_hint(e)
     # Validierungsfunktion für Testdaten
     validate_model(tokenizer, model, maxlen, preprocess, detect_lang)
+    analyze_feedback()
 
 if __name__ == "__main__":
     main()
