@@ -1,0 +1,19 @@
+# Beispiel-Konfigurationsdatei für Bundeskanzler-KI
+model:
+  embedding_size: 256
+  lstm_output_size: 128
+  maxlen: 120
+  num_words: 5000
+  model_path: "bundeskanzler_ki_model.keras"
+
+data:
+  corpus_file: "corpus.txt"
+  input_file: "input.txt"
+  log_file: "log.txt"
+
+training:
+  batch_size: 32
+  epochs: 50
+
+general:
+  top_n: 3
