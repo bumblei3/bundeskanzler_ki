@@ -8,45 +8,98 @@ import datetime
 import csv
 import yaml
 import logging
+from tqdm import tqdm
 
 def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
     """
     Führt die Batch-Inferenz für eine Liste von Eingaben aus einer Datei durch und gibt die Ergebnisse aus.
+    Optimiert: Batch-Prediction, optionales Ausgabeformat (csv/json), Fehlerzusammenfassung.
     """
     logging.info(f"[Batch-Inferenz] Verarbeite Datei: {args.input}")
     batch_results = []
+    error_list = []
     total_lines = 0
     error_count = 0
+    # Eingabedatei automatisch erstellen, falls sie fehlt
+    if not os.path.exists(args.input):
+        with open(args.input, "w", encoding="utf-8") as f:
+            f.write("Testfrage\n")
+        logging.warning(f"{args.input} nicht gefunden, Beispiel-Datei wurde erstellt.")
     with open(args.input, "r", encoding="utf-8") as fin:
         lines = fin.readlines()
-    for idx_line, line in enumerate(lines, 1):
-        seed_text = line.strip()
-        total_lines += 1
-        if not seed_text:
-            logging.warning(f"[Batch-Inferenz] Leere Zeile {idx_line} übersprungen.")
-            continue
+    # Preprocessing aller Zeilen in einem Schritt
+    seed_texts = [line.strip() for line in lines if line.strip()]
+    total_lines = len(lines)
+    preprocessed = []
+    for idx, seed_text in enumerate(tqdm(seed_texts, desc="Preprocessing", unit="Zeile")):
         try:
             lang = detect_lang(seed_text)
             seed_text_pp = preprocess(seed_text, lang=lang)
-            seed_sequence = tokenizer.texts_to_sequences([seed_text_pp])
-            seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
-            output = model.predict(seed_sequence)[0]
-            top_indices = np.argsort(output)[::-1][:args.top_n]
-            logging.info(f"[Batch-Inferenz] ({idx_line}/{len(lines)}) Eingabe: {seed_text}")
-            logging.info(f"[Batch-Inferenz] Top-{args.top_n} Antworten für Eingabe: {seed_text}")
-            antworten = []
-            for i, idx in enumerate(top_indices):
-                mark = "*" if i == 0 else " "
-                logging.info(f"[Batch-Inferenz] {mark}{i+1}. {corpus[idx]} (Wahrscheinlichkeit: {output[idx]*100:.1f}%)")
-                logging.info(f"[Batch-Inferenz]   Originalsatz: {corpus_original[idx]}")
-                antworten.append((idx, output[idx]*100))
-            log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
-            batch_results.append((seed_text, antworten))
+            preprocessed.append(seed_text_pp)
         except Exception as e:
             error_count += 1
+            error_list.append({'line': idx+1, 'input': seed_text, 'error': str(e)})
             print_error_hint(e)
-    export_batch_results_csv(batch_results, corpus, corpus_original)
-    logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als batch_results.csv exportiert.")
+            preprocessed.append("")
+    # Nur nicht-leere für Prediction
+    valid_indices = [i for i, s in enumerate(preprocessed) if s]
+    valid_preprocessed = [preprocessed[i] for i in valid_indices]
+    valid_seed_texts = [seed_texts[i] for i in valid_indices]
+    seed_sequences = tokenizer.texts_to_sequences(valid_preprocessed)
+    seed_sequences = pad_sequences(seed_sequences, maxlen=maxlen, padding='post')
+    # Batch-Prediction
+    # Fortschrittsanzeige für Prediction
+    if len(valid_seed_texts) > 0:
+        print(f"Starte Batch-Prediction für {len(valid_seed_texts)} Zeilen...")
+    outputs = model.predict(seed_sequences, verbose=1)
+    for idx, (seed_text, output) in enumerate(zip(valid_seed_texts, outputs), 1):
+        top_indices = np.argsort(output)[::-1][:args.top_n]
+        logging.info(f"[Batch-Inferenz] ({idx}/{len(valid_seed_texts)}) Eingabe: {seed_text}")
+        logging.info(f"[Batch-Inferenz] Top-{args.top_n} Antworten für Eingabe: {seed_text}")
+        antworten = []
+        for i, idx_ans in enumerate(top_indices):
+            mark = "*" if i == 0 else " "
+            logging.info(f"[Batch-Inferenz] {mark}{i+1}. {corpus[idx_ans]} (Wahrscheinlichkeit: {output[idx_ans]*100:.1f}%)")
+            logging.info(f"[Batch-Inferenz]   Originalsatz: {corpus_original[idx_ans]}")
+            antworten.append((idx_ans, output[idx_ans]*100))
+        if hasattr(args, 'print_answers') and args.print_answers:
+            print(f"\nTop-{args.top_n} Antworten für Eingabe: {seed_text}")
+            for i, idx_ans in enumerate(top_indices):
+                mark = "*" if i == 0 else " "
+                print(f"{mark}{i+1}. {corpus[idx_ans]} (Wahrscheinlichkeit: {output[idx_ans]*100:.1f}%)")
+                print(f"   Originalsatz: {corpus_original[idx_ans]}")
+        log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
+        batch_results.append((seed_text, antworten))
+    # Flexible Output-Dateinamen
+    result_file = f"{getattr(args, 'output_path', '')}batch_results.{args.output_format}" if hasattr(args, 'output_format') else "batch_results.csv"
+    error_file = f"{getattr(args, 'output_path', '')}batch_errors.{args.output_format if args.output_format == 'json' else 'csv'}"
+    # Export
+    if hasattr(args, 'output_format') and args.output_format == 'json':
+        import json
+        with open(result_file, 'w', encoding='utf-8') as fout:
+            json.dump([
+                {
+                    'input': seed_text,
+                    'antworten': [{'index': idx, 'score': score} for idx, score in antworten]
+                } for seed_text, antworten in batch_results
+            ], fout, ensure_ascii=False, indent=2)
+        # Fehlerzusammenfassung als JSON
+        if error_list:
+            with open(error_file, 'w', encoding='utf-8') as ferr:
+                json.dump(error_list, ferr, ensure_ascii=False, indent=2)
+            logging.info(f"[Batch-Inferenz] Fehler wurden als {error_file} exportiert.")
+        logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als {result_file} exportiert.")
+    else:
+        export_batch_results_csv(batch_results, corpus, corpus_original)
+        # Fehlerzusammenfassung als CSV
+        if error_list:
+            import csv
+            with open(error_file, 'w', encoding='utf-8', newline='') as ferr:
+                writer = csv.DictWriter(ferr, fieldnames=['line', 'input', 'error'])
+                writer.writeheader()
+                writer.writerows(error_list)
+            logging.info(f"[Batch-Inferenz] Fehler wurden als {error_file} exportiert.")
+        logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als {result_file} exportiert.")
     logging.info(f"[Batch-Inferenz] Gesamt: {total_lines} Zeilen verarbeitet, Fehler: {error_count}")
 
 def init_model(tokenizer: 'Tokenizer', maxlen: int, embedding_size: int = 256, lstm_output_size: int = 128) -> 'tf.keras.Model':
@@ -158,9 +211,32 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
 
 
 def main():
-    # Konfiguration laden
+    # Konfiguration laden und validieren
+    def validate_config(config):
+        required = {
+            'data': ['log_file', 'input_file', 'corpus_file'],
+            'general': ['top_n'],
+            'training': ['batch_size', 'epochs'],
+            'model': ['embedding_size', 'lstm_output_size', 'maxlen', 'num_words', 'model_path']
+        }
+        missing = []
+        for section, keys in required.items():
+            if section not in config:
+                missing.append(section)
+                continue
+            for key in keys:
+                if key not in config[section]:
+                    missing.append(f"{section}.{key}")
+        if missing:
+            print("Fehler: Fehlende Konfigurationswerte in config.yaml:")
+            for m in missing:
+                print(f"  - {m}")
+            print("Bitte ergänze die fehlenden Werte und starte das Skript erneut.")
+            exit(1)
+
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
+    validate_config(config)
 
     # Logging initialisieren
     log_file = config['data']['log_file']
@@ -173,30 +249,58 @@ def main():
         ]
     )
 
-    # Kommandozeilenargumente für optionale Überschreibung
     parser = argparse.ArgumentParser(description="Bundeskanzler-KI")
-    parser.add_argument('--top_n', type=int, help='Anzahl der Top-Antworten')
-    parser.add_argument('--batch_size', type=int, help='Batchgröße für das Training')
-    parser.add_argument('--epochs', type=int, help='Anzahl der Trainings-Epochen')
-    parser.add_argument('--input', type=str, help='Datei für Batch-Inferenz')
-    parser.add_argument('--corpus', type=str, help='Korpus-Datei')
-    parser.add_argument('--log', type=str, help='Logdatei')
+    parser.add_argument('--loglevel', type=str, default='INFO', help='Logging-Level: DEBUG, INFO, WARNING, ERROR')
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # Subcommand: train
+    train_parser = subparsers.add_parser("train", help="Trainiert das Modell")
+    train_parser.add_argument('--epochs', type=int, help='Anzahl der Trainings-Epochen')
+    train_parser.add_argument('--batch_size', type=int, help='Batchgröße für das Training')
+
+    # Subcommand: infer
+    infer_parser = subparsers.add_parser("infer", help="Batch-Inferenz aus Datei")
+    infer_parser.add_argument('--input', type=str, help='Datei für Batch-Inferenz')
+    infer_parser.add_argument('--top_n', type=int, help='Anzahl der Top-Antworten')
+    infer_parser.add_argument('--output_format', type=str, choices=['csv', 'json'], default='csv', help='Exportformat: csv oder json')
+    infer_parser.add_argument('--print_answers', action='store_true', help='Antworten direkt im Terminal ausgeben')
+    infer_parser.add_argument('--output_path', type=str, default='', help='Pfad für Exportdateien (csv/json)')
+
+    # Subcommand: interactive
+    interactive_parser = subparsers.add_parser("interactive", help="Interaktiver Modus")
+    interactive_parser.add_argument('--top_n', type=int, help='Anzahl der Top-Antworten')
+
+    # Subcommand: validate
+    validate_parser = subparsers.add_parser("validate", help="Modellvalidierung")
+
     args = parser.parse_args()
 
-    # Parameter aus config.yaml, ggf. durch CLI überschrieben
-    top_n = args.top_n if args.top_n is not None else config['general']['top_n']
-    batch_size = args.batch_size if args.batch_size is not None else config['training']['batch_size']
-    epochs = args.epochs if args.epochs is not None else config['training']['epochs']
-    input_file = args.input if args.input is not None else config['data']['input_file']
-    corpus_file = args.corpus if args.corpus is not None else config['data']['corpus_file']
-    log_file = args.log if args.log is not None else config['data']['log_file']
+    # Logging-Level setzen
+    loglevel = getattr(args, 'loglevel', 'INFO').upper()
+    loglevel_num = getattr(logging, loglevel, logging.INFO)
+    logging.basicConfig(
+        level=loglevel_num,
+        format='%(asctime)s %(levelname)s: %(message)s',
+        handlers=[
+            logging.FileHandler(config['data']['log_file'], encoding='utf-8'),
+            logging.StreamHandler()
+        ]
+    )
+
+    # Gemeinsame Parameter
+    batch_size = getattr(args, 'batch_size', None) or config['training']['batch_size']
+    epochs = getattr(args, 'epochs', None) or config['training']['epochs']
+    top_n = getattr(args, 'top_n', None) or config['general']['top_n']
+    input_file = getattr(args, 'input', None) or config['data']['input_file']
+    corpus_file = config['data']['corpus_file']
+    log_file = config['data']['log_file']
     embedding_size = config['model']['embedding_size']
     lstm_output_size = config['model']['lstm_output_size']
     maxlen = config['model']['maxlen']
     num_words = config['model']['num_words']
     model_path = config['model']['model_path']
 
-    # Datensammlung
+    # Korpus laden
     corpus_original_local = []
     try:
         with open(corpus_file, "r", encoding="utf-8") as f:
@@ -209,43 +313,39 @@ def main():
         logging.warning(f"{corpus_file} nicht gefunden, Standardkorpus wird verwendet.")
         corpus_original_local = corpus_original.copy()
     corpus = corpus_original_local.copy()
-    # Preprocess Korpus mit Spracherkennung
-    corpus = preprocess_corpus(corpus)
+    corpus_pp = preprocess_corpus(corpus)
 
-    # Tokenisierung
     tokenizer = Tokenizer(num_words=num_words)
-    tokenizer.fit_on_texts(corpus)
-    sequences = tokenizer.texts_to_sequences(corpus)
+    tokenizer.fit_on_texts(corpus_pp)
+    sequences = tokenizer.texts_to_sequences(corpus_pp)
     X = pad_sequences(sequences, maxlen=maxlen, padding='post')
+    Y = np.eye(len(corpus))[np.arange(len(corpus))]
 
-    # Definition des LSTM-Modells und One-hot-Encoding
-    Y = np.eye(len(corpus))[np.arange(len(corpus))] # One-hot encoding der Targets
-
+    # Modell laden/erstellen
     if os.path.exists(model_path):
         logging.info("Lade vorhandenes Modell...")
         model = tf.keras.models.load_model(model_path)
     else:
         model = init_model(tokenizer, maxlen, embedding_size, lstm_output_size)
         model.compile(loss='categorical_crossentropy', optimizer='adam')
-        # args für train_model zusammenbauen
+
+    # Subcommand-Logik
+    if args.command == "train":
         train_args = argparse.Namespace(batch_size=batch_size, epochs=epochs, top_n=top_n, input=input_file, corpus=corpus_file, log=log_file)
         model = train_model(model, X, Y, train_args)
         model.save(model_path)
         logging.info(f"Modell gespeichert unter {model_path}")
-
-    # args für Inferenz/Interaktiv
-    run_args = argparse.Namespace(batch_size=batch_size, epochs=epochs, top_n=top_n, input=input_file, corpus=corpus_file, log=log_file)
-
-    # Batch-Inferenz: Eingaben aus Datei verarbeiten
-    if os.path.exists(input_file):
-        batch_inference(tokenizer, model, maxlen, corpus, corpus_original, run_args)
-    else:
-        interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, run_args)
-
-    # Validierungsfunktion für Testdaten
-    validate_model(tokenizer, model, maxlen, preprocess, detect_lang)
-    analyze_feedback()
-
+    elif args.command == "infer":
+        run_args = argparse.Namespace(batch_size=batch_size, epochs=epochs, top_n=top_n, input=input_file, corpus=corpus_file, log=log_file, output_format=args.output_format, print_answers=args.print_answers, output_path=args.output_path)
+        batch_inference(tokenizer, model, maxlen, corpus_pp, corpus, run_args)
+    elif args.command == "interactive":
+        run_args = argparse.Namespace(batch_size=batch_size, epochs=epochs, top_n=top_n, input=input_file, corpus=corpus_file, log=log_file)
+        interactive_mode(tokenizer, model, maxlen, corpus_pp, corpus, run_args)
+    elif args.command == "validate":
+        validate_model(tokenizer, model, maxlen, preprocess, detect_lang)
+        analyze_feedback()
+    
+# Standard-Skriptstart
 if __name__ == "__main__":
     main()
 
