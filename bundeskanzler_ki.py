@@ -13,35 +13,41 @@ def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int
     """
     Führt die Batch-Inferenz für eine Liste von Eingaben aus einer Datei durch und gibt die Ergebnisse aus.
     """
-    print(f"Batch-Inferenz: Verarbeite {args.input} ...")
+    logging.info(f"[Batch-Inferenz] Verarbeite Datei: {args.input}")
     batch_results = []
+    total_lines = 0
+    error_count = 0
     with open(args.input, "r", encoding="utf-8") as fin:
-        for line in fin:
-            seed_text = line.strip()
-            if not seed_text:
-                continue
-            try:
-                lang = detect_lang(seed_text)
-                seed_text_pp = preprocess(seed_text, lang=lang)
-                seed_sequence = tokenizer.texts_to_sequences([seed_text_pp])
-                seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
-                output = model.predict(seed_sequence)[0]
-                top_indices = np.argsort(output)[::-1][:args.top_n]
-                print(f"Eingabe: {seed_text}")
-                print(f"Top-{args.top_n} Antworten:")
-                antworten = []
-                for i, idx in enumerate(top_indices):
-                    mark = "*" if i == 0 else " "
-                    print(f"{mark}{i+1}. {corpus[idx]} (Wahrscheinlichkeit: {output[idx]*100:.1f}%)")
-                    print(f"   Originalsatz: {corpus_original[idx]}")
-                    antworten.append((idx, output[idx]*100))
-                log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
-                batch_results.append((seed_text, antworten))
-                print()
-            except Exception as e:
-                print_error_hint(e)
+        lines = fin.readlines()
+    for idx_line, line in enumerate(lines, 1):
+        seed_text = line.strip()
+        total_lines += 1
+        if not seed_text:
+            logging.warning(f"[Batch-Inferenz] Leere Zeile {idx_line} übersprungen.")
+            continue
+        try:
+            lang = detect_lang(seed_text)
+            seed_text_pp = preprocess(seed_text, lang=lang)
+            seed_sequence = tokenizer.texts_to_sequences([seed_text_pp])
+            seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
+            output = model.predict(seed_sequence)[0]
+            top_indices = np.argsort(output)[::-1][:args.top_n]
+            logging.info(f"[Batch-Inferenz] ({idx_line}/{len(lines)}) Eingabe: {seed_text}")
+            logging.info(f"[Batch-Inferenz] Top-{args.top_n} Antworten für Eingabe: {seed_text}")
+            antworten = []
+            for i, idx in enumerate(top_indices):
+                mark = "*" if i == 0 else " "
+                logging.info(f"[Batch-Inferenz] {mark}{i+1}. {corpus[idx]} (Wahrscheinlichkeit: {output[idx]*100:.1f}%)")
+                logging.info(f"[Batch-Inferenz]   Originalsatz: {corpus_original[idx]}")
+                antworten.append((idx, output[idx]*100))
+            log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
+            batch_results.append((seed_text, antworten))
+        except Exception as e:
+            error_count += 1
+            print_error_hint(e)
     export_batch_results_csv(batch_results, corpus, corpus_original)
-    print("Batch-Ergebnisse wurden als batch_results.csv exportiert.")
+    logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als batch_results.csv exportiert.")
+    logging.info(f"[Batch-Inferenz] Gesamt: {total_lines} Zeilen verarbeitet, Fehler: {error_count}")
 
 def init_model(tokenizer: 'Tokenizer', maxlen: int, embedding_size: int = 256, lstm_output_size: int = 128) -> 'tf.keras.Model':
     """
@@ -99,25 +105,37 @@ from validation import validate_model
 
 def print_error_hint(e):
     if isinstance(e, FileNotFoundError):
-        print("Datei nicht gefunden. Prüfe den Dateinamen und Pfad.")
+        logging.error("Datei nicht gefunden. Prüfe den Dateinamen und Pfad.")
     elif isinstance(e, ValueError):
-        print("Wertfehler: Prüfe die Eingabedaten und das Format.")
+        logging.error("Wertfehler: Prüfe die Eingabedaten und das Format.")
     elif isinstance(e, ImportError):
-        print("Importfehler: Prüfe, ob alle Pakete installiert sind (z.B. tensorflow, numpy, nltk, pandas, scikit-learn, streamlit, reportlab, pillow, matplotlib, langdetect).")
+        logging.error("Importfehler: Prüfe, ob alle Pakete installiert sind (z.B. tensorflow, numpy, nltk, pandas, scikit-learn, streamlit, reportlab, pillow, matplotlib, langdetect).")
     else:
-        print(f"Unerwarteter Fehler: {e}")
+        logging.error(f"Unerwarteter Fehler: {e}")
 
 
 def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
     """
     Startet den interaktiven Modus für Nutzereingaben und zeigt die Top-N Antworten an.
     """
-    print("Bundeskanzler-KI: Geben Sie eine Frage oder Aussage ein (Abbruch mit 'exit')")
+    logging.info("[Interaktiv] Bundeskanzler-KI: Geben Sie eine Frage oder Aussage ein (Abbruch mit 'exit')")
     while True:
         seed_text = input("Ihre Eingabe: ")
         if seed_text.strip().lower() == "exit":
-            print("Beendet.")
+            logging.info("[Interaktiv] Sitzung beendet durch Nutzer.")
             break
+        if not seed_text.strip():
+            logging.warning("[Interaktiv] Leere Eingabe übersprungen.")
+            continue
+        # Validierung Modell und Tokenizer
+        if model is None:
+            print("Das Modell ist nicht geladen. Bitte prüfen Sie die Konfiguration und den Modellpfad.")
+            logging.error("Interaktiv: Modell nicht geladen.")
+            continue
+        if tokenizer is None:
+            print("Der Tokenizer ist nicht geladen. Bitte prüfen Sie die Konfiguration.")
+            logging.error("Interaktiv: Tokenizer nicht geladen.")
+            continue
         try:
             lang = detect_lang(seed_text)
             seed_text_pp = preprocess(seed_text, lang=lang)
@@ -125,7 +143,7 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
             seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
             output = model.predict(seed_sequence)[0]
             top_indices = np.argsort(output)[::-1][:args.top_n]
-            print(f"Top-{args.top_n} Antworten:")
+            print(f"\nTop-{args.top_n} Antworten für Ihre Eingabe:")
             antworten = []
             for i, idx in enumerate(top_indices):
                 mark = "*" if i == 0 else " "
@@ -135,6 +153,7 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
             log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
             feedback_interaction(seed_text, antworten, corpus)
         except Exception as e:
+            print("Fehler bei der Verarbeitung Ihrer Eingabe. Details siehe Log.")
             print_error_hint(e)
 
 
