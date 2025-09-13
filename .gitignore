@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# TensorFlow/Keras Modelle
+*.h5
+*.keras
+*.pb
+
+# Logfiles
+*.log
+log.txt
+mein_log.txt
+
+# CSV/JSON/Testdaten
+*.csv
+*.json
+csv_url.txt
+entscheidungsdaten.csv
+feedback.txt
+validation_results.json
+
+# Virtuelle Umgebung
+bin/
+lib/
+lib64/
+include/
+pyvenv.cfg
+share/
+etc/
+
+# Sonstiges
+.DS_Store
+.env
+
+# Tests
+*.test.py
+test_*.py

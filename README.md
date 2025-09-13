@@ -1,59 +1,137 @@
-# Bundeskanzler-KI
+# Bundeskanzler KI
 
-Dieses Projekt ist eine interaktive Textklassifikation und Antwort-Generierung für politische Aussagen (deutsch/englisch) mit einem GRU-Modell in TensorFlow/Keras.
+Ein KI-gestütztes System zur Verarbeitung und Beantwortung von Fragen zu deutschen Regierungspositionen und politischen Themen.
 
-## Features
-- Korpus aus Datei (`corpus.txt`) oder Standardkorpus
-- Batch-Inferenz aus Datei (`input.txt`)
-- Interaktiver Modus mit Top-N Antworten
-- Konfigurierbare Parameter über Kommandozeile (z.B. Top-N, Batchgröße, Epochen)
-- Logging aller Interaktionen in `log.txt`
-- Stoppwort-Entfernung, Lemmatization/Stemming, einfache Spracherkennung
-- Modell wird automatisch gespeichert und geladen
-- Erweiterte Validierung und Feedback-Analyse
-- Automatisierte Tests für alle Module
-- Streamlit-Dashboard und PDF-Report für Validierungsergebnisse
+## 🎯 Projektübersicht
 
-## Installation
-1. Python 3.8+ und pip installieren
-2. Abhängigkeiten installieren:
+Die Bundeskanzler KI ist ein intelligentes Modell, das auf Basis von Deep Learning politische Fragen und Themen verarbeitet. Das System nutzt eine optimierte LSTM-Architektur mit fortgeschrittenen Regularisierungstechniken, um präzise und kontextrelevante Antworten zu generieren.
+
+## 🚀 Features
+
+- **Intelligente Textverarbeitung**: Verarbeitung natürlicher Sprache für politische Themen
+- **Kontextbewusstsein**: Berücksichtigung des Gesprächskontexts bei Antworten
+- **Regularisierte Architektur**: Optimierte Modellarchitektur gegen Overfitting
+- **Konfigurierbare Pipeline**: Flexible Anpassung von Trainingsparametern
+- **Deutschsprachige Basis**: Speziell für den deutschen politischen Kontext optimiert
+
+## 🛠 Installation
+
+1. **Python-Umgebung erstellen**:
    ```bash
-   pip install tensorflow numpy nltk pandas scikit-learn streamlit reportlab pillow matplotlib langdetect
+   python -m venv bkki_venv
+   source bkki_venv/bin/activate  # Linux/Mac
+   # oder
+   .\bkki_venv\Scripts\activate   # Windows
    ```
 
-## Nutzung
+2. **Abhängigkeiten installieren**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## 💻 Verwendung
+
+### Training
+
+```bash
+python bundeskanzler_ki.py train --epochs 200 --batch_size 4
+```
+
 ### Interaktiver Modus
+
 ```bash
-python bundeskanzler_ki.py
+python bundeskanzler_ki.py interact
 ```
 
-### Batch-Inferenz
-Erstelle eine Datei `input.txt` mit je einer Eingabe pro Zeile:
+### Batch-Verarbeitung
+
 ```bash
-python bundeskanzler_ki.py --input input.txt
+python bundeskanzler_ki.py batch --input fragen.txt --output antworten.csv
 ```
 
-### Parameter anpassen
-```bash
-python bundeskanzler_ki.py --top_n 5 --batch_size 16 --epochs 30 --corpus mein_korpus.txt --log mein_log.txt
+## 🔧 Konfiguration
+
+Die Konfiguration erfolgt über mehrere Dateien:
+
+- `tf_config.py`: TensorFlow-spezifische Einstellungen
+- `config.yaml`: Allgemeine Projekteinstellungen
+- `transformer_model.py`: Modellarchitektur und Trainingsparameter
+
+### Wichtige Konfigurationsparameter
+
+```yaml
+model:
+  embedding_dim: 16
+  lstm_units: 8
+  dropout_rate: 0.6
+  learning_rate: 0.00001
+
+training:
+  batch_size: 4
+  epochs: 200
+  validation_split: 0.2
 ```
 
-## Korpus erweitern
-Füge eigene Sätze in die Datei `corpus.txt` (eine Zeile pro Satz).
+## 📊 Modellarchitektur
 
+Das System verwendet eine optimierte LSTM-basierte Architektur:
 
-## Logging
-Alle Anfragen und Antworten werden in `log.txt` gespeichert.
+1. **Embedding Layer**: 
+   - Dimensionalität: 16
+   - L1/L2 Regularisierung
+   - MaxNorm Constraints
 
-## Validierung & Reporting
-- Validierungsergebnisse werden als JSON exportiert (`validation_results.json`).
-- Streamlit-Dashboard (`validation_dashboard.py`) für visuelle Analyse.
-- PDF-Report (`validation_report.py`) für Dokumentation.
+2. **LSTM Layer**:
+   - 8 Units
+   - Bidirektional
+   - Dropout: 0.6
+   - Kernel, Recurrent und Bias Regularisierung
 
-## Hinweise
-- Das Modell wird nach dem ersten Training als `bundeskanzler_ki_model.keras` gespeichert und beim nächsten Start geladen.
-- Für deutsche und englische Sätze geeignet.
-- Automatisierte Tests: `python3 -m unittest discover`
+3. **Dense Layer**:
+   - ReLU Aktivierung
+   - Batch Normalization
+   - L1/L2 Regularisierung
 
-## Lizenz
-MIT
+## 🔄 Training
+
+Das Training ist optimiert für kleine Datensätze und verwendet:
+
+- Early Stopping mit erhöhter Geduld
+- Learning Rate Reduction
+- Gradient Clipping
+- L1/L2 Regularisierung
+- Hohe Dropout-Raten
+
+## 📋 Geplante Erweiterungen
+
+- [ ] Erweiterter Trainingskorpus
+- [ ] Zero-shot/Few-shot Learning
+- [ ] Mehrsprachige Unterstützung
+- [ ] Faktenprüfung und Quellenangaben
+- [ ] Verbessertes Kontextverständnis
+
+## 🤝 Beitragen
+
+Beiträge sind willkommen! Bitte beachten Sie:
+
+1. Fork des Repositories
+2. Feature-Branch erstellen
+3. Änderungen committen
+4. Push zum Branch
+5. Pull Request erstellen
+
+## 📝 Lizenz
+
+Dieses Projekt ist unter der MIT-Lizenz lizenziert.
+
+## 🙏 Danksagung
+
+Besonderer Dank gilt allen Mitwirkenden und der Open-Source-Community für ihre wertvollen Beiträge und Unterstützung.
+
+## 📬 Kontakt
+
+Bei Fragen oder Anregungen können Sie ein Issue erstellen oder sich direkt an die Projektbetreuer wenden.
+
+---
+
+**Hinweis**: Dieses Projekt befindet sich in aktiver Entwicklung. Feedback und Verbesserungsvorschläge sind jederzeit willkommen!

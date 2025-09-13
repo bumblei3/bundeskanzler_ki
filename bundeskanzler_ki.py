@@ -1,3 +1,6 @@
+# Importiere TensorFlow Konfiguration
+import tf_config
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -8,6 +11,13 @@ import datetime
 import csv
 import yaml
 import logging
+
+# Konfiguriere Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s]: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 from tqdm import tqdm
 
 def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
@@ -33,7 +43,7 @@ def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int
     preprocessed = []
     for idx, seed_text in enumerate(tqdm(seed_texts, desc="Preprocessing", unit="Zeile")):
         try:
-            lang = detect_lang(seed_text)
+            lang = detect_language(seed_text)
             seed_text_pp = preprocess(seed_text, lang=lang)
             preprocessed.append(seed_text_pp)
         except Exception as e:
@@ -102,23 +112,59 @@ def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int
         logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als {result_file} exportiert.")
     logging.info(f"[Batch-Inferenz] Gesamt: {total_lines} Zeilen verarbeitet, Fehler: {error_count}")
 
-def init_model(tokenizer: 'Tokenizer', maxlen: int, embedding_size: int = 256, lstm_output_size: int = 128) -> 'tf.keras.Model':
+def init_model(tokenizer: 'Tokenizer', maxlen: int, output_size: int) -> 'tf.keras.Model':
     """
-    Initialisiert und gibt ein GRU-basiertes Keras-Modell zurück.
+    Initialisiert und gibt ein Transformer-basiertes Modell zurück.
+    
+    Args:
+        tokenizer: Der Tokenizer für die Texttransformation
+        maxlen: Die maximale Länge der Eingabesequenzen
+        output_size: Die Größe der Ausgabeschicht (Anzahl der Klassen)
     """
-    return tf.keras.Sequential([
-        tf.keras.layers.Embedding(input_dim=len(tokenizer.word_index)+1, output_dim=embedding_size, input_length=maxlen),
-        tf.keras.layers.GRU(lstm_output_size, dropout=0.2, recurrent_dropout=0.2),
-        tf.keras.layers.Dense(len(tokenizer.word_index)+1, activation='softmax')
-    ])
+    from transformer_model import create_transformer_model
+    
+    vocab_size = len(tokenizer.word_index) + 1
+    
+    return create_transformer_model(
+        maxlen=maxlen,
+        vocab_size=vocab_size,
+        output_size=output_size
+    )
 
 def train_model(model: 'tf.keras.Model', X: np.ndarray, Y: np.ndarray, args: argparse.Namespace) -> 'tf.keras.Model':
     """
     Trainiert das Modell mit den gegebenen Daten und Parametern.
     """
-    from tensorflow.keras.callbacks import EarlyStopping
-    early_stop = EarlyStopping(monitor='loss', patience=2, restore_best_weights=True)
-    model.fit(X, Y, batch_size=args.batch_size, epochs=args.epochs, callbacks=[early_stop])
+    from transformer_model import train_transformer
+    
+    callbacks = [
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=3,
+            restore_best_weights=True
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=2,
+            min_lr=1e-5
+        ),
+        tf.keras.callbacks.TensorBoard(
+            log_dir='./logs',
+            profile_batch='100,120'
+        )
+    ]
+    
+    history = train_transformer(
+        model=model,
+        X_train=X,
+        y_train=Y,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        validation_split=0.2,
+        callbacks=callbacks
+    )
+    
     return model
 
 def preprocess_corpus(corpus: list[str]) -> list[str]:
@@ -127,26 +173,15 @@ def preprocess_corpus(corpus: list[str]) -> list[str]:
     """
     corpus_pp = []
     for s in corpus:
-        lang = detect_lang(s)
+        lang = detect_language(s)
         corpus_pp.append(preprocess(s, lang=lang))
     return corpus_pp
-# Globale Korpus-Variablen für Tests und andere Module
-corpus_original = [
-    "The chancellor said he will increase taxes for the rich.",
-    "The German chancellor believes that the economy is growing.",
-    "Angela Merkel has announced that Germany will take in more refugees.",
-    "Der Kanzler sagt, er wird die Steuern für Reiche erhöhen.",
-    "Die deutsche Kanzlerin glaubt, dass die Wirtschaft wächst.",
-    "Angela Merkel hat angekündigt, dass Deutschland mehr Flüchtlinge aufnehmen wird.",
-    "Die Regierung plant Investitionen in Bildung und Infrastruktur.",
-    "Die Arbeitslosigkeit in Deutschland ist gesunken.",
-    "Die Inflation bleibt stabil.",
-    "Die Bundesregierung diskutiert über neue Klimaschutzmaßnahmen."
-]
-corpus = corpus_original.copy()
+# Korpus-Manager und Preprocessing importieren
+from corpus_manager import CorpusManager
 
 # Preprocessing auslagern
-from preprocessing import preprocess, detect_lang
+from preprocessing import preprocess
+from language_detection import detect_language, get_supported_languages
 # Feedback-Funktionen auslagern
 from feedback import log_interaction, feedback_interaction, export_batch_results_csv, analyze_feedback
 
@@ -190,7 +225,7 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
             logging.error("Interaktiv: Tokenizer nicht geladen.")
             continue
         try:
-            lang = detect_lang(seed_text)
+            lang = detect_language(seed_text)
             seed_text_pp = preprocess(seed_text, lang=lang)
             seed_sequence = tokenizer.texts_to_sequences([seed_text_pp])
             seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
@@ -301,20 +336,18 @@ def main():
     model_path = config['model']['model_path']
 
     # Korpus laden
-    corpus_original_local = []
-    try:
-        with open(corpus_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    corpus_original_local.append(line)
-        logging.info(f"Korpus aus Datei geladen: {len(corpus_original_local)} Sätze.")
-    except FileNotFoundError:
-        logging.warning(f"{corpus_file} nicht gefunden, Standardkorpus wird verwendet.")
-        corpus_original_local = corpus_original.copy()
+    corpus_manager = CorpusManager(corpus_file)
+    corpus_original_local = corpus_manager.get_all_sentences()
+    stats = corpus_manager.get_statistics()
+    logging.info(f"Korpus geladen: {stats['total']} Sätze")
+    for category, count in stats['by_category'].items():
+        logging.info(f"  - {category}: {count} Sätze")
+    for lang, count in stats['by_language'].items():
+        logging.info(f"  - Sprache {lang}: {count} Sätze")
     corpus = corpus_original_local.copy()
     corpus_pp = preprocess_corpus(corpus)
 
+    # Erstelle Training Daten
     tokenizer = Tokenizer(num_words=num_words)
     tokenizer.fit_on_texts(corpus_pp)
     sequences = tokenizer.texts_to_sequences(corpus_pp)
@@ -322,11 +355,20 @@ def main():
     Y = np.eye(len(corpus))[np.arange(len(corpus))]
 
     # Modell laden/erstellen
+    output_size = len(corpus)  # Die Ausgabegröße sollte der Anzahl der Sätze im Korpus entsprechen
+    vocab_size = len(tokenizer.word_index) + 1
+    
+    # Modell laden/erstellen
     if os.path.exists(model_path):
         logging.info("Lade vorhandenes Modell...")
         model = tf.keras.models.load_model(model_path)
+        # Überprüfe, ob das geladene Modell die richtige Ausgabegröße hat
+        if model.output_shape[-1] != output_size:
+            logging.warning(f"Modell hat falsche Ausgabegröße {model.output_shape[-1]}, benötigt {output_size}. Erstelle neues Modell...")
+            model = init_model(tokenizer, maxlen, output_size)
+            model.compile(loss='categorical_crossentropy', optimizer='adam')
     else:
-        model = init_model(tokenizer, maxlen, embedding_size, lstm_output_size)
+        model = init_model(tokenizer, maxlen, output_size)
         model.compile(loss='categorical_crossentropy', optimizer='adam')
 
     # Subcommand-Logik
@@ -342,7 +384,7 @@ def main():
         run_args = argparse.Namespace(batch_size=batch_size, epochs=epochs, top_n=top_n, input=input_file, corpus=corpus_file, log=log_file)
         interactive_mode(tokenizer, model, maxlen, corpus_pp, corpus, run_args)
     elif args.command == "validate":
-        validate_model(tokenizer, model, maxlen, preprocess, detect_lang)
+        validate_model(tokenizer, model, maxlen, preprocess, detect_language)
         analyze_feedback()
     
 # Standard-Skriptstart
