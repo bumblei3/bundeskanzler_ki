@@ -40,6 +40,7 @@ from typing import Any, Dict, List, Optional
 # Local imports
 from adaptive_response import AdaptiveResponseManager
 from corpus_manager import CorpusManager
+from fact_checker import FactChecker
 from gpu_batching import AsyncBatchManager, GPUBatchProcessor
 from hierarchical_memory import EnhancedContextProcessor
 from optimized_memory import OptimizedHierarchicalMemory
@@ -248,6 +249,37 @@ class CreateUserRequest(BaseModel):
     is_admin: bool = False
 
 
+class FactCheckRequest(BaseModel):
+    """Anfrage für Faktenprüfung"""
+    statement: str = Field(..., min_length=10, max_length=1000, description="Zu prüfende Aussage")
+    context: Optional[Dict[str, Any]] = Field({}, description="Zusätzlicher Kontext")
+
+
+class FactCheckResponse(BaseModel):
+    """Antwort der Faktenprüfung"""
+    statement: str
+    confidence_score: float
+    sources: List[Dict[str, Any]]
+    bias_score: float
+    verification_status: str
+    explanation: str
+    timestamp: datetime
+
+
+class ResponseValidationRequest(BaseModel):
+    """Anfrage zur Validierung einer KI-Antwort"""
+    response: str = Field(..., min_length=10, max_length=2000, description="KI-Antwort")
+    user_query: str = Field(..., min_length=5, max_length=500, description="Ursprüngliche Nutzerfrage")
+
+
+class ResponseValidationResponse(BaseModel):
+    """Antwort der Antwort-Validierung"""
+    overall_confidence: float
+    overall_bias: float
+    statement_validations: List[Dict[str, Any]]
+    recommendations: List[str]
+
+
 class SystemConfig(BaseModel):
     """System-Konfiguration für Admin"""
     api_settings: Dict[str, Any]
@@ -267,6 +299,7 @@ memory_system: Optional[OptimizedHierarchicalMemory] = None
 context_processor: Optional[EnhancedContextProcessor] = None
 response_manager: Optional[AdaptiveResponseManager] = None
 corpus_manager: Optional[CorpusManager] = None
+fact_checker: Optional[FactChecker] = None
 gpu_processor: Optional[GPUBatchProcessor] = None
 async_batch_manager: Optional[AsyncBatchManager] = None
 start_time = time.time()
@@ -275,9 +308,9 @@ request_counter = 0
 
 def initialize_ki_components():
     """Initialisiert alle KI-Komponenten"""
-    global memory_system, context_processor, response_manager, corpus_manager
+    global memory_system, context_processor, response_manager, corpus_manager, fact_checker
 
-    print(" Initialisiere Memory-System...")
+    print("📚 Initialisiere Memory-System...")
     memory_system = OptimizedHierarchicalMemory(
         short_term_capacity=200,
         long_term_capacity=5000,
@@ -304,6 +337,10 @@ def initialize_ki_components():
     print("📖 Initialisiere Corpus-Manager...")
     corpus_manager = CorpusManager("./corpus.json")
     print("✅ Corpus-Manager initialisiert")
+
+    print("🔍 Initialisiere Fact-Checker...")
+    fact_checker = FactChecker()
+    print("✅ Fact-Checker initialisiert")
 
 
 def initialize_gpu_system():
@@ -357,6 +394,7 @@ async def lifespan(app: FastAPI):
         context_processor = None
         response_manager = None
         corpus_manager = None
+        fact_checker = None
         gpu_processor = None
         async_batch_manager = None
     
@@ -1890,6 +1928,115 @@ async def get_admin_memory_stats(
             "timestamp": datetime.now().isoformat()
         })
         raise HTTPException(status_code=500, detail=f"Failed to get memory stats: {str(e)}")
+
+
+# === FAKTENPRÜFUNG ENDPOINTS ===
+
+@app.post("/fact-check", response_model=FactCheckResponse)
+async def check_fact_endpoint(request: FactCheckRequest):
+    """Einzelne Aussage auf Fakten prüfen"""
+    if not fact_checker:
+        raise HTTPException(status_code=503, detail="Fact checker not available")
+
+    try:
+        result = fact_checker.check_fact(request.statement, request.context)
+
+        api_logger.info("Fact check performed", extra={
+            "component": "fact_check",
+            "action": "single_fact_check",
+            "confidence": result.confidence_score,
+            "bias": result.bias_score,
+            "status": result.verification_status,
+            "statement_length": len(request.statement)
+        })
+
+        return FactCheckResponse(
+            statement=result.statement,
+            confidence_score=result.confidence_score,
+            sources=result.sources,
+            bias_score=result.bias_score,
+            verification_status=result.verification_status,
+            explanation=result.explanation,
+            timestamp=result.timestamp
+        )
+
+    except Exception as e:
+        api_logger.error("Fact check error", extra={
+            "component": "fact_check",
+            "action": "fact_check_error",
+            "error": str(e),
+            "statement_length": len(request.statement)
+        })
+        raise HTTPException(status_code=500, detail=f"Fact check failed: {str(e)}")
+
+
+@app.post("/validate-response", response_model=ResponseValidationResponse)
+async def validate_response_endpoint(request: ResponseValidationRequest):
+    """KI-Antwort auf Fakten und Bias validieren"""
+    if not fact_checker:
+        raise HTTPException(status_code=503, detail="Fact checker not available")
+
+    try:
+        validation = fact_checker.validate_response(request.response, request.user_query)
+
+        api_logger.info("Response validation performed", extra={
+            "component": "fact_check",
+            "action": "response_validation",
+            "overall_confidence": validation["overall_confidence"],
+            "overall_bias": validation["overall_bias"],
+            "statement_count": len(validation["statement_validations"]),
+            "response_length": len(request.response),
+            "query_length": len(request.user_query)
+        })
+
+        return ResponseValidationResponse(
+            overall_confidence=validation["overall_confidence"],
+            overall_bias=validation["overall_bias"],
+            statement_validations=validation["statement_validations"],
+            recommendations=validation["recommendations"]
+        )
+
+    except Exception as e:
+        api_logger.error("Response validation error", extra={
+            "component": "fact_check",
+            "action": "response_validation_error",
+            "error": str(e),
+            "response_length": len(request.response)
+        })
+        raise HTTPException(status_code=500, detail=f"Response validation failed: {str(e)}")
+
+
+@app.get("/fact-check/sources")
+async def get_available_sources():
+    """Verfügbare Quellen für Faktenprüfung abrufen"""
+    if not fact_checker:
+        raise HTTPException(status_code=503, detail="Fact checker not available")
+
+    try:
+        sources = []
+        for domain, credibility in fact_checker.source_credibility.items():
+            sources.append({
+                "domain": domain,
+                "credibility_score": credibility.credibility_score,
+                "political_bias": credibility.political_bias,
+                "fact_checking_rating": credibility.fact_checking_rating,
+                "category": credibility.category,
+                "last_updated": credibility.last_updated.isoformat()
+            })
+
+        return {
+            "sources": sources,
+            "total_sources": len(sources),
+            "trusted_domains": fact_checker.trusted_sources
+        }
+
+    except Exception as e:
+        api_logger.error("Sources retrieval error", extra={
+            "component": "fact_check",
+            "action": "sources_retrieval_error",
+            "error": str(e)
+        })
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve sources: {str(e)}")
 
 
 if __name__ == "__main__":
