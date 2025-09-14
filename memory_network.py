@@ -1,144 +1,135 @@
 """
-Memory-Netzwerk für erweitertes Kontextverständnis.
-Implementiert ein Key-Value Gedächtnis mit Attention-Mechanismus für verbesserte
-Langzeit-Kontextverarbeitung in der Bundeskanzler-KI.
-
-Attributes:
-    memory_size: Anzahl der Gedächtniszellen
-    key_dim: Dimensionalität der Schlüssel und Werte
-    num_heads: Anzahl der Attention-Heads
-    attention: Multi-Head Attention Layer
-    layernorm: Layer-Normalisierung
-    dropout: Dropout für Regularisierung
+Memory-Netzwerk für die Bundeskanzler-KI.
+Implementiert ein erweitertes Memory-Network für Kontext-Verarbeitung.
 """
-from typing import Optional, Tuple, Union
 import tensorflow as tf
-from tensorflow.keras import layers
 import numpy as np
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
 
-class MemoryNetwork(layers.Layer):
+class MemoryNetwork:
     """
-    Implementiert ein differenzierbares Memory-Netzwerk mit Attention-Mechanismus.
+    Memory-Netzwerk zur Verarbeitung und Speicherung von Kontext-Informationen.
     """
-    def __init__(
-        self,
-        memory_size: int,
-        key_dim: int,
-        num_heads: int = 4,
-        dropout: float = 0.1
-    ):
-        super(MemoryNetwork, self).__init__()
+    
+    def __init__(self, memory_size: int = 1000, embedding_dim: int = 256):
+        """
+        Initialisiert das Memory-Netzwerk.
+        
+        Args:
+            memory_size: Maximale Anzahl der Speichereinträge
+            embedding_dim: Dimension der Embedding-Vektoren
+        """
         self.memory_size = memory_size
-        self.key_dim = key_dim
-        self.num_heads = num_heads
+        self.embedding_dim = embedding_dim
         
-        # Memory-Komponenten mit korrekter Shape für Attention
-        self.memory_keys = self.add_weight(
-            name="memory_keys",
-            shape=(1, memory_size, key_dim),  # [1, memory_size, key_dim] für Attention
-            initializer="glorot_uniform",
-            trainable=True
-        )
-        self.memory_values = self.add_weight(
-            name="memory_values",
-            shape=(1, memory_size, key_dim),  # [1, memory_size, key_dim] für Attention
-            initializer="glorot_uniform",
-            trainable=True
+        # Initialisiere Memory als TensorFlow Variable
+        self.memory = tf.Variable(
+            tf.zeros([memory_size, embedding_dim], dtype=tf.float32),
+            trainable=False,
+            name='memory_storage'
         )
         
-        # Attention-Mechanismus
-        self.attention = layers.MultiHeadAttention(
-            num_heads=num_heads,
-            key_dim=key_dim,
-            dropout=dropout
+        # Zeitstempel-Speicher für Verfallssteuerung
+        self.timestamps = tf.Variable(
+            tf.zeros([memory_size], dtype=tf.float32),
+            trainable=False,
+            name='memory_timestamps'
         )
         
-        # Normalisierung und Dropout
-        self.layernorm = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout = layers.Dropout(dropout)
+        # Aktuelle Position im Memory
+        self.current_position = tf.Variable(0, trainable=False, dtype=tf.int32)
         
-    @tf.function
-    def call(
-        self,
-        queries: tf.Tensor,
-        training: bool = False
-    ) -> Tuple[tf.Tensor, tf.Tensor]:
+        # Importance-Scores für Memory-Einträge
+        self.importance = tf.Variable(
+            tf.zeros([memory_size], dtype=tf.float32),
+            trainable=False,
+            name='memory_importance'
+        )
+
+    def store(self, embedding: tf.Tensor, importance: float = 1.0) -> None:
         """
-        Führt Memory-Lookup und Update durch.
+        Speichert einen neuen Embedding-Vektor im Memory.
         
         Args:
-            queries: Input-Tensor für Memory-Lookup [batch_size, seq_len, dim]
-            training: Training-Modus Flag
-            
-        Returns:
-            Tuple aus:
-                - memory_output: Verarbeitete Memory-Ausgabe [batch_size, seq_len, dim]
-                - attention_weights: Attention-Gewichte [batch_size, num_heads, seq_len, memory_size]
+            embedding: Embedding-Vektor der gespeichert werden soll
+            importance: Wichtigkeits-Score des Eintrags (0.0 bis 1.0)
         """
-        # Memory-Lookup mit Attention (broadcast zu batch_size)
-        batch_size = tf.shape(queries)[0]
-        keys = tf.broadcast_to(
-            self.memory_keys,
-            [batch_size, *self.memory_keys.shape[1:]]
-        )
-        values = tf.broadcast_to(
-            self.memory_values,
-            [batch_size, *self.memory_values.shape[1:]]
+        # Reshape embedding falls nötig
+        embedding = tf.reshape(embedding, [self.embedding_dim])
+        
+        # Aktuelle Position im ringförmigen Speicher
+        position = self.current_position.assign(
+            (self.current_position + 1) % self.memory_size
         )
         
-        memory_output, attention_weights = self.attention(
-            queries,
-            keys,
-            values,
-            return_attention_scores=True
-        )
-        
-        # Residual-Verbindung und Normalisierung
-        memory_output = self.dropout(memory_output, training=training)
-        memory_output = self.layernorm(queries + memory_output)
-        
-        return memory_output, attention_weights
-    
-    def update_memory(
-        self,
-        keys: tf.Tensor,
-        values: tf.Tensor,
-        importance: Optional[tf.Tensor] = None
-    ) -> None:
+        # Speichere Embedding und Metadaten
+        self.memory[position].assign(embedding)
+        self.timestamps[position].assign(float(datetime.now().timestamp()))
+        self.importance[position].assign(float(importance))
+
+    def query(self, query_embedding: tf.Tensor, k: int = 5) -> Tuple[tf.Tensor, tf.Tensor]:
         """
-        Aktualisiert den Gedächtnisinhalt.
+        Findet die k ähnlichsten Einträge zu einem Query-Embedding.
         
         Args:
-            keys: Neue Schlüssel für das Gedächtnis
-            values: Neue Werte für das Gedächtnis
-            importance: Optionale Wichtigkeits-Gewichte
-        """
-        if importance is None:
-            importance = tf.ones_like(keys[..., 0])
+            query_embedding: Query-Vektor
+            k: Anzahl der zurückzugebenden Einträge
             
-        # Importance-gewichtetes Update
-        importance = tf.expand_dims(importance, -1)
-        update_mask = tf.cast(
-            tf.random.uniform((1, self.memory_size)) < 0.1,  # Angepasste Shape
-            tf.float32
-        )
-        update_mask = tf.expand_dims(update_mask, -1)  # [1, memory_size, 1]
-        
-        # Zufälliges Update von 10% der Gedächtniszellen
-        self.memory_keys.assign(
-            self.memory_keys * (1 - update_mask) +
-            tf.expand_dims(keys, 1) * update_mask  # [batch, memory_size, dim]
-        )
-        self.memory_values.assign(
-            self.memory_values * (1 - update_mask) +
-            tf.expand_dims(values, 1) * update_mask
-        )
-    
-    def get_memory_state(self) -> Tuple[tf.Tensor, tf.Tensor]:
-        """
-        Gibt den aktuellen Gedächtniszustand zurück.
-        
         Returns:
-            Tuple aus Memory-Keys und Memory-Values
+            Tuple aus (Memory-Einträge, Ähnlichkeits-Scores)
         """
-        return self.memory_keys, self.memory_values
+        # Reshape query falls nötig
+        query_embedding = tf.reshape(query_embedding, [1, self.embedding_dim])
+        
+        # Normalisiere Embeddings
+        query_norm = tf.nn.l2_normalize(query_embedding, axis=1)
+        memory_norm = tf.nn.l2_normalize(self.memory, axis=1)
+
+        # Berechne Kosinus-Ähnlichkeit
+        similarity = tf.matmul(query_norm, tf.transpose(memory_norm))
+
+        # Gewichte mit Importance und Time-Decay
+        current_time = float(datetime.now().timestamp())
+        time_weights = tf.exp(
+            -(current_time - self.timestamps) / (24.0 * 3600.0)  # 24h Decay
+        )
+        
+        weighted_similarity = similarity * self.importance * time_weights
+        
+        # Finde Top-k Einträge
+        values, indices = tf.nn.top_k(tf.squeeze(weighted_similarity), k=k)
+        
+        return tf.gather(self.memory, indices), values
+
+    def update_importance(self, index: int, new_importance: float) -> None:
+        """
+        Aktualisiert den Importance-Score eines Memory-Eintrags.
+        
+        Args:
+            index: Index des zu aktualisierenden Eintrags
+            new_importance: Neuer Importance-Score (0.0 bis 1.0)
+        """
+        self.importance[index].assign(float(new_importance))
+
+    def clear_old_entries(self, max_age_days: float = 30.0) -> None:
+        """
+        Löscht Einträge die älter als max_age_days sind.
+        
+        Args:
+            max_age_days: Maximales Alter in Tagen
+        """
+        current_time = float(datetime.now().timestamp())
+        max_age = max_age_days * 24.0 * 3600.0  # Konvertiere zu Sekunden
+        
+        old_indices = tf.where(
+            (current_time - self.timestamps) > max_age
+        )
+        
+        # Setze alte Einträge auf Null
+        if tf.size(old_indices) > 0:
+            old_indices_flat = tf.reshape(old_indices, [-1])
+            zeros_mem = tf.zeros([tf.size(old_indices_flat), self.embedding_dim], dtype=tf.float32)
+            zeros_imp = tf.zeros([tf.size(old_indices_flat)], dtype=tf.float32)
+            self.memory.assign(tf.tensor_scatter_nd_update(self.memory, tf.expand_dims(old_indices_flat, 1), zeros_mem))
+            self.importance.assign(tf.tensor_scatter_nd_update(self.importance, tf.expand_dims(old_indices_flat, 1), zeros_imp))
