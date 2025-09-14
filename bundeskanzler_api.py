@@ -2021,7 +2021,7 @@ async def get_available_sources():
                 "political_bias": credibility.political_bias,
                 "fact_checking_rating": credibility.fact_checking_rating,
                 "category": credibility.category,
-                "last_updated": credibility.last_updated.isoformat()
+                "last_updated": credibility.last_updated.isoformat() if isinstance(credibility.last_updated, datetime) else str(credibility.last_updated)
             })
 
         return {
