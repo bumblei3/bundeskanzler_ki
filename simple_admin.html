@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Bundeskanzler KI Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { padding: 10px 20px; background: #007acc; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #005a9e; }
+        .btn-danger { background: #dc3545; }
+        .btn-success { background: #28a745; }
+        .form-group { margin: 10px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .metric { display: inline-block; margin: 10px 15px 10px 0; padding: 10px 15px; background: #e3f2fd; border-radius: 5px; }
+        .log-entry { font-family: monospace; font-size: 12px; margin: 5px 0; padding: 8px; background: #f8f9fa; border-left: 3px solid #007acc; }
+        .status-ok { color: #28a745; font-weight: bold; }
+        .status-error { color: #dc3545; font-weight: bold; }
+        .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; cursor: pointer; border: none; background: none; }
+        .tab.active { border-bottom: 2px solid #007acc; color: #007acc; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #loginSection { max-width: 400px; margin: 50px auto; }
+        #adminPanel { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div id="loginSection">
+        <div class="card">
+            <h2>🔐 Admin Login</h2>
+            <div class="form-group">
+                <label>Username:</label>
+                <input type="text" id="username" value="admin">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="password" value="admin123!">
+            </div>
+            <button class="btn" onclick="login()" style="width: 100%;">Login</button>
+            <div id="loginStatus" style="margin-top: 10px; text-align: center;"></div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel">
+        <div class="header">
+            <h1>🔐 Bundeskanzler KI - Admin Panel</h1>
+            <p>Systemverwaltung</p>
+        </div>
+
+        <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
+            <button class="tab" onclick="showTab('memory')">Memory</button>
+            <button class="tab" onclick="showTab('users')">Benutzer</button>
+            <button class="tab" onclick="showTab('logs')">Logs</button>
+        </div>            <!-- Dashboard -->
+            <div id="dashboard" class="tab-content active">
+                <div class="card">
+                    <h3>System Status</h3>
+                    <button class="btn" onclick="loadDashboard()">🔄 Aktualisieren</button>
+                    <div id="dashboardData">
+                        <p>Klicke auf "Aktualisieren" um Status zu laden...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory -->
+            <div id="memory" class="tab-content">
+                <div class="card">
+                    <h3>🧠 Memory System</h3>
+                    <button class="btn" onclick="loadMemoryStats()">📊 Stats laden</button>
+                    <div id="memoryData">
+                        <p>Klicke auf "Stats laden" um Memory-Informationen zu laden...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users -->
+            <div id="users" class="tab-content">
+                <div class="card">
+                    <h3>Benutzer-Management</h3>
+                    <button class="btn" onclick="loadUsers()">👥 Benutzer laden</button>
+                    <div id="usersData">
+                        <p>Klicke auf "Benutzer laden"...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div id="logs" class="tab-content">
+                <div class="card">
+                    <h3>System Logs</h3>
+                    <div class="form-group">
+                        <label>Log-Datei:</label>
+                        <select id="logType">
+                            <option value="api.log">API Logs</option>
+                            <option value="memory.log">Memory Logs</option>
+                            <option value="errors.log">Error Logs</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="loadLogs()">📋 Logs laden</button>
+                    <div id="logsData">
+                        <p>Wähle Log-Datei und klicke "Logs laden"...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = null;
+        const API_URL = 'http://localhost:8000';
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            document.getElementById('loginStatus').innerHTML = 'Logging in...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const response = await fetch(`${API_URL}/auth/admin-token`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Login response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    adminToken = data.access_token;
+                    console.log('Token received:', adminToken.substring(0, 20) + '...');
+                    
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('adminPanel').style.display = 'block';
+                    document.getElementById('loginStatus').innerHTML = '<span class="status-ok">✅ Login erfolgreich!</span>';
+                    
+                    // Auto-load dashboard
+                    loadDashboard();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Login failed:', response.status, errorText);
+                    document.getElementById('loginStatus').innerHTML = '<span class="status-error">❌ Login fehlgeschlagen!</span>';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('loginStatus').innerHTML = '<span class="status-error">❌ Verbindungsfehler: ' + error.message + '</span>';
+            }
+        }
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function loadDashboard() {
+            if (!adminToken) {
+                document.getElementById('dashboardData').innerHTML = '<span class="status-error">Nicht eingeloggt!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/admin/health`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                
+                console.log('Dashboard response status:', response.status);
+                
+                if (response.ok) {
+                    const health = await response.json();
+                    console.log('Health data:', health);
+                    
+                    const html = `
+                        <div class="metric">
+                            <strong>Uptime:</strong> ${health.system.uptime.toFixed(1)}s
+                        </div>
+                        <div class="metric">
+                            <strong>Requests:</strong> ${health.system.request_count}
+                        </div>
+                        <div class="metric">
+                            <strong>Components:</strong> ${health.system.components_initialized ? '✅ OK' : '❌ Error'}
+                        </div>
+                        <div class="metric">
+                            <strong>Files:</strong> ${health.files.logs_accessible ? '✅ OK' : '❌ Error'}
+                        </div>
+                    `;
+                    document.getElementById('dashboardData').innerHTML = html;
+                } else {
+                    const errorText = await response.text();
+                    console.error('Dashboard failed:', response.status, errorText);
+                    document.getElementById('dashboardData').innerHTML = '<span class="status-error">Fehler beim Laden der Dashboard-Daten</span>';
+                }
+            } catch (error) {
+                console.error('Dashboard error:', error);
+                document.getElementById('dashboardData').innerHTML = '<span class="status-error">Verbindungsfehler: ' + error.message + '</span>';
+            }
+        }
+
+        async function loadMemoryStats() {
+            if (!adminToken) {
+                document.getElementById('memoryData').innerHTML = '<span class="status-error">Nicht eingeloggt!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/admin/memory-stats`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                
+                console.log('Memory stats response status:', response.status);
+                
+                if (response.ok) {
+                    const stats = await response.json();
+                    console.log('Memory stats:', stats);
+                    
+                    const html = `
+                        <div class="metric">
+                            <strong>Memory System:</strong> ${stats.memory_system_type || 'Unknown'}
+                        </div>
+                        <div class="metric">
+                            <strong>Kurzzeitgedächtnis:</strong> ${stats.kurzzeitgedaechtnis_entries} Einträge
+                        </div>
+                        <div class="metric">
+                            <strong>Langzeitgedächtnis:</strong> ${stats.langzeitgedaechtnis_entries} Einträge
+                        </div>
+                        <div class="metric">
+                            <strong>Gesamt Einträge:</strong> ${stats.total_entries}
+                        </div>
+                        <div class="metric">
+                            <strong>Memory Effizienz:</strong> ${stats.memory_efficiency?.toFixed(1) || 'N/A'}%
+                        </div>
+                        <div class="metric">
+                            <strong>Cache Hits:</strong> ${stats.cache_hits || 0}
+                        </div>
+                        <div class="metric">
+                            <strong>Cache Misses:</strong> ${stats.cache_misses || 0}
+                        </div>
+                        <div class="metric">
+                            <strong>Cache Hit Rate:</strong> ${stats.cache_hit_rate ? (stats.cache_hit_rate * 100).toFixed(1) + '%' : 'N/A'}
+                        </div>
+                        <div class="metric">
+                            <strong>Quantization:</strong> ${stats.quantization_enabled ? '✅ Aktiv' : '❌ Inaktiv'}
+                        </div>
+                        <div class="metric">
+                            <strong>Memory Pool:</strong> ${stats.pool_enabled ? '✅ Aktiv' : '❌ Inaktiv'}
+                        </div>
+                        <div class="metric">
+                            <strong>Memory Saved:</strong> ${stats.memory_saved_mb ? stats.memory_saved_mb.toFixed(1) + ' MB' : 'N/A'}
+                        </div>
+                        
+                        <!-- GPU Stats -->
+                        ${stats.gpu ? `
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                        <h4 style="color: #007acc; margin: 10px 0;">🚀 GPU-Batching System</h4>
+                        <div class="metric">
+                            <strong>GPU Device:</strong> ${stats.gpu.device?.toUpperCase() || 'N/A'}
+                        </div>
+                        <div class="metric">
+                            <strong>GPU Verfügbar:</strong> ${stats.gpu.gpu_available ? '✅ Ja' : '❌ Nein'}
+                        </div>
+                        <div class="metric">
+                            <strong>Batch Size:</strong> ${stats.gpu.batch_size || 'N/A'}
+                        </div>
+                        <div class="metric">
+                            <strong>Async Enabled:</strong> ${stats.gpu.async_enabled ? '✅ Ja' : '❌ Nein'}
+                        </div>
+                        <div class="metric">
+                            <strong>Batches Processed:</strong> ${stats.gpu.batches_processed || 0}
+                        </div>
+                        <div class="metric">
+                            <strong>Total Embeddings:</strong> ${stats.gpu.total_embeddings || 0}
+                        </div>
+                        <div class="metric">
+                            <strong>Avg Batch Time:</strong> ${(stats.gpu.avg_batch_time * 1000)?.toFixed(2) || 'N/A'}ms
+                        </div>
+                        <div class="metric">
+                            <strong>GPU Memory Used:</strong> ${stats.gpu.gpu_memory_used_mb?.toFixed(1) || 'N/A'} MB
+                        </div>
+                        <div class="metric">
+                            <strong>CPU Fallbacks:</strong> ${stats.gpu.cpu_fallback_count || 0}
+                        </div>
+                        ` : '<div class="metric"><strong>GPU System:</strong> ❌ Nicht verfügbar</div>'}
+                        
+                        <!-- Async Tasks -->
+                        ${stats.active_async_tasks && stats.active_async_tasks.length > 0 ? `
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                        <h4 style="color: #28a745; margin: 10px 0;">⚡ Aktive Async Tasks (${stats.active_async_tasks.length})</h4>
+                        ${stats.active_async_tasks.map(task => `<div class="metric"><strong>Task:</strong> ${task}</div>`).join('')}
+                        ` : ''}
+                    `;
+                    document.getElementById('memoryData').innerHTML = html;
+                } else {
+                    const errorText = await response.text();
+                    console.error('Memory stats failed:', response.status, errorText);
+                    document.getElementById('memoryData').innerHTML = '<span class="status-error">Fehler beim Laden der Memory-Stats</span>';
+                }
+            } catch (error) {
+                console.error('Memory stats error:', error);
+                document.getElementById('memoryData').innerHTML = '<span class="status-error">Verbindungsfehler: ' + error.message + '</span>';
+            }
+        }
+
+        async function loadUsers() {
+            if (!adminToken) {
+                document.getElementById('usersData').innerHTML = '<span class="status-error">Nicht eingeloggt!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                
+                console.log('Users response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Users data:', data);
+                    
+                    let html = `<h4>Gefunden: ${data.total} Benutzer</h4>`;
+                    
+                    data.users.forEach(user => {
+                        const adminBadge = user.is_admin ? '🔐 Admin' : '👤 User';
+                        const statusBadge = user.is_active ? '✅ Aktiv' : '❌ Inaktiv';
+                        html += `
+                            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                                <strong>${user.user_id}</strong> (${user.email})<br>
+                                ${adminBadge} | ${statusBadge} | Login Count: ${user.login_count}<br>
+                                <small>API Limit: ${user.api_limits.requests_per_minute}/min</small>
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('usersData').innerHTML = html;
+                } else {
+                    const errorText = await response.text();
+                    console.error('Users failed:', response.status, errorText);
+                    document.getElementById('usersData').innerHTML = '<span class="status-error">Fehler beim Laden der Benutzer</span>';
+                }
+            } catch (error) {
+                console.error('Users error:', error);
+                document.getElementById('usersData').innerHTML = '<span class="status-error">Verbindungsfehler: ' + error.message + '</span>';
+            }
+        }
+
+        async function loadLogs() {
+            if (!adminToken) {
+                document.getElementById('logsData').innerHTML = '<span class="status-error">Nicht eingeloggt!</span>';
+                return;
+            }
+
+            const logType = document.getElementById('logType').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/logs/${logType}?lines=10`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                
+                console.log('Logs response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Logs data:', data);
+                    
+                    let html = `<h4>${logType} (${data.entries.length} Einträge):</h4>`;
+                    
+                    data.entries.reverse().forEach(entry => {
+                        html += `
+                            <div class="log-entry">
+                                <strong>${entry.timestamp}</strong> [${entry.level}] ${entry.logger}<br>
+                                ${entry.message}
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('logsData').innerHTML = html;
+                } else {
+                    const errorText = await response.text();
+                    console.error('Logs failed:', response.status, errorText);
+                    document.getElementById('logsData').innerHTML = '<span class="status-error">Fehler beim Laden der Logs</span>';
+                }
+            } catch (error) {
+                console.error('Logs error:', error);
+                document.getElementById('logsData').innerHTML = '<span class="status-error">Verbindungsfehler: ' + error.message + '</span>';
+            }
+        }
+
+        // Enter key support
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
