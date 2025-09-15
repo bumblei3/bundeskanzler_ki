@@ -1,0 +1,107 @@
+# Python Code Quality Configuration
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    # Verzeichnisse
+    \.eggs
+  | \.git
+  | \.venv
+  | \.tox
+  | \.pytest_cache
+  | __pycache__
+  | bin
+  | lib
+  | share
+  | include
+  | archive
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+known_first_party = ["core", "utils", "web", "ki_versions"]
+known_third_party = ["tensorflow", "torch", "transformers", "fastapi", "streamlit"]
+
+[tool.pylint]
+max-line-length = 100
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods
+    "W0613",  # unused-argument
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Ignoriere externe Module ohne Type Hints
+[[tool.mypy.overrides]]
+module = [
+    "tensorflow.*",
+    "torch.*",
+    "transformers.*",
+    "sentence_transformers.*",
+    "faiss.*",
+    "streamlit.*",
+    "fastapi.*"
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --disable-warnings"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
+
+[tool.coverage.run]
+source = ["core", "utils", "web", "ki_versions"]
+omit = [
+    "*/tests/*",
+    "*/archive/*",
+    "*/bin/*",
+    "*/lib/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

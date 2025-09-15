@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Development Bundeskanzler-KI
+  bundeskanzler-ki-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: bundeskanzler-ki-dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEVELOPMENT=1
+    volumes:
+      - .:/app
+      - dev_cache:/app/.cache
+    ports:
+      - "8000:8000"   # API Server
+      - "8501:8501"   # Streamlit
+      - "8888:8888"   # Jupyter
+    networks:
+      - ki-dev-network
+    stdin_open: true
+    tty: true
+
+  # Development Database
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: postgres-dev
+    environment:
+      - POSTGRES_DB=bundeskanzler_ki_dev
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=dev_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./data/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - ki-dev-network
+
+  # Development Redis
+  redis-dev:
+    image: redis:7-alpine
+    container_name: redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - ki-dev-network
+
+networks:
+  ki-dev-network:
+    driver: bridge
+
+volumes:
+  dev_cache:
+  postgres_dev_data:

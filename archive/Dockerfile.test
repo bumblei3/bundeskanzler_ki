@@ -1,0 +1,30 @@
+# Test-Dockerfile für isolierte Testumgebung
+FROM python:3.12-slim
+
+# Arbeitsverzeichnis setzen
+WORKDIR /app
+
+# Systemabhängigkeiten installieren
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    libpq-dev \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python-Abhängigkeiten kopieren und installieren
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Test-spezifische Abhängigkeiten
+RUN pip install pytest pytest-asyncio pytest-cov pytest-mock pytest-benchmark pytest-html pytest-xdist httpx locust responses freezegun
+
+# Anwendungscode kopieren
+COPY . .
+
+# Test-Verzeichnis als Volume mounten für Live-Testing
+VOLUME ["/app/tests"]
+
+# Standardbefehl für Tests
+CMD ["pytest", "tests/", "-v", "--tb=short"]

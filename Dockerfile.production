@@ -1,0 +1,78 @@
+# Production-Ready Dockerfile für Bundeskanzler-KI
+# Multi-stage build für optimierte Container-Größe
+
+# Build Stage
+FROM python:3.11-slim as builder
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create build directory
+WORKDIR /build
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Production Stage
+FROM python:3.11-slim as production
+
+# Labels for container metadata
+LABEL maintainer="Bundeskanzler-KI Team"
+LABEL version="2.0"
+LABEL description="Production-ready Bundeskanzler-KI with advanced monitoring"
+
+# System dependencies for runtime
+RUN apt-get update && apt-get install -y \
+    curl \
+    htop \
+    procps \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd -r kiuser && useradd -r -g kiuser kiuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy Python packages from builder
+COPY --from=builder /root/.local /home/kiuser/.local
+
+# Copy application code
+COPY core/ ./core/
+COPY data/ ./data/
+COPY utils/ ./utils/
+COPY web/ ./web/
+COPY monitoring/ ./monitoring/
+COPY ki_versions/ ./ki_versions/
+COPY start_ki.sh ./
+COPY pyproject.toml ./
+
+# Create necessary directories
+RUN mkdir -p logs models reports/coverage reports/quality \
+    && chown -R kiuser:kiuser /app
+
+# Switch to non-root user
+USER kiuser
+
+# Set environment variables
+ENV PYTHONPATH="/app:/home/kiuser/.local/lib/python3.11/site-packages"
+ENV PATH="/home/kiuser/.local/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "from monitoring.advanced_monitor import get_monitor; print(get_monitor().generate_health_check()['status'])"
+
+# Expose ports
+EXPOSE 8000 8501 8080
+
+# Default command
+CMD ["python", "-m", "core.performance_ki"]

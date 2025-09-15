@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Production Bundeskanzler-KI Service
+  bundeskanzler-ki:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: bundeskanzler-ki-prod
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PRODUCTION=1
+      - TF_CPP_MIN_LOG_LEVEL=2
+    volumes:
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+      - ./models:/app/models
+      - ./reports:/app/reports
+    ports:
+      - "8000:8000"   # API Server
+      - "8501:8501"   # Streamlit Web UI
+    networks:
+      - ki-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "from monitoring.advanced_monitor import get_monitor; print(get_monitor().generate_health_check()['status'])"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  # Monitoring & Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ki-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - ki-network
+    depends_on:
+      - prometheus
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ki-network
+    command: redis-server --appendonly yes
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - ki-network
+    depends_on:
+      - bundeskanzler-ki
+      - grafana
+
+networks:
+  ki-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  redis_data:

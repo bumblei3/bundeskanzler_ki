@@ -111,3 +111,8 @@
   Konfidenz: 61.0%
   Thema: wirtschaft
 
+[2025-09-15 21:31:18] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Ein wichtiger Schwerpunkt der Bundesregierung ist die Stärkung von Zukunftstechnologien, Klimaschutz und sozialer Gerechtigkeit.
+  Konfidenz: 74.0%
+  Thema: klima
+

@@ -1,0 +1,42 @@
+# Development Dockerfile für lokale Entwicklung
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    vim \
+    htop \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install development dependencies
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-cov \
+    black \
+    isort \
+    pylint \
+    mypy \
+    jupyter \
+    ipdb
+
+# Set environment variables
+ENV PYTHONPATH="/app"
+ENV PYTHONUNBUFFERED=1
+ENV DEVELOPMENT=1
+
+# Expose ports for development services
+EXPOSE 8000 8501 8080 8888
+
+# Default command for development
+CMD ["bash"]
