@@ -1,0 +1,113 @@
+[2025-09-15T16:05:12.603983] Eingabe: Welche Klimapolitik verfolgt Deutschland?
+  1. deutschland investiert erneuerbar energi (Wahrscheinlichkeit: 1.9%)
+     Originalsatz: Deutschland investiert in erneuerbare Energien
+  2. deutschland investiert erneuerbar energi (Wahrscheinlichkeit: 1.9%)
+     Originalsatz: Deutschland investiert in erneuerbare Energien
+  3. deutschland investiert erneuerbar energi (Wahrscheinlichkeit: 1.9%)
+     Originalsatz: Deutschland investiert in erneuerbare Energien
+
+[2025-09-15T18:21:27.238299] Eingabe: test
+  1. bis klimaneutralitat soll innovativ erreicht werd (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Bis Klimaneutralität soll innovative erreicht werden.
+  2. kulturell bildung gefordert zugang kunst kultur all ermoglicht (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Kulturelle Bildung wird gefördert und der Zugang zu Kunst und Kultur für alle ermöglicht.
+  3. bildungsreform starkt digital kompetenz schul (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die Bildungsreform stärkt digitale Kompetenzen in Schulen
+
+[2025-09-15T18:23:08.609809] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  1. justiz digitalisiert zugang zum recht all burgerinn burg verbessert (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die Justiz wird digitalisiert und der Zugang zum Recht für alle Bürgerinnen und Bürger verbessert.
+  2. digital transformation verwalt durch onlinezugangsgesetz vorangetrieb (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die digitale Transformation der Verwaltung wird durch das Online-Zugangsgesetz vorangetrieben.
+  3. deutschland investiert erneuerbar energi (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Deutschland investiert in erneuerbare Energien
+
+[2025-09-15T18:28:09.251552] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  1. bundesregier investiert pfleg bess gesundheitsversorg (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die Bundesregierung investiert in Pflege für bessere Gesundheitsversorgung.
+  2. bis klimaneutralitat soll international erreicht werd (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Bis Klimaneutralität soll internationale erreicht werden.
+  3. bundesregier investiert digital souveranitat cybersich deutschland (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die Bundesregierung investiert in die digitale Souveränität und Cybersicherheit Deutschlands.
+
+[2025-09-15T19:12:19.997465] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  1. deutschland setzt sich ambitioniert klimaschutzziel bis 2045 soll klimaneutralitat erreicht werd (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Deutschland setzt sich für ambitionierte Klimaschutzziele ein. Bis 2045 soll Klimaneutralität erreicht werden.
+  2. bildungsreform starkt digital kompetenz schul hochschul (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die Bildungsreform stärkt digitale Kompetenzen in Schulen und Hochschulen.
+  3. bundesregier fordert wasserstofftechnologi durch quantencomputing (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Die Bundesregierung fördert Wasserstofftechnologie durch Quantencomputing.
+
+[2025-09-15T20:32:37.876371] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  1. international zusammenarbeit beim klimaschutz ausgebaut (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Internationale Zusammenarbeit beim Klimaschutz wird ausgebaut
+  2. deutschland investiert zukunftstechnologi wie ki quantencomputing wasserstofftechnologi (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Deutschland investiert in Zukunftstechnologien wie KI, Quantencomputing und Wasserstofftechnologie.
+  3. bevolkerungsschutz durch modern fruhwarnsystem katastrophenschutz gestarkt (Wahrscheinlichkeit: 1.4%)
+     Originalsatz: Der Bevölkerungsschutz wird durch moderne Frühwarnsysteme und Katastrophenschutz gestärkt.
+
+[2025-09-15 20:37:56] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Bis Klimaneutralität soll internationale erreicht werden.
+  Konfidenz: 74.0%
+  Thema: klima
+
+[2025-09-15 20:38:12] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Bis Klimaneutralität soll internationale erreicht werden.
+  Konfidenz: 74.0%
+  Thema: klima
+
+[2025-09-15 20:38:12] Eingabe: Welche Ziele hat Deutschland bei erneuerbaren Energien?
+  Antwort: Deutschland investiert in erneuerbare Energien Zusätzlich: Deutschland setzt sich für innovative Klimaschutz ein. Deutschland setzt sich für ambitionierte Klimaschutzziele ein. Bis 2045 soll Klimaneutralität erreicht werden.
+  Konfidenz: 87.8%
+  Thema: klima
+
+[2025-09-15 20:38:12] Eingabe: Wie steht es um die Wirtschaftspolitik?
+  Antwort: Start-ups und Mittelstand werden durch verbesserte Finanzierungsmöglichkeiten und Bürokratieabbau unterstützt.
+  Konfidenz: 40.7%
+  Thema: wirtschaft
+
+[2025-09-15 20:38:12] Eingabe: Was macht die Regierung für die Gesundheit?
+  Antwort: Das Gesundheitssystem wird durch Prävention gestärkt. Zusätzlich: Prävention wird durch Digitalisierung modernisiert.
+  Konfidenz: 72.7%
+  Thema: gesundheit
+
+[2025-09-15 20:49:29] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Ein wichtiger Schwerpunkt der Bundesregierung ist die Stärkung von Zukunftstechnologien, Klimaschutz und sozialer Gerechtigkeit.
+  Konfidenz: 74.0%
+  Thema: klima
+
+[2025-09-15 20:52:13] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Ein wichtiger Schwerpunkt der Bundesregierung ist die Stärkung von Zukunftstechnologien, Klimaschutz und sozialer Gerechtigkeit.
+  Konfidenz: 74.0%
+  Thema: klima
+
+[2025-09-15 20:52:13] Eingabe: Welche Wirtschaftspolitik verfolgt Deutschland?
+  Antwort: Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.
+  Konfidenz: 74.8%
+  Thema: wirtschaft
+
+[2025-09-15 20:52:13] Eingabe: Was macht die Regierung für die Gesundheit?
+  Antwort: Die Bundesregierung investiert in Pflege für bessere Gesundheitsversorgung. Zusätzlich: Das Gesundheitssystem wird durch Prävention gestärkt.
+  Konfidenz: 72.7%
+  Thema: gesundheit
+
+[2025-09-15 20:52:13] Eingabe: Wie steht es um die Bildungspolitik?
+  Antwort: Bildungsreformen wird durch Bildungsreformen verbessert. Zusätzlich: Bildungsreformen wird durch lebenslanges Lernen verbessert. Die Bildungsreform stärkt digitale Kompetenzen in Schulen
+  Konfidenz: 60.7%
+  Thema: bildung
+
+[2025-09-15 20:52:13] Eingabe: Was ist die Europapolitik Deutschlands?
+  Antwort: Deutschland setzt sich für eine starke Rolle der EU in der Welt ein und unterstützt die Gemeinsame Außen- und Sicherheitspolitik. Zusätzlich: Deutschland setzt sich für eine wertebasierte Außenpolitik und die Stärkung multilateraler Institutionen ein. Integration und Teilhabe sind zentrale Säulen der deutschen Sozialpolitik.
+  Konfidenz: 74.4%
+  Thema: europa
+
+[2025-09-15 21:16:28] Eingabe: Was ist die Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Ein wichtiger Schwerpunkt der Bundesregierung ist die Stärkung von Zukunftstechnologien, Klimaschutz und sozialer Gerechtigkeit.
+  Konfidenz: 74.0%
+  Thema: klima
+
+[2025-09-15 21:17:32] Eingabe: Was ist die Wirtschaftspolitik?
+  Antwort: Die Bundesregierung verfolgt eine Politik der sozialen Marktwirtschaft mit Augenmaß und setzt auf Innovation und Nachhaltigkeit.
+  Konfidenz: 61.0%
+  Thema: wirtschaft
+

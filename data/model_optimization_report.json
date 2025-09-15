@@ -1,0 +1,15 @@
+{
+  "timestamp": 1757938445.948024,
+  "original_model": "bundeskanzler_ki_model.keras",
+  "optimizations_applied": [],
+  "benchmark_results": {
+    "original": {
+      "inference_time": 1.4993724822998047,
+      "accuracy": 0.0,
+      "loss": 3559274.5,
+      "model_size": 12951042,
+      "parameters": 1076200
+    }
+  },
+  "recommendations": []
+}

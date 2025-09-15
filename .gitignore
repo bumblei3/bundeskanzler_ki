@@ -1,70 +1,39 @@
-# Python
 __pycache__/
-*.py[cod]
-
-# TensorFlow/Keras Modelle
-*.h5
-*.keras
-*.pb
-*.tflite
-
-# Logfiles und Logs
-*.log
-log.txt
-mein_log.txt
-logs/
-
-# Coverage und Testberichte
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
 .coverage
+.coverage.*
+.cache
+nosetests.xml
 coverage.xml
-htmlcov/
-.pytest_cache/
-benchmark_results.json
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+.DS_Store
+*.pkl
+*.faiss
 
-# CSV/JSON/Testdaten
-*.csv
-*.json
-csv_url.txt
-entscheidungsdaten.csv
-feedback.txt
-validation_results.json
-confusion_matrix.png
-
-# Virtuelle Umgebung
+# Virtual Environment Dateien
 bin/
 lib/
-lib64/
+lib64
 include/
-pyvenv.cfg
 share/
 etc/
+pyvenv.cfg
 
-# Sensible Dateien
+# Entwicklungsumgebung
+.vscode/
 .env
-admin_token.txt
-.env.local
 
-# Temporäre Dateien
-*.tmp
-*.bak
-*~
-
-# IDE
-.DS_Store
-.vscode/settings.json
-.idea/
-
-# Node.js (falls verwendet)
-node_modules/
-package-lock.json
-
-# Build-Verzeichnisse
-dist/
-build/
-*.egg-info/
-
-# Modelle und Daten
-models/
-api_memory/
-corpus.txt
-dummy.txt
+# Temporäre Berichte
+docs/*_BERICHT.md

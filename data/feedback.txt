@@ -1,0 +1,12 @@
+Eingabe: Welche Klimapolitik verfolgt Deutschland?
+Antworten: [('deutschland investiert erneuerbar energi', np.float32(1.9145863)), ('deutschland investiert erneuerbar energi', np.float32(1.9086417)), ('deutschland investiert erneuerbar energi', np.float32(1.9059826))]
+Feedback: exit
+
+Eingabe: test
+Antworten: [('bis klimaneutralitat soll innovativ erreicht werd', np.float32(1.3889381)), ('kulturell bildung gefordert zugang kunst kultur all ermoglicht', np.float32(1.3841923)), ('bildungsreform starkt digital kompetenz schul', np.float32(1.3780894))]
+Feedback: 
+
+Eingabe: Was ist die Klimapolitik der Bundesregierung?
+Antworten: [('justiz digitalisiert zugang zum recht all burgerinn burg verbessert', np.float32(1.4002222)), ('digital transformation verwalt durch onlinezugangsgesetz vorangetrieb', np.float32(1.3913041)), ('deutschland investiert erneuerbar energi', np.float32(1.3882374))]
+Feedback: exit
+

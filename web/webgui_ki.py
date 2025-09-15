@@ -307,11 +307,12 @@ def show_admin_interface():
     debug_system.log(DebugLevel.INFO, "Erstelle Admin-Tabs")
 
     try:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📊 Dashboard",
             "👥 Benutzer-Management",
             "📋 Log-Viewer",
             "💾 Memory-Management",
+            "🌐 Multilingual KI",
             "⚙️ Konfiguration"
         ])
 
@@ -337,8 +338,13 @@ def show_admin_interface():
             debug_system.log(DebugLevel.DEBUG, "Memory-Management-Tab wird geladen")
             show_memory_tab(admin_headers)
 
-        # Konfiguration Tab
+        # Multilingual KI Tab
         with tab5:
+            debug_system.log(DebugLevel.DEBUG, "Multilingual KI-Tab wird geladen")
+            show_multilingual_tab(admin_headers)
+
+        # Konfiguration Tab
+        with tab6:
             debug_system.log(DebugLevel.DEBUG, "Konfiguration-Tab wird geladen")
             show_config_tab(admin_headers)
 
@@ -663,6 +669,142 @@ def show_config_tab(admin_headers):
     except Exception as e:
         debug_system.log(DebugLevel.ERROR, f"Exception beim Laden der Konfiguration: {e}")
         st.error(f"❌ Fehler beim Laden der Konfiguration: {e}")
+
+def show_multilingual_tab(admin_headers):
+    """Zeigt den Multilingual KI-Tab"""
+    debug_system.log(DebugLevel.DEBUG, "Multilingual KI-Tab wird geladen")
+    st.subheader("🌐 Multilingual KI - Mehrsprachige Unterstützung")
+
+    try:
+        # Import der multilingualen KI
+        from multilingual_bundeskanzler_ki import get_multilingual_ki, multilingual_query
+
+        # Initialisiere KI falls noch nicht geschehen
+        if 'multilingual_ki' not in st.session_state:
+            with st.spinner("🚀 Initialisiere Multilingual KI..."):
+                st.session_state.multilingual_ki = get_multilingual_ki()
+                st.session_state.multilingual_ki.initialize_multimodal_model()
+            st.success("✅ Multilingual KI bereit!")
+
+        ki = st.session_state.multilingual_ki
+
+        # Sprach-Informationen anzeigen
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("🌍 Unterstützte Sprachen")
+            languages = ki.get_supported_languages_info()
+            for code, name in languages.items():
+                st.write(f"**{code.upper()}**: {name}")
+
+        with col2:
+            st.subheader("📊 Debug-Info")
+            debug_info = ki.get_debug_info()
+            st.metric("Debug-Nachrichten", debug_info.get('message_count', 0))
+            st.metric("API-Calls", debug_info.get('api_call_count', 0))
+
+        # Test-Interface für mehrsprachige Anfragen
+        st.subheader("🧪 Mehrsprachige Anfragen testen")
+
+        # Beispiel-Anfragen
+        example_queries = {
+            "Deutsch": "Was ist die Klimapolitik der Bundesregierung?",
+            "English": "What is the climate policy of the German government?",
+            "Français": "Quelle est la politique climatique du gouvernement fédéral allemand?"
+        }
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            # Manuelle Eingabe
+            user_query = st.text_area(
+                "Ihre Anfrage (in beliebiger Sprache):",
+                height=100,
+                placeholder="Stellen Sie Ihre Frage auf Deutsch, Englisch oder Französisch..."
+            )
+
+        with col2:
+            st.subheader("📝 Beispiele")
+            for lang, query in example_queries.items():
+                if st.button(f"📌 {lang}", key=f"example_{lang.lower()}"):
+                    st.session_state.test_query = query
+                    st.rerun()
+
+            if st.button("🧹 Löschen", key="clear_query"):
+                if 'test_query' in st.session_state:
+                    del st.session_state.test_query
+
+        # Verwende Beispiel-Query falls verfügbar
+        if 'test_query' in st.session_state and not user_query:
+            user_query = st.session_state.test_query
+
+        # Verarbeitung der Anfrage
+        if user_query and st.button("🚀 Anfrage verarbeiten", type="primary"):
+            with st.spinner("🌐 Verarbeite mehrsprachige Anfrage..."):
+                try:
+                    result = ki.process_multilingual_query(user_query)
+
+                    # Ergebnisse anzeigen
+                    st.success("✅ Anfrage erfolgreich verarbeitet!")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Erkannte Sprache", result['detected_language'].upper())
+                    with col2:
+                        st.metric("Verarbeitungszeit", f"{result['processing_time']:.2f}s")
+                    with col3:
+                        st.metric("Übersetzung verwendet", "Ja" if result.get('translation_used') else "Nein")
+
+                    # Antwort anzeigen
+                    st.subheader("💬 Antwort")
+                    st.info(result['response'])
+
+                    # Detaillierte Informationen (ausklappbar)
+                    with st.expander("📊 Detaillierte Verarbeitungsinformationen", expanded=False):
+                        st.write("**Original-Anfrage:**", result['original_query'])
+
+                        if result.get('german_query') != result['original_query']:
+                            st.write("**Deutsche Übersetzung:**", result['german_query'])
+
+                        st.write("**Deutsche Antwort:**", result['german_response'])
+
+                        if result.get('translation_used'):
+                            st.write("**Zurückübersetzte Antwort:**", result['response'])
+
+                        # Debug-Informationen
+                        if 'error' in result:
+                            st.error(f"⚠️ Fehler aufgetreten: {result['error']}")
+
+                        if result.get('fallback_used'):
+                            st.warning("⚠️ Fallback-Modus wurde verwendet")
+
+                except Exception as e:
+                    st.error(f"❌ Fehler bei der Verarbeitung: {e}")
+                    debug_system.log(DebugLevel.ERROR, f"Multilingual query error: {e}")
+
+        # Debug-Interface für Multilingual-KI
+        if st.checkbox("🔧 Multilingual Debug anzeigen", key="multilingual_debug"):
+            debug_info = ki.get_debug_info()
+            if debug_info.get('debug_disabled'):
+                st.info("Debug-System ist deaktiviert")
+            else:
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader("📝 Debug-Nachrichten")
+                    for msg in debug_info.get('messages', [])[-10:]:
+                        st.write(f"{msg.get('time_str', 'N/A')} {msg.get('level', 'N/A')} {msg.get('message', 'N/A')}")
+
+                with col2:
+                    st.subheader("🌐 API-Calls")
+                    for call in debug_info.get('api_calls', [])[-10:]:
+                        status = "✅" if call.get('success') else "❌"
+                        st.write(f"{status} {call.get('method', 'N/A')} {call.get('endpoint', 'N/A')} -> {call.get('status_code', 'N/A')}")
+
+    except Exception as e:
+        debug_system.log(DebugLevel.ERROR, f"Exception im Multilingual-Tab: {e}")
+        st.error(f"❌ Fehler beim Laden des Multilingual-Tabs: {e}")
+        st.info("💡 Stellen Sie sicher, dass die multilingualen Services installiert sind.")
 
 def show_login_interface():
     """Zeigt das Login-Interface"""

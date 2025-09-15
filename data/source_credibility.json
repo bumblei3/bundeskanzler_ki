@@ -1,0 +1,58 @@
+{
+  "bundesregierung.de": {
+    "domain": "bundesregierung.de",
+    "credibility_score": 0.95,
+    "political_bias": 0.0,
+    "fact_checking_rating": 0.9,
+    "last_updated": "2025-09-14T20:01:19.162403",
+    "category": "government"
+  },
+  "bundestag.de": {
+    "domain": "bundestag.de",
+    "credibility_score": 0.95,
+    "political_bias": 0.0,
+    "fact_checking_rating": 0.9,
+    "last_updated": "2025-09-14T20:01:19.162414",
+    "category": "government"
+  },
+  "destatis.de": {
+    "domain": "destatis.de",
+    "credibility_score": 0.98,
+    "political_bias": 0.0,
+    "fact_checking_rating": 0.95,
+    "last_updated": "2025-09-14T20:01:19.162416",
+    "category": "government"
+  },
+  "zeit.de": {
+    "domain": "zeit.de",
+    "credibility_score": 0.85,
+    "political_bias": -0.2,
+    "fact_checking_rating": 0.8,
+    "last_updated": "2025-09-14T20:01:19.162418",
+    "category": "media"
+  },
+  "faz.net": {
+    "domain": "faz.net",
+    "credibility_score": 0.8,
+    "political_bias": 0.1,
+    "fact_checking_rating": 0.75,
+    "last_updated": "2025-09-14T20:01:19.162420",
+    "category": "media"
+  },
+  "spiegel.de": {
+    "domain": "spiegel.de",
+    "credibility_score": 0.75,
+    "political_bias": -0.3,
+    "fact_checking_rating": 0.7,
+    "last_updated": "2025-09-14T20:01:19.162421",
+    "category": "media"
+  },
+  "welt.de": {
+    "domain": "welt.de",
+    "credibility_score": 0.7,
+    "political_bias": 0.4,
+    "fact_checking_rating": 0.65,
+    "last_updated": "2025-09-14T20:01:19.162423",
+    "category": "media"
+  }
+}

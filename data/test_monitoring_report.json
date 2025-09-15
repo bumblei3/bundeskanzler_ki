@@ -1,0 +1,56 @@
+{
+  "generated_at": "2025-09-15T18:17:28.778906",
+  "report_type": "full",
+  "system_health": {
+    "status": "no_data"
+  },
+  "performance_1h": {
+    "time_range_hours": 1,
+    "total_operations": 3,
+    "successful_operations": 2,
+    "failed_operations": 1,
+    "avg_response_time_ms": 1200.0,
+    "avg_quality_score": 0.8,
+    "total_responses": 1,
+    "success_rate": 0.6666666666666666
+  },
+  "performance_24h": {
+    "time_range_hours": 24,
+    "total_operations": 3,
+    "successful_operations": 2,
+    "failed_operations": 1,
+    "avg_response_time_ms": 1200.0,
+    "avg_quality_score": 0.8,
+    "total_responses": 1,
+    "success_rate": 0.6666666666666666
+  },
+  "user_satisfaction": {
+    "total_feedback": 1,
+    "avg_rating": 4,
+    "median_rating": 4,
+    "rating_distribution": {
+      "1_star": 0,
+      "2_star": 0,
+      "3_star": 0,
+      "4_star": 1,
+      "5_star": 0
+    },
+    "recent_feedback": [
+      {
+        "timestamp": "2025-09-15T18:17:28.778711",
+        "user_id": "test_user",
+        "question": "Wie steht es mit der Wirtschaft?",
+        "response": "Die Wirtschaft entwickelt sich positiv.",
+        "rating": 4,
+        "feedback_text": "Gute Antwort",
+        "metadata": {}
+      }
+    ]
+  },
+  "active_sessions": 0,
+  "total_metrics": {
+    "performance": 3,
+    "response": 1,
+    "feedback": 1
+  }
+}

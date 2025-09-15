@@ -1,0 +1,28 @@
+{
+  "api_settings": {
+    "max_requests_per_minute": 120,
+    "access_token_expire_minutes": 30,
+    "max_request_size_mb": 10,
+    "enable_cors": true
+  },
+  "memory_settings": {
+    "max_kurzzeitgedaechtnis": 100,
+    "max_langzeitgedaechtnis": 1000,
+    "similarity_threshold": 0.8,
+    "auto_cleanup_enabled": true
+  },
+  "logging_settings": {
+    "log_level": "INFO",
+    "max_log_size_mb": 10,
+    "backup_count": 5,
+    "structured_logging": true
+  },
+  "security_settings": {
+    "require_https": false,
+    "allowed_ips": [
+      "*"
+    ],
+    "failed_login_attempts": 5,
+    "token_blacklist_enabled": false
+  }
+}

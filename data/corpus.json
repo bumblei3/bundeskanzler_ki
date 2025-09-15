@@ -1,0 +1,604 @@
+{
+  "entries": [
+    {
+      "text": "Deutschland setzt sich für ambitionierte Klimaschutzziele ein. Bis 2045 soll Klimaneutralität erreicht werden.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Der Kohleausstieg wird bis spätestens 2038 umgesetzt, mit dem Ziel einer früheren Realisierung bis 2030.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Germany is committed to ambitious climate protection goals. Climate neutrality should be achieved by 2045.",
+      "topic": "klima",
+      "language": "en",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Bis Klimaneutralität soll internationale erreicht werden.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland setzt sich für innovative Klimaschutz ein.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Bis Klimaneutralität soll innovative erreicht werden.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert den Ausbau erneuerbarer Energien durch das EEG und verschiedene Förderprogramme.",
+      "topic": "energie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland investiert in erneuerbare Energien",
+      "topic": "energie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "The federal government promotes the expansion of renewable energies through the EEG and various funding programs.",
+      "topic": "energie",
+      "language": "en",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland investiert in erneuerbare Energien",
+      "topic": "energie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die digitale Transformation der Verwaltung wird durch das Online-Zugangsgesetz vorangetrieben.",
+      "topic": "digitalisierung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland investiert in Zukunftstechnologien wie KI, Quantencomputing und Wasserstofftechnologie.",
+      "topic": "innovation",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Germany invests in future technologies such as AI, quantum computing and hydrogen technology.",
+      "topic": "innovation",
+      "language": "en",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Start-ups werden durch verbesserte Finanzierungsmöglichkeiten und weniger Bürokratie unterstützt.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung setzt sich für Vollbeschäftigung und faire Löhne ein. Mindestlohn wird regelmäßig angepasst.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Start-ups und Mittelstand werden durch verbesserte Finanzierungsmöglichkeiten und Bürokratieabbau unterstützt.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "den Mittelstand wird durch die Industrie gefördert.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Entwicklung wird durch Forschung gefördert.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Forschung wird durch Entwicklung gefördert.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "den Mittelstand wird durch Entwicklung gefördert.",
+      "topic": "wirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Das Gesundheitssystem wird durch Digitalisierung und bessere Vernetzung modernisiert.",
+      "topic": "gesundheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Das Gesundheitssystem wird durch Digitalisierung und Prävention gestärkt. Telematikinfrastruktur wird ausgebaut.",
+      "topic": "gesundheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Pflegeversicherung wird reformiert, um bessere Arbeitsbedingungen für Pflegekräfte zu schaffen.",
+      "topic": "gesundheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Prävention wird durch Digitalisierung modernisiert.",
+      "topic": "gesundheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Das Gesundheitssystem wird durch Prävention gestärkt.",
+      "topic": "gesundheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung investiert in Pflege für bessere Gesundheitsversorgung.",
+      "topic": "gesundheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Kindergrundsicherung wird eingeführt, um Kinderarmut effektiv zu bekämpfen.",
+      "topic": "soziales",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Kindergrundsicherung wird eingeführt, um Kinderarmut zu bekämpfen und Familien zu entlasten.",
+      "topic": "soziales",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung bekämpft Altersarmut durch eine stabile Rente und private Altersvorsorge.",
+      "topic": "soziales",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Integration und Teilhabe sind zentrale Säulen der deutschen Sozialpolitik.",
+      "topic": "soziales",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Ein wichtiger Schwerpunkt der Bundesregierung ist die Stärkung von Zukunftstechnologien, Klimaschutz und sozialer Gerechtigkeit.",
+      "topic": "politik",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die zentralen Herausforderungen sind die digitale Transformation, Klimaneutralität und der gesellschaftliche Zusammenhalt.",
+      "topic": "politik",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung verfolgt eine Politik der sozialen Marktwirtschaft mit Augenmaß und setzt auf Innovation und Nachhaltigkeit.",
+      "topic": "politik",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland setzt auf Industrie 4.0 und stärkt die Wettbewerbsfähigkeit durch Forschung und Entwicklung.",
+      "topic": "politik",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland wird bis 2030 führend in der KI-Entwicklung sein",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland führt bei der Entwicklung von Wasserstofftechnologie",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland wird bis 2030 führend in der KI-Entwicklung und setzt auf vertrauenswürdige KI.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland führt bei der Entwicklung von Wasserstofftechnologie und grüner Stahlproduktion.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert Wasserstofftechnologie durch Quantencomputing.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "KI-Entwicklung wird durch Wasserstofftechnologie vorangetrieben.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland führt bei Wasserstofftechnologie und Batterieforschung.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert Quantencomputing durch Batterieforschung.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert Investitionen durch Quantencomputing.",
+      "topic": "technologie",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bildungsreform stärkt digitale Kompetenzen in Schulen",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert die duale Berufsausbildung und stärkt die berufliche Weiterbildung.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bildungsreform stärkt digitale Kompetenzen in Schulen und Hochschulen.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "digitale Kompetenzen wird durch berufliche Bildung verbessert.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Bildungsreformen wird durch lebenslanges Lernen verbessert.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Bildungsreformen wird durch Bildungsreformen verbessert.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "berufliche Bildung wird durch moderne Lehrkonzepte verbessert.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Internationale Zusammenarbeit beim Klimaschutz wird ausgebaut",
+      "topic": "international",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland setzt sich für eine starke Europäische Union und transatlantische Partnerschaft ein.",
+      "topic": "international",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "topic": "international",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland setzt sich für eine wertebasierte Außenpolitik und die Stärkung multilateraler Institutionen ein.",
+      "topic": "international",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die transatlantische Partnerschaft bleibt ein Eckpfeiler deutscher Außenpolitik.",
+      "topic": "international",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung investiert in die digitale Souveränität und Cybersicherheit Deutschlands.",
+      "topic": "sicherheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Der Bevölkerungsschutz wird durch moderne Frühwarnsysteme und Katastrophenschutz gestärkt.",
+      "topic": "sicherheit",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland baut das Schienennetz aus und setzt auf klimafreundliche Mobilität.",
+      "topic": "verkehr",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Ladeinfrastruktur für Elektrofahrzeuge wird massiv ausgebaut.",
+      "topic": "verkehr",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Landwirtschaft wird durch nachhaltige Praktiken und Biodiversitätsschutz unterstützt.",
+      "topic": "landwirtschaft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Kulturelle Bildung wird gefördert und der Zugang zu Kunst und Kultur für alle ermöglicht.",
+      "topic": "kultur",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Justiz wird digitalisiert und der Zugang zum Recht für alle Bürgerinnen und Bürger verbessert.",
+      "topic": "justiz",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Europäische Union ist eine Wertegemeinschaft, die auf Demokratie, Rechtsstaatlichkeit und Menschenrechten basiert.",
+      "topic": "europa",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland setzt sich für eine starke Rolle der EU in der Welt ein und unterstützt die Gemeinsame Außen- und Sicherheitspolitik.",
+      "topic": "europa",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.",
+      "topic": "europa",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die EU fördert die digitale Transformation durch Programme wie Digital Europe und InvestEU.",
+      "topic": "europa",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland trägt als Nettozahler wesentlich zum EU-Haushalt bei und profitiert vom Binnenmarkt.",
+      "topic": "europa",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "The European Union is a community of values based on democracy, rule of law and human rights.",
+      "topic": "europa",
+      "language": "en",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Germany advocates for a strong EU role in the world and supports the Common Foreign and Security Policy.",
+      "topic": "europa",
+      "language": "en",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "The European Green Deal aims for climate neutrality by 2050 and sustainable development.",
+      "topic": "europa",
+      "language": "en",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Deutschland investiert in die Zukunft durch Bildung, Forschung und Innovation für die nächste Generation.",
+      "topic": "zukunft",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung fördert den Strukturwandel in den Regionen durch den Ausbau von Infrastruktur und Arbeitsplätzen.",
+      "topic": "regional",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    }
+  ]
+}

@@ -78,6 +78,7 @@ from gpu_batching import AsyncBatchManager, GPUBatchProcessor
 from hierarchical_memory import EnhancedContextProcessor
 from optimized_memory import OptimizedHierarchicalMemory
 from simple_logging import setup_simple_logging
+from multilingual_bundeskanzler_ki import MultilingualBundeskanzlerKI
 
 # Logger initialisieren
 api_logger, memory_logger = setup_simple_logging()
@@ -390,6 +391,43 @@ class ConfigUpdateRequest(BaseModel):
     settings: Dict[str, Any]
 
 
+class MultilingualChatRequest(BaseModel):
+    """Mehrsprachige Chat-Anfrage"""
+    message: str = Field(..., min_length=1, max_length=1000, description="Nutzernachricht in beliebiger Sprache")
+    user_id: Optional[str] = Field(None, description="Nutzer-ID für Personalisierung")
+    context: Optional[Dict[str, Any]] = Field({}, description="Zusätzlicher Kontext")
+    max_length: Optional[int] = Field(500, ge=50, le=2000, description="Maximale Antwortlänge")
+    include_sources: Optional[bool] = Field(True, description="Quellen in Antwort einbeziehen")
+    target_language: Optional[str] = Field("auto", description="Zielsprache für die Antwort (auto=automatisch erkennen)")
+
+    @validator('message')
+    def validate_message(cls, v):
+        if not v.strip():
+            raise ValueError('Nachricht darf nicht leer sein')
+        return v.strip()
+
+    @validator('target_language')
+    def validate_target_language(cls, v):
+        valid_languages = ['auto', 'de', 'en', 'fr', 'it', 'es']
+        if v not in valid_languages:
+            raise ValueError(f'Ungültige Zielsprache. Erlaubt: {valid_languages}')
+        return v
+
+
+class MultilingualChatResponse(BaseModel):
+    """Mehrsprachige Chat-Antwort"""
+    response: str = Field(..., description="KI-Antwort in der Zielsprache")
+    detected_language: str = Field(..., description="Erkannte Sprache der Eingabe")
+    target_language: str = Field(..., description="Zielsprache der Antwort")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz der Antwort")
+    response_time: float = Field(..., description="Antwortzeit in Sekunden")
+    user_id: Optional[str] = Field(None, description="Nutzer-ID")
+    sources: List[str] = Field([], description="Verwendete Quellen")
+    memory_context: Dict[str, Any] = Field({}, description="Memory-Kontext")
+    translation_info: Dict[str, Any] = Field({}, description="Informationen zur Übersetzung")
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
 rate_limiter = RateLimiter()
 memory_system: Optional[OptimizedHierarchicalMemory] = None
 context_processor: Optional[EnhancedContextProcessor] = None
@@ -398,6 +436,7 @@ corpus_manager: Optional[CorpusManager] = None
 fact_checker: Optional[FactChecker] = None
 gpu_processor: Optional[GPUBatchProcessor] = None
 async_batch_manager: Optional[AsyncBatchManager] = None
+multilingual_ki: Optional[MultilingualBundeskanzlerKI] = None
 start_time = time.time()
 request_counter = 0
 
@@ -477,7 +516,7 @@ request_batcher = RequestBatcher(max_batch_size=3, batch_timeout=0.05)
 
 def initialize_ki_components():
     """Initialisiert alle KI-Komponenten"""
-    global memory_system, context_processor, response_manager, corpus_manager, fact_checker
+    global memory_system, context_processor, response_manager, corpus_manager, fact_checker, multilingual_ki
 
     print("📚 Initialisiere Memory-System...")
     memory_system = OptimizedHierarchicalMemory(
@@ -510,6 +549,10 @@ def initialize_ki_components():
     print("🔍 Initialisiere Fact-Checker...")
     fact_checker = FactChecker()
     print("✅ Fact-Checker initialisiert")
+
+    print("🌍 Initialisiere Multilingual KI...")
+    multilingual_ki = MultilingualBundeskanzlerKI()
+    print("✅ Multilingual KI initialisiert")
 
 
 def initialize_gpu_system():
@@ -570,7 +613,7 @@ async def lifespan(app: FastAPI):
         import traceback
         traceback.print_exc()
         # Setze auf None bei Fehler
-        global memory_system, context_processor, response_manager, corpus_manager, fact_checker, gpu_processor, async_batch_manager
+        global memory_system, context_processor, response_manager, corpus_manager, fact_checker, gpu_processor, async_batch_manager, multilingual_ki
         memory_system = None
         context_processor = None
         response_manager = None
@@ -578,6 +621,7 @@ async def lifespan(app: FastAPI):
         fact_checker = None
         gpu_processor = None
         async_batch_manager = None
+        multilingual_ki = None
 
     yield
 
@@ -2613,6 +2657,172 @@ async def get_available_sources():
             "error": str(e)
         })
         raise HTTPException(status_code=500, detail=f"Failed to retrieve sources: {str(e)}")
+
+
+@app.post("/chat/multilingual", response_model=MultilingualChatResponse, dependencies=[Depends(check_rate_limit)])
+async def chat_multilingual(request: MultilingualChatRequest, user_id: str = Depends(verify_token), db: AsyncSession = Depends(get_db)):
+    """Mehrsprachiger Chat-Endpoint für internationale Nutzer"""
+    start_time_req = time.time()
+
+    # Cache-Key für diese Anfrage generieren
+    cache_key = f"multilingual_chat:{user_id}:{hash(request.message + str(request.context) + request.target_language):x}"
+
+    # Versuche Cache-Hit für identische Anfragen
+    api_cache = cache_manager.get_cache('api_responses')
+    if api_cache:
+        cached_response = api_cache.get(cache_key)
+        if cached_response:
+            performance_stats['cache_hits'] += 1
+            api_logger.info("Multilingual chat response from cache", extra={
+                "component": "multilingual_chat",
+                "action": "cache_hit",
+                "user_id": user_id,
+                "response_time": time.time() - start_time_req
+            })
+            return cached_response
+
+    performance_stats['cache_misses'] += 1
+
+    api_logger.info("Multilingual chat request started", extra={
+        "component": "multilingual_chat",
+        "action": "request_start",
+        "user_id": request.user_id or user_id,
+        "message_length": len(request.message),
+        "target_language": request.target_language,
+        "include_sources": request.include_sources
+    })
+
+    try:
+        ensure_components_initialized()
+
+        if not multilingual_ki:
+            raise HTTPException(status_code=503, detail="Multilingual KI not available")
+
+        # Mehrsprachige Anfrage verarbeiten
+        result = await multilingual_ki.process_multilingual_query_async(
+            query=request.message,
+            user_id=request.user_id or user_id,
+            target_language=request.target_language,
+            max_length=request.max_length,
+            include_sources=request.include_sources,
+            context=request.context
+        )
+
+        response_time = time.time() - start_time_req
+
+        # Response-Objekt erstellen
+        response_obj = MultilingualChatResponse(
+            response=result["response"],
+            detected_language=result["detected_language"],
+            target_language=result["target_language"],
+            confidence=result["confidence"],
+            response_time=response_time,
+            user_id=request.user_id or user_id,
+            sources=result.get("sources", []),
+            memory_context=result.get("memory_context", {}),
+            translation_info=result.get("translation_info", {})
+        )
+
+        # Speichere Konversation in der Datenbank
+        try:
+            await create_conversation(
+                session=db,
+                session_id=f"multilingual_{user_id}_{int(time.time())}",
+                user_id=request.user_id or user_id,
+                user_message=request.message,
+                ai_response=result["response"],
+                confidence_score=result["confidence"],
+                response_time=response_time,
+                metadata={
+                    "detected_language": result["detected_language"],
+                    "target_language": result["target_language"],
+                    "translation_used": result.get("translation_info", {}).get("translation_performed", False),
+                    "include_sources": request.include_sources
+                }
+            )
+        except Exception as db_error:
+            api_logger.warning("Failed to save multilingual conversation to database", extra={
+                "component": "multilingual_chat",
+                "action": "db_save_error",
+                "error": str(db_error),
+                "user_id": request.user_id or user_id
+            })
+
+        api_logger.info("Multilingual chat request completed", extra={
+            "component": "multilingual_chat",
+            "action": "request_completed",
+            "user_id": request.user_id or user_id,
+            "response_time": response_time,
+            "detected_language": result["detected_language"],
+            "target_language": result["target_language"],
+            "translation_performed": result.get("translation_info", {}).get("translation_performed", False)
+        })
+
+        # Cache die Antwort für zukünftige identische Anfragen (5 Minuten TTL)
+        if api_cache:
+            api_cache.set(cache_key, response_obj, ttl=300)
+
+        # Performance-Statistiken aktualisieren
+        performance_stats['requests_processed'] += 1
+        performance_stats['avg_response_time'] = (
+            (performance_stats['avg_response_time'] * (performance_stats['requests_processed'] - 1)) +
+            response_time
+        ) / performance_stats['requests_processed']
+
+        return response_obj
+
+    except Exception as e:
+        api_logger.error("Multilingual chat endpoint error", extra={
+            "component": "multilingual_chat",
+            "action": "process_request",
+            "error": str(e),
+            "user_id": request.user_id or user_id,
+            "message_length": len(request.message),
+            "target_language": request.target_language,
+            "timestamp": datetime.now().isoformat()
+        })
+        raise HTTPException(status_code=500, detail=f"Multilingual chat processing failed: {str(e)}")
+
+
+@app.get("/multilingual/languages")
+async def get_supported_languages():
+    """Gibt die unterstützten Sprachen für die mehrsprachige KI zurück"""
+    return {
+        "supported_languages": {
+            "de": "Deutsch (German)",
+            "en": "English",
+            "fr": "Français (French)",
+            "it": "Italiano (Italian)",
+            "es": "Español (Spanish)"
+        },
+        "auto_detection": True,
+        "default_target": "auto"
+    }
+
+
+@app.get("/multilingual/stats")
+async def get_multilingual_stats(user_id: str = Depends(verify_token)):
+    """Gibt Statistiken zur mehrsprachigen Nutzung zurück"""
+    try:
+        if not multilingual_ki:
+            raise HTTPException(status_code=503, detail="Multilingual KI not available")
+
+        stats = multilingual_ki.get_stats()
+        return {
+            "multilingual_stats": stats,
+            "supported_languages": ["de", "en", "fr", "it", "es"],
+            "cache_stats": get_cache_stats(),
+            "performance_stats": performance_stats
+        }
+
+    except Exception as e:
+        api_logger.error("Multilingual stats error", extra={
+            "component": "multilingual_stats",
+            "action": "get_stats_error",
+            "error": str(e),
+            "user_id": user_id
+        })
+        raise HTTPException(status_code=500, detail=f"Failed to get multilingual stats: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+{
+  "dG0Nq5CHJkcOWCqSoAwaKDiQm-oznU7ZEgKlrlnu61w": {
+    "user_id": "test_user",
+    "created": "2025-09-15T16:06:10.987038",
+    "active": true,
+    "permissions": [
+      "read",
+      "write"
+    ],
+    "usage_count": 0
+  },
+  "A9jBKg82u8nK1cfMnHuciEVel9sQwCXuievi6xx7Wuo": {
+    "user_id": "integration_test",
+    "created": "2025-09-15T16:08:33.417011",
+    "active": true,
+    "permissions": [
+      "read"
+    ],
+    "usage_count": 0
+  }
+}
