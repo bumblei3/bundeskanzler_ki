@@ -1,0 +1,81 @@
+{
+  "system_info": {
+    "gpu_available": true,
+    "gpu_manager_initialized": true,
+    "gpu_name": "NVIDIA GeForce RTX 2070",
+    "gpu_memory_total_gb": 8.0,
+    "tensor_cores_enabled": true,
+    "cuda_version": "12.8",
+    "batch_sizes": {
+      "embedding_generation": 32,
+      "semantic_search": 64,
+      "multi_agent_processing": 16,
+      "prediction_models": 8,
+      "inference": 24
+    },
+    "max_memory_fraction": 0.9,
+    "status": "GPU_ACTIVE",
+    "device": "cuda:0",
+    "allocated_gb": 0.0079345703125,
+    "reserved_gb": 0.021484375,
+    "max_allocated_gb": 0.0087890625,
+    "tensor_cores": true,
+    "total_gb": 8.0,
+    "used_gb": 0.78765869140625,
+    "utilization_percent": 9.845733642578125,
+    "gpu_utilization_percent": 41,
+    "temperature_c": 37
+  },
+  "rag_comparison": {
+    "gpu_performance": {
+      "avg_query_time_ms": 267.3661804165022,
+      "min_query_time_ms": 262.46038300087093,
+      "max_query_time_ms": 274.6453540003131,
+      "queries_per_second": 3.7401888243389765,
+      "gpu_enabled": true,
+      "model_name": "deepset/gbert-large",
+      "corpus_size": 20,
+      "gpu_utilization": 10,
+      "gpu_memory_usage_gb": 1.48101806640625,
+      "gpu_temperature": 39
+    },
+    "cpu_performance": null,
+    "speedup_factor": 0.0,
+    "error": "cannot access local variable 'faiss' where it is not associated with a value"
+  },
+  "memory_tests": {
+    "baseline_memory": 1.882080078125,
+    "peak_memory": 1.86102294921875,
+    "memory_efficiency": 0.0,
+    "memory_utilization": 23.262786865234375
+  },
+  "throughput_tests": {
+    "single_query_throughput": 3.80483105120774,
+    "batch_query_throughput": 3.666387564134993,
+    "optimal_batch_size": 64
+  },
+  "mixed_precision": {
+    "fp32_performance": {
+      "avg_time_ms": 271.7216970007333,
+      "queries_per_sec": 3.680236105684638
+    },
+    "fp16_performance": {
+      "avg_time_ms": 282.57857000001724,
+      "queries_per_sec": 3.5388387732301814
+    },
+    "tensor_core_speedup": 0.961579276874098
+  },
+  "thermal_tests": {
+    "initial_temp_c": 42,
+    "peak_temp_c": 42,
+    "avg_temp_c": 41.01875,
+    "thermal_throttling": false
+  },
+  "concurrent_tests": {
+    "sequential_time_s": 4.286949703000573,
+    "concurrent_time_s": 2.1229876979996334,
+    "concurrency_speedup": 2.0193003035485857
+  },
+  "benchmark_duration_s": 40.377777338027954,
+  "timestamp": "2025-09-15T23:12:28.685386"
+}

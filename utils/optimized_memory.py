@@ -2,32 +2,35 @@
 Optimierte Memory-Systeme für die Bundeskanzler KI
 Implementiert Quantisierung, Caching und Performance-Optimierungen
 """
-from typing import Dict, List, Optional, Tuple, Any, Union
-from datetime import datetime, timedelta
-import numpy as np
-from dataclasses import dataclass
+
 import json
 import pickle
-from pathlib import Path
 import threading
-from functools import lru_cache
 import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 
 @dataclass
 class QuantizedEmbedding:
     """Quantisiertes Embedding für Speicher-Effizienz"""
+
     values: np.ndarray  # int8 oder float16 Werte
-    scale: float        # Skalierungsfaktor für Dequantisierung
-    offset: float       # Offset für Dequantisierung
+    scale: float  # Skalierungsfaktor für Dequantisierung
+    offset: float  # Offset für Dequantisierung
     original_dtype: np.dtype
     compression_type: str  # 'int8', 'float16', 'none'
 
     def dequantize(self) -> np.ndarray:
         """Wandelt quantisiertes Embedding zurück in Originalformat"""
-        if self.compression_type == 'int8':
+        if self.compression_type == "int8":
             return (self.values.astype(np.float32) * self.scale) + self.offset
-        elif self.compression_type == 'float16':
+        elif self.compression_type == "float16":
             return self.values.astype(np.float32)
         else:
             return self.values
@@ -83,7 +86,7 @@ class QuantizationEngine:
             scale=scale,
             offset=offset,
             original_dtype=embedding.dtype,
-            compression_type='int8'
+            compression_type="int8",
         )
 
     @staticmethod
@@ -94,11 +97,13 @@ class QuantizationEngine:
             scale=1.0,
             offset=0.0,
             original_dtype=embedding.dtype,
-            compression_type='float16'
+            compression_type="float16",
         )
 
     @staticmethod
-    def auto_quantize(embedding: np.ndarray, target_memory_mb: float = 100.0) -> QuantizedEmbedding:
+    def auto_quantize(
+        embedding: np.ndarray, target_memory_mb: float = 100.0
+    ) -> QuantizedEmbedding:
         """Automatische Quantisierung basierend auf Speicherziel"""
         embedding_size_mb = embedding.nbytes / (1024 * 1024)
 
@@ -112,7 +117,7 @@ class QuantizationEngine:
                 scale=1.0,
                 offset=0.0,
                 original_dtype=embedding.dtype,
-                compression_type='none'
+                compression_type="none",
             )
 
 
@@ -164,16 +169,17 @@ class LRUEmbeddingCache:
             # Berechne Memory-Usage für alle Embeddings im Cache
             memory_usage = sum(arr.nbytes for arr in self.cache.values())
             return {
-                'size': len(self.cache),
-                'max_size': self.max_size,
-                'hit_rate': 0.0,  # Könnte mit Countern implementiert werden
-                'memory_usage_mb': memory_usage / (1024 * 1024)
+                "size": len(self.cache),
+                "max_size": self.max_size,
+                "hit_rate": 0.0,  # Könnte mit Countern implementiert werden
+                "memory_usage_mb": memory_usage / (1024 * 1024),
             }
 
 
 @dataclass
 class OptimizedMemoryItem:
     """Optimiertes Gedächtnis-Element mit Quantisierung"""
+
     content: str
     embedding: Union[np.ndarray, QuantizedEmbedding]
     timestamp: datetime
@@ -193,6 +199,7 @@ class OptimizedMemoryItem:
             self.last_access = self.timestamp
         if self.content_hash is None:
             import hashlib
+
             self.content_hash = hashlib.md5(self.content.encode()).hexdigest()
 
     def get_embedding(self) -> np.ndarray:
@@ -224,7 +231,7 @@ class OptimizedHierarchicalMemory:
         enable_quantization: bool = True,
         enable_caching: bool = True,
         cache_size: int = 500,
-        memory_pool_size: int = 1000
+        memory_pool_size: int = 1000,
     ):
         """
         Initialisiert das optimierte hierarchische Gedächtnissystem
@@ -255,20 +262,24 @@ class OptimizedHierarchicalMemory:
 
         # Optimierungskomponenten
         self.quantization_engine = QuantizationEngine()
-        self.embedding_cache = LRUEmbeddingCache(max_size=cache_size) if enable_caching else None
-        self.memory_pool = MemoryPool(embedding_dim, memory_pool_size) if enable_caching else None
+        self.embedding_cache = (
+            LRUEmbeddingCache(max_size=cache_size) if enable_caching else None
+        )
+        self.memory_pool = (
+            MemoryPool(embedding_dim, memory_pool_size) if enable_caching else None
+        )
 
         # Semantic Index für schnelle Suche
         self.semantic_index = {}
 
         # Performance-Metriken
         self.metrics = {
-            'total_memories': 0,
-            'cache_hits': 0,
-            'cache_misses': 0,
-            'quantization_savings_mb': 0.0,
-            'search_time_avg': 0.0,
-            'memory_usage_mb': 0.0
+            "total_memories": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "quantization_savings_mb": 0.0,
+            "search_time_avg": 0.0,
+            "memory_usage_mb": 0.0,
         }
 
         # Persistenz
@@ -282,7 +293,7 @@ class OptimizedHierarchicalMemory:
         embedding: np.ndarray,
         importance: float = 0.5,
         tags: List[str] = None,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ) -> None:
         """
         Fügt ein neues Gedächtnis hinzu mit Optimierungen
@@ -297,7 +308,9 @@ class OptimizedHierarchicalMemory:
             optimized_embedding = self.quantization_engine.auto_quantize(embedding)
             original_size = embedding.nbytes
             optimized_size = optimized_embedding.values.nbytes
-            self.metrics['quantization_savings_mb'] += (original_size - optimized_size) / (1024 * 1024)
+            self.metrics["quantization_savings_mb"] += (
+                original_size - optimized_size
+            ) / (1024 * 1024)
         else:
             optimized_embedding = embedding
 
@@ -312,12 +325,12 @@ class OptimizedHierarchicalMemory:
             importance=importance,
             tags=tags or [],
             metadata=metadata or {},
-            content_hash=content_hash
+            content_hash=content_hash,
         )
 
         # Zu Kurzzeitgedächtnis hinzufügen
         self.short_term_memory.append(memory_item)
-        self.metrics['total_memories'] += 1
+        self.metrics["total_memories"] += 1
 
         # Kapazität verwalten
         self._manage_capacity()
@@ -326,10 +339,7 @@ class OptimizedHierarchicalMemory:
         self._update_semantic_index(memory_item)
 
     def search_semantic(
-        self,
-        query_embedding: np.ndarray,
-        top_k: int = 5,
-        threshold: float = 0.7
+        self, query_embedding: np.ndarray, top_k: int = 5, threshold: float = 0.7
     ) -> List[Tuple[OptimizedMemoryItem, float]]:
         """
         Optimierte semantische Suche mit Cache-Unterstützung
@@ -343,12 +353,12 @@ class OptimizedHierarchicalMemory:
             cached_result = self.embedding_cache.get(f"search_{query_hash}")
 
         if cached_result is not None:
-            self.metrics['cache_hits'] += 1
+            self.metrics["cache_hits"] += 1
             search_time = time.time() - start_time
             self._update_search_time(search_time)
             return cached_result
 
-        self.metrics['cache_misses'] += 1
+        self.metrics["cache_misses"] += 1
 
         # Normale Suche durchführen
         results = []
@@ -384,39 +394,40 @@ class OptimizedHierarchicalMemory:
         long_term_memory_usage = sum(m.memory_usage() for m in self.long_term_memory)
 
         total_memory_usage = short_term_memory_usage + long_term_memory_usage
-        self.metrics['memory_usage_mb'] = total_memory_usage / (1024 * 1024)
+        self.metrics["memory_usage_mb"] = total_memory_usage / (1024 * 1024)
 
         return {
-            'short_term': {
-                'count': short_term_count,
-                'memory_usage_mb': short_term_memory_usage / (1024 * 1024),
-                'capacity': self.short_term_capacity
+            "short_term": {
+                "count": short_term_count,
+                "memory_usage_mb": short_term_memory_usage / (1024 * 1024),
+                "capacity": self.short_term_capacity,
             },
-            'long_term': {
-                'count': long_term_count,
-                'memory_usage_mb': long_term_memory_usage / (1024 * 1024),
-                'capacity': self.long_term_capacity
+            "long_term": {
+                "count": long_term_count,
+                "memory_usage_mb": long_term_memory_usage / (1024 * 1024),
+                "capacity": self.long_term_capacity,
             },
-            'cache': self.embedding_cache.stats() if self.embedding_cache else None,
-            'quantization': {
-                'enabled': self.enable_quantization,
-                'savings_mb': self.metrics['quantization_savings_mb']
+            "cache": self.embedding_cache.stats() if self.embedding_cache else None,
+            "quantization": {
+                "enabled": self.enable_quantization,
+                "savings_mb": self.metrics["quantization_savings_mb"],
             },
-            'performance': {
-                'total_memories': self.metrics['total_memories'],
-                'cache_hit_rate': self.metrics['cache_hits'] / max(1, self.metrics['cache_hits'] + self.metrics['cache_misses']),
-                'avg_search_time_ms': self.metrics['search_time_avg'] * 1000,
-                'total_memory_usage_mb': self.metrics['memory_usage_mb']
-            }
+            "performance": {
+                "total_memories": self.metrics["total_memories"],
+                "cache_hit_rate": self.metrics["cache_hits"]
+                / max(1, self.metrics["cache_hits"] + self.metrics["cache_misses"]),
+                "avg_search_time_ms": self.metrics["search_time_avg"] * 1000,
+                "total_memory_usage_mb": self.metrics["memory_usage_mb"],
+            },
         }
 
     def optimize_memory(self) -> Dict[str, Any]:
         """Führt umfassende Memory-Optimierung durch"""
         optimizations = {
-            'quantization_applied': 0,
-            'duplicates_removed': 0,
-            'old_memories_cleaned': 0,
-            'memory_saved_mb': 0.0
+            "quantization_applied": 0,
+            "duplicates_removed": 0,
+            "old_memories_cleaned": 0,
+            "memory_saved_mb": 0.0,
         }
 
         # Alle Embeddings neu quantisieren falls aktiviert
@@ -424,10 +435,14 @@ class OptimizedHierarchicalMemory:
             for memory in self.short_term_memory + self.long_term_memory:
                 if not isinstance(memory.embedding, QuantizedEmbedding):
                     original_size = memory.embedding.nbytes
-                    memory.embedding = self.quantization_engine.auto_quantize(memory.embedding)
+                    memory.embedding = self.quantization_engine.auto_quantize(
+                        memory.embedding
+                    )
                     new_size = memory.embedding.values.nbytes
-                    optimizations['memory_saved_mb'] += (original_size - new_size) / (1024 * 1024)
-                    optimizations['quantization_applied'] += 1
+                    optimizations["memory_saved_mb"] += (original_size - new_size) / (
+                        1024 * 1024
+                    )
+                    optimizations["quantization_applied"] += 1
 
         # Duplikate entfernen
         seen_hashes = set()
@@ -435,22 +450,23 @@ class OptimizedHierarchicalMemory:
         original_long_count = len(self.long_term_memory)
 
         self.short_term_memory = [
-            m for m in self.short_term_memory
+            m
+            for m in self.short_term_memory
             if m.content_hash not in seen_hashes and not seen_hashes.add(m.content_hash)
         ]
 
         self.long_term_memory = [
-            m for m in self.long_term_memory
+            m
+            for m in self.long_term_memory
             if m.content_hash not in seen_hashes and not seen_hashes.add(m.content_hash)
         ]
 
-        optimizations['duplicates_removed'] = (
-            (original_short_count - len(self.short_term_memory)) +
-            (original_long_count - len(self.long_term_memory))
-        )
+        optimizations["duplicates_removed"] = (
+            original_short_count - len(self.short_term_memory)
+        ) + (original_long_count - len(self.long_term_memory))
 
         # Alte Memories bereinigen
-        optimizations['old_memories_cleaned'] = self.forget_old_memories()
+        optimizations["old_memories_cleaned"] = self.forget_old_memories()
 
         # Cache leeren für Konsistenz
         if self.embedding_cache:
@@ -462,16 +478,20 @@ class OptimizedHierarchicalMemory:
     def _hash_content(self, content: str) -> str:
         """Erstellt Hash für Content-Deduplizierung"""
         import hashlib
+
         return hashlib.md5(content.encode()).hexdigest()
 
     def _hash_embedding(self, embedding: np.ndarray) -> str:
         """Erstellt Hash für Embedding-Cache"""
         import hashlib
+
         return hashlib.md5(embedding.tobytes()).hexdigest()
 
     def _is_duplicate(self, content_hash: str) -> bool:
         """Prüft auf Duplikate"""
-        all_hashes = {m.content_hash for m in self.short_term_memory + self.long_term_memory}
+        all_hashes = {
+            m.content_hash for m in self.short_term_memory + self.long_term_memory
+        }
         return content_hash in all_hashes
 
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
@@ -487,8 +507,8 @@ class OptimizedHierarchicalMemory:
         if len(self.short_term_memory) > self.short_term_capacity:
             # Nach Wichtigkeit sortieren und überschüssige entfernen
             self.short_term_memory.sort(key=lambda x: x.importance, reverse=True)
-            removed = self.short_term_memory[self.short_term_capacity:]
-            self.short_term_memory = self.short_term_memory[:self.short_term_capacity]
+            removed = self.short_term_memory[self.short_term_capacity :]
+            self.short_term_memory = self.short_term_memory[: self.short_term_capacity]
 
             # Wichtige in Langzeitgedächtnis verschieben
             for memory in removed:
@@ -498,7 +518,7 @@ class OptimizedHierarchicalMemory:
         # Langzeitgedächtnis verwalten
         if len(self.long_term_memory) > self.long_term_capacity:
             self.long_term_memory.sort(key=lambda x: x.importance, reverse=True)
-            self.long_term_memory = self.long_term_memory[:self.long_term_capacity]
+            self.long_term_memory = self.long_term_memory[: self.long_term_capacity]
 
     def _update_semantic_index(self, memory: OptimizedMemoryItem):
         """Aktualisiert Semantic Index"""
@@ -508,8 +528,8 @@ class OptimizedHierarchicalMemory:
     def _update_search_time(self, search_time: float):
         """Aktualisiert durchschnittliche Suchzeit"""
         alpha = 0.1  # Exponential moving average
-        self.metrics['search_time_avg'] = (
-            alpha * search_time + (1 - alpha) * self.metrics['search_time_avg']
+        self.metrics["search_time_avg"] = (
+            alpha * search_time + (1 - alpha) * self.metrics["search_time_avg"]
         )
 
     def save_memory(self):
@@ -522,12 +542,12 @@ class OptimizedHierarchicalMemory:
 
             # Konvertiere zu serialisierbarem Format
             serializable_data = {
-                'short_term': [self._memory_to_dict(m) for m in self.short_term_memory],
-                'long_term': [self._memory_to_dict(m) for m in self.long_term_memory],
-                'metrics': self.metrics
+                "short_term": [self._memory_to_dict(m) for m in self.short_term_memory],
+                "long_term": [self._memory_to_dict(m) for m in self.long_term_memory],
+                "metrics": self.metrics,
             }
 
-            with open(self.persistence_path, 'wb') as f:
+            with open(self.persistence_path, "wb") as f:
                 pickle.dump(serializable_data, f)
 
         except Exception as e:
@@ -539,12 +559,16 @@ class OptimizedHierarchicalMemory:
             return
 
         try:
-            with open(self.persistence_path, 'rb') as f:
+            with open(self.persistence_path, "rb") as f:
                 data = pickle.load(f)
 
-            self.short_term_memory = [self._dict_to_memory(m) for m in data.get('short_term', [])]
-            self.long_term_memory = [self._dict_to_memory(m) for m in data.get('long_term', [])]
-            self.metrics.update(data.get('metrics', {}))
+            self.short_term_memory = [
+                self._dict_to_memory(m) for m in data.get("short_term", [])
+            ]
+            self.long_term_memory = [
+                self._dict_to_memory(m) for m in data.get("long_term", [])
+            ]
+            self.metrics.update(data.get("metrics", {}))
 
         except Exception as e:
             print(f"Fehler beim Laden des Gedächtnisses: {e}")
@@ -552,51 +576,78 @@ class OptimizedHierarchicalMemory:
     def _memory_to_dict(self, memory: OptimizedMemoryItem) -> Dict[str, Any]:
         """Konvertiert MemoryItem zu Dictionary für Serialisierung"""
         return {
-            'content': memory.content,
-            'embedding': memory.embedding.values if isinstance(memory.embedding, QuantizedEmbedding)
-                        else memory.embedding,
-            'embedding_meta': {
-                'scale': memory.embedding.scale if isinstance(memory.embedding, QuantizedEmbedding) else 1.0,
-                'offset': memory.embedding.offset if isinstance(memory.embedding, QuantizedEmbedding) else 0.0,
-                'original_dtype': str(memory.embedding.original_dtype) if isinstance(memory.embedding, QuantizedEmbedding)
-                                else str(memory.embedding.dtype),
-                'compression_type': memory.embedding.compression_type if isinstance(memory.embedding, QuantizedEmbedding)
-                                  else 'none'
-            } if isinstance(memory.embedding, QuantizedEmbedding) else None,
-            'timestamp': memory.timestamp.isoformat(),
-            'importance': memory.importance,
-            'access_count': memory.access_count,
-            'last_access': memory.last_access.isoformat() if memory.last_access else None,
-            'tags': memory.tags,
-            'metadata': memory.metadata,
-            'content_hash': memory.content_hash
+            "content": memory.content,
+            "embedding": (
+                memory.embedding.values
+                if isinstance(memory.embedding, QuantizedEmbedding)
+                else memory.embedding
+            ),
+            "embedding_meta": (
+                {
+                    "scale": (
+                        memory.embedding.scale
+                        if isinstance(memory.embedding, QuantizedEmbedding)
+                        else 1.0
+                    ),
+                    "offset": (
+                        memory.embedding.offset
+                        if isinstance(memory.embedding, QuantizedEmbedding)
+                        else 0.0
+                    ),
+                    "original_dtype": (
+                        str(memory.embedding.original_dtype)
+                        if isinstance(memory.embedding, QuantizedEmbedding)
+                        else str(memory.embedding.dtype)
+                    ),
+                    "compression_type": (
+                        memory.embedding.compression_type
+                        if isinstance(memory.embedding, QuantizedEmbedding)
+                        else "none"
+                    ),
+                }
+                if isinstance(memory.embedding, QuantizedEmbedding)
+                else None
+            ),
+            "timestamp": memory.timestamp.isoformat(),
+            "importance": memory.importance,
+            "access_count": memory.access_count,
+            "last_access": (
+                memory.last_access.isoformat() if memory.last_access else None
+            ),
+            "tags": memory.tags,
+            "metadata": memory.metadata,
+            "content_hash": memory.content_hash,
         }
 
     def _dict_to_memory(self, data: Dict[str, Any]) -> OptimizedMemoryItem:
         """Konvertiert Dictionary zurück zu MemoryItem"""
         # Embedding rekonstruieren
-        if data.get('embedding_meta'):
-            meta = data['embedding_meta']
+        if data.get("embedding_meta"):
+            meta = data["embedding_meta"]
             embedding = QuantizedEmbedding(
-                values=np.array(data['embedding']),
-                scale=meta['scale'],
-                offset=meta['offset'],
-                original_dtype=np.dtype(meta['original_dtype']),
-                compression_type=meta['compression_type']
+                values=np.array(data["embedding"]),
+                scale=meta["scale"],
+                offset=meta["offset"],
+                original_dtype=np.dtype(meta["original_dtype"]),
+                compression_type=meta["compression_type"],
             )
         else:
-            embedding = np.array(data['embedding'])
+            embedding = np.array(data["embedding"])
 
         return OptimizedMemoryItem(
-            content=data['content'],
+            content=data["content"],
             embedding=embedding,
-            timestamp=datetime.fromisoformat(data['timestamp']),
-            importance=data['importance'],
-            access_count=data.get('access_count', 0),
-            last_access=datetime.fromisoformat(data['last_access']) if data.get('last_access') else None,
-            tags=data.get('tags', []),
-            metadata=data.get('metadata', {}),
-            content_hash=data.get('content_hash')
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            importance=data["importance"],
+            access_count=data.get("access_count", 0),
+            last_access=(
+                datetime.fromisoformat(data["last_access"])
+                if data.get("last_access")
+                else None
+            ),
+            tags=data.get("tags", []),
+            metadata=data.get("metadata", {}),
+            content_hash=data.get("content_hash"),
         )
 
     def forget_old_memories(self, max_age_days: int = 30) -> int:
@@ -608,13 +659,15 @@ class OptimizedHierarchicalMemory:
         # Kurzzeitgedächtnis bereinigen
         before_count = len(self.short_term_memory)
         self.short_term_memory = [
-            memory for memory in self.short_term_memory
+            memory
+            for memory in self.short_term_memory
             if memory.timestamp > cutoff_date or memory.importance > 0.8
         ]
 
         # Langzeitgedächtnis bereinigen (nur sehr alte, unwichtige)
         self.long_term_memory = [
-            memory for memory in self.long_term_memory
+            memory
+            for memory in self.long_term_memory
             if memory.timestamp > cutoff_date or memory.importance > 0.9
         ]
 
@@ -628,53 +681,68 @@ class OptimizedHierarchicalMemory:
         try:
             # Berechne Cache-Statistiken
             cache_hit_rate = 0.0
-            if self.metrics['cache_hits'] + self.metrics['cache_misses'] > 0:
-                cache_hit_rate = self.metrics['cache_hits'] / (self.metrics['cache_hits'] + self.metrics['cache_misses'])
+            if self.metrics["cache_hits"] + self.metrics["cache_misses"] > 0:
+                cache_hit_rate = self.metrics["cache_hits"] / (
+                    self.metrics["cache_hits"] + self.metrics["cache_misses"]
+                )
 
             # Berechne Memory-Effizienz (basierend auf Quantisierungseinsparungen)
-            total_memory_mb = (
-                sum(m.memory_usage() for m in self.short_term_memory + self.long_term_memory) / (1024 * 1024)
-            )
+            total_memory_mb = sum(
+                m.memory_usage() for m in self.short_term_memory + self.long_term_memory
+            ) / (1024 * 1024)
             memory_efficiency = 0.0
             if total_memory_mb > 0:
-                memory_efficiency = (self.metrics['quantization_savings_mb'] / total_memory_mb) * 100
+                memory_efficiency = (
+                    self.metrics["quantization_savings_mb"] / total_memory_mb
+                ) * 100
                 memory_efficiency = min(memory_efficiency, 100.0)  # Cap at 100%
 
             return {
                 "short_term_count": len(self.short_term_memory),
                 "long_term_count": len(self.long_term_memory),
-                "total_entries": len(self.short_term_memory) + len(self.long_term_memory),
+                "total_entries": len(self.short_term_memory)
+                + len(self.long_term_memory),
                 "memory_efficiency": memory_efficiency,
-                "cache_hits": self.metrics['cache_hits'],
-                "cache_misses": self.metrics['cache_misses'],
+                "cache_hits": self.metrics["cache_hits"],
+                "cache_misses": self.metrics["cache_misses"],
                 "cache_hit_rate": cache_hit_rate,
                 "quantization_enabled": self.enable_quantization,
                 "pool_enabled": self.memory_pool is not None,
-                "memory_saved_mb": self.metrics['quantization_savings_mb'],
+                "memory_saved_mb": self.metrics["quantization_savings_mb"],
                 "total_memory_mb": total_memory_mb,
-                "cache_size": len(self.embedding_cache.cache) if self.embedding_cache else 0,
-                "max_cache_size": self.embedding_cache.max_size if self.embedding_cache else 0,
+                "cache_size": (
+                    len(self.embedding_cache.cache) if self.embedding_cache else 0
+                ),
+                "max_cache_size": (
+                    self.embedding_cache.max_size if self.embedding_cache else 0
+                ),
             }
         except Exception as e:
             print(f"❌ Fehler in get_memory_stats: {e}")
             import traceback
+
             traceback.print_exc()
             # Return basic stats on error
             return {
                 "short_term_count": len(self.short_term_memory),
                 "long_term_count": len(self.long_term_memory),
-                "total_entries": len(self.short_term_memory) + len(self.long_term_memory),
+                "total_entries": len(self.short_term_memory)
+                + len(self.long_term_memory),
                 "memory_efficiency": 0.0,
-                "cache_hits": self.metrics['cache_hits'],
-                "cache_misses": self.metrics['cache_misses'],
+                "cache_hits": self.metrics["cache_hits"],
+                "cache_misses": self.metrics["cache_misses"],
                 "cache_hit_rate": 0.0,
                 "quantization_enabled": self.enable_quantization,
                 "pool_enabled": self.memory_pool is not None,
-                "memory_saved_mb": self.metrics['quantization_savings_mb'],
+                "memory_saved_mb": self.metrics["quantization_savings_mb"],
                 "total_memory_mb": 0.0,
-                "cache_size": len(self.embedding_cache.cache) if self.embedding_cache else 0,
-                "max_cache_size": self.embedding_cache.max_size if self.embedding_cache else 0,
-                "error": str(e)
+                "cache_size": (
+                    len(self.embedding_cache.cache) if self.embedding_cache else 0
+                ),
+                "max_cache_size": (
+                    self.embedding_cache.max_size if self.embedding_cache else 0
+                ),
+                "error": str(e),
             }
 
     def forget_old_memories(self, max_age_days: int = 30) -> int:
@@ -686,13 +754,15 @@ class OptimizedHierarchicalMemory:
         # Kurzzeitgedächtnis bereinigen
         before_count = len(self.short_term_memory)
         self.short_term_memory = [
-            memory for memory in self.short_term_memory
+            memory
+            for memory in self.short_term_memory
             if memory.timestamp > cutoff_date or memory.importance > 0.8
         ]
 
         # Langzeitgedächtnis bereinigen (nur sehr alte, unwichtige)
         self.long_term_memory = [
-            memory for memory in self.long_term_memory
+            memory
+            for memory in self.long_term_memory
             if memory.timestamp > cutoff_date or memory.importance > 0.9
         ]
 

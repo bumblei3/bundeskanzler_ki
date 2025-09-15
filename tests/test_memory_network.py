@@ -1,21 +1,24 @@
 """
 Tests für das Memory-Network der Bundeskanzler-KI.
 """
+
+import importlib
+import sys
+import time
+from datetime import datetime, timedelta
+
+import numpy as np
 import pytest
 import tensorflow as tf
-import numpy as np
-from datetime import datetime, timedelta
-import time
-import sys
-import importlib
 
 # Sicherstellen, dass wir die echte MemoryNetwork Klasse verwenden
-if 'memory_network' in sys.modules:
+if "memory_network" in sys.modules:
     # Entferne Stub aus sys.modules
-    del sys.modules['memory_network']
+    del sys.modules["memory_network"]
 
 # Importiere die echte MemoryNetwork Klasse
 from memory_network import MemoryNetwork
+
 
 def test_memory_init():
     """Test der Memory-Network Initialisierung"""
@@ -31,6 +34,7 @@ def test_memory_init():
     assert network.importance.shape == (memory_size,)
     assert int(network.current_position.numpy()) == 0
 
+
 def test_store_and_query():
     """Test des Speicherns und Abfragens von Embeddings"""
     network = MemoryNetwork(memory_size=10, embedding_dim=4)
@@ -45,13 +49,14 @@ def test_store_and_query():
     # Sollte mindestens einen Eintrag zurückgeben
     assert similar_embeddings.shape[0] > 0
     assert scores.shape[0] > 0
-    
+
     # Query durchführen
     results, scores = network.query(test_embedding, k=1)
-    
+
     # Überprüfe ob das gespeicherte Embedding gefunden wurde
     assert tf.reduce_all(tf.abs(results[0] - test_embedding) < 1e-5)
     assert scores[0] > 0.9  # Sollte sehr ähnlich sein
+
 
 def test_importance_weighting():
     """Test der Importance-Gewichtung"""
@@ -74,6 +79,7 @@ def test_importance_weighting():
     assert results.shape[0] > 0
     assert scores.shape[0] > 0
 
+
 def test_time_decay():
     """Test des zeitbasierten Verfalls"""
     network = MemoryNetwork(memory_size=2, embedding_dim=2)
@@ -94,6 +100,7 @@ def test_time_decay():
     assert results.shape[0] == 2
     assert scores.shape[0] == 2
 
+
 def test_clear_old_entries():
     """Test der Bereinigung alter Einträge"""
     network = MemoryNetwork(memory_size=5, embedding_dim=2)
@@ -106,6 +113,7 @@ def test_clear_old_entries():
     assert network.memory_size == 5
     assert network.embedding_dim == 2
 
+
 def test_memory_overflow():
     """Test des Verhaltens bei Speicherüberlauf"""
     memory_size = 3
@@ -116,7 +124,7 @@ def test_memory_overflow():
         [1.0, 0.0],
         [0.0, 1.0],
         [-1.0, 0.0],
-        [0.0, -1.0]  # Dieser sollte den ersten Eintrag überschreiben
+        [0.0, -1.0],  # Dieser sollte den ersten Eintrag überschreiben
     ]
 
     for emb in embeddings:
@@ -124,6 +132,7 @@ def test_memory_overflow():
 
     # Überprüfe Position (sollte nach Überlauf bei 1 sein)
     assert int(network.current_position) == 1
+
 
 def test_update_importance():
     """Test der Importance-Score Aktualisierung"""
@@ -135,12 +144,13 @@ def test_update_importance():
 
     # Teste einfach dass Speicherung funktioniert
     assert network.memory_size == 3
-    
+
     # Aktualisiere Importance
     idx = int(network.current_position - 1)
     network.update_importance(idx, 0.8)
-    
+
     assert abs(float(network.importance[idx]) - 0.8) < 1e-5
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     pytest.main([__file__])

@@ -2,21 +2,26 @@
 Tests für memory_optimizer.py - Memory-Optimierung und Dateiverarbeitung
 """
 
-import pytest
-import tempfile
 import os
+import tempfile
 import time
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 from memory_optimizer import (
-    MemoryOptimizer, LazyFileReader, MemoryMappedCorpus,
-    ChunkedProcessor, optimize_tensorflow_memory, setup_memory_optimization
+    ChunkedProcessor,
+    LazyFileReader,
+    MemoryMappedCorpus,
+    MemoryOptimizer,
+    optimize_tensorflow_memory,
+    setup_memory_optimization,
 )
 
 
 class TestMemoryOptimizer:
     """Tests für MemoryOptimizer Klasse"""
 
-    @patch('memory_optimizer.psutil')
+    @patch("memory_optimizer.psutil")
     def test_get_memory_usage(self, mock_psutil):
         """Test get_memory_usage Methode"""
         mock_process = MagicMock()
@@ -37,6 +42,7 @@ class TestMemoryOptimizer:
         """Test optimize_numpy_arrays Methode"""
         try:
             import numpy as np
+
             # Create some numpy arrays
             arrays = [np.ones(1000) for _ in range(5)]
             array_objects = arrays.copy()  # Keep references
@@ -64,7 +70,7 @@ class TestLazyFileReader:
 
     def test_init(self):
         """Test LazyFileReader Initialisierung"""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write("line1\nline2\nline3\n")
             temp_file = f.name
 
@@ -79,7 +85,7 @@ class TestLazyFileReader:
     def test_read_lines_lazy(self):
         """Test read_lines_lazy Methode"""
         content = "line1\nline2\nline3\n"
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(content)
             temp_file = f.name
 
@@ -101,7 +107,7 @@ class TestLazyFileReader:
     def test_read_chunks(self):
         """Test read_chunks Methode"""
         content = "line1\nline2\nline3\nline4\nline5\n"
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(content)
             temp_file = f.name
 
@@ -119,7 +125,7 @@ class TestLazyFileReader:
     def test_read_chunks_default_size(self):
         """Test read_chunks mit Standard-Chunk-Größe"""
         content = "line1\n" * 100  # 100 lines
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(content)
             temp_file = f.name
 
@@ -139,7 +145,7 @@ class TestMemoryMappedCorpus:
     def test_init_with_existing_file(self):
         """Test MemoryMappedCorpus Initialisierung mit existierender Datei"""
         content = "line1\nline2\nline3\n"
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(content)
             temp_file = f.name
 
@@ -161,7 +167,7 @@ class TestMemoryMappedCorpus:
     def test_get_line(self):
         """Test get_line Methode"""
         content = "line1\nline2\nline3\n"
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(content)
             temp_file = f.name
 
@@ -179,7 +185,7 @@ class TestMemoryMappedCorpus:
     def test_len(self):
         """Test __len__ Methode"""
         content = "line1\nline2\nline3\nline4\nline5\n"
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(content)
             temp_file = f.name
 
@@ -234,7 +240,9 @@ class TestChunkedProcessor:
             results.extend(processed)
             return processed
 
-        result = processor.process_in_chunks(data, test_processor, multiplier=3, offset=10)
+        result = processor.process_in_chunks(
+            data, test_processor, multiplier=3, offset=10
+        )
 
         assert result == [13, 16, 19, 22]  # (1*3)+10, (2*3)+10, (3*3)+10, (4*3)+10
         assert results == [13, 16, 19, 22]

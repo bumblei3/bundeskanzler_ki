@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
+import pytest
 from context_manager import ContextManager
+
 
 def test_add_and_retrieve_interaction():
     cm = ContextManager(window_size=3)
@@ -11,6 +12,7 @@ def test_add_and_retrieve_interaction():
     assert len(cm.interaction_history) == 3
     assert cm.get_current_topic() == "Politik"
     assert "Politik" in cm.get_topic_context()
+
 
 def test_get_relevant_context():
     cm = ContextManager(window_size=3, min_context_similarity=0.1)
@@ -23,6 +25,7 @@ def test_get_relevant_context():
     assert len(relevant) >= 1
     assert relevant[0]["query"] == "Q1"
 
+
 def test_summarize_context():
     cm = ContextManager(window_size=2)
     emb = np.array([0.5, 0.5, 0.5])
@@ -32,8 +35,9 @@ def test_summarize_context():
     assert summary["interaction_count"] == 1
     assert summary["last_interaction"]["query"] == "F1"
 
+
 def test_empty_context():
     cm = ContextManager()
-    assert cm.get_relevant_context(np.array([1,2,3])) == []
+    assert cm.get_relevant_context(np.array([1, 2, 3])) == []
     assert cm.get_current_topic() is None
     assert cm.summarize_context()["interaction_count"] == 0

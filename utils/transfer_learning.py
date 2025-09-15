@@ -2,8 +2,11 @@
 Transfer Learning Modul für die Bundeskanzler KI
 Implementiert Transfer Learning für Textklassifikation
 """
+
 import sys
+
 import numpy as np
+
 
 # Mock TensorFlow für Tests
 class _TFStub:
@@ -16,12 +19,14 @@ class _TFStub:
                 def __init__(self, units, activation=None):
                     self.units = units
                     self.activation = activation
+
                 def __call__(self, x):
                     return x
 
             class Dropout:
                 def __init__(self, rate):
                     self.rate = rate
+
                 def __call__(self, x):
                     return x
 
@@ -33,6 +38,7 @@ class _TFStub:
             def __init__(self, layers):
                 self.layers = layers
                 self.trainable_variables = []
+
             def __call__(self, x):
                 return x
 
@@ -40,6 +46,7 @@ class _TFStub:
             class Adam:
                 def __init__(self, learning_rate=0.001):
                     self.learning_rate = learning_rate
+
                 def apply_gradients(self, grads_and_vars):
                     pass
 
@@ -76,8 +83,10 @@ class _TFStub:
     class GradientTape:
         def __enter__(self):
             return self
+
         def __exit__(self, *args):
             pass
+
         def gradient(self, loss, variables):
             return [0.1] * len(variables) if variables else []
 
@@ -85,6 +94,7 @@ class _TFStub:
 # Verwende echtes tensorflow wenn verfügbar, sonst mock
 try:
     import tensorflow as tf
+
     TF = tf
 except ImportError:
     TF = _TFStub()
@@ -99,18 +109,22 @@ class TransferLearner:
         self.hidden_dim = hidden_dim
 
         # Erstelle Classifier
-        self.classifier = TF.keras.Sequential([
-            TF.keras.layers.Dense(hidden_dim, activation='relu'),
-            TF.keras.layers.Dropout(0.1),
-            TF.keras.layers.Dense(num_classes)
-        ])
+        self.classifier = TF.keras.Sequential(
+            [
+                TF.keras.layers.Dense(hidden_dim, activation="relu"),
+                TF.keras.layers.Dropout(0.1),
+                TF.keras.layers.Dense(num_classes),
+            ]
+        )
 
         # Erstelle Adapter für fine-tuning
-        self.adapter = TF.keras.Sequential([
-            TF.keras.layers.Dense(hidden_dim, activation='relu'),
-            TF.keras.layers.LayerNormalization(),
-            TF.keras.layers.Dropout(0.1)
-        ])
+        self.adapter = TF.keras.Sequential(
+            [
+                TF.keras.layers.Dense(hidden_dim, activation="relu"),
+                TF.keras.layers.LayerNormalization(),
+                TF.keras.layers.Dropout(0.1),
+            ]
+        )
 
     def adapt(self, embeddings, labels, optimizer=None, epochs=1):
         """Passe das Modell an die neuen Daten an"""
@@ -138,8 +152,15 @@ class TransferLearner:
             loss = TF.reduce_mean(loss)
 
         # Gradienten berechnen und anwenden
-        gradients = tape.gradient(loss, self.classifier.trainable_variables + self.adapter.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, self.classifier.trainable_variables + self.adapter.trainable_variables))
+        gradients = tape.gradient(
+            loss, self.classifier.trainable_variables + self.adapter.trainable_variables
+        )
+        optimizer.apply_gradients(
+            zip(
+                gradients,
+                self.classifier.trainable_variables + self.adapter.trainable_variables,
+            )
+        )
 
         return float(loss)
 
@@ -151,22 +172,23 @@ class TransferLearner:
         predictions = TF.argmax(logits, axis=-1)
 
         return {
-            'predictions': predictions,
-            'probabilities': probabilities,
-            'logits': logits
+            "predictions": predictions,
+            "probabilities": probabilities,
+            "logits": logits,
         }
 
     def classify(self, embeddings, patterns):
         """Klassifiziere Text basierend auf Embeddings und Mustern"""
         # Mache Vorhersagen
         result = self.predict(embeddings)
-        
+
         # Für diesen Stub: Wähle zufällig eine Kategorie basierend auf patterns
         import random
+
         categories = list(patterns.keys())
         category = random.choice(categories)
         confidence = random.uniform(0.5, 0.95)  # Dummy confidence
-        
+
         return category, confidence
 
     def save_model(self, path):

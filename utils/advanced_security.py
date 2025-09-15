@@ -6,21 +6,23 @@ Umfassender Schutz vor Angriffen, Content-Filtering und Audit-Trails
 
 import hashlib
 import hmac
-import secrets
-import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Set
-import logging
-import json
-import re
-from collections import defaultdict, deque
-import threading
-from queue import Queue
 import ipaddress
-import geoip2.database
+import json
+import logging
 import os
+import re
+import secrets
+import threading
+import time
+from collections import defaultdict, deque
+from datetime import datetime, timedelta
+from queue import Queue
+from typing import Dict, List, Optional, Set, Tuple
+
+import geoip2.database
 
 logger = logging.getLogger(__name__)
+
 
 class AdvancedSecuritySystem:
     """
@@ -37,7 +39,7 @@ class AdvancedSecuritySystem:
         self.rate_limits = {
             "requests_per_minute": 60,
             "requests_per_hour": 1000,
-            "concurrent_requests": 10
+            "concurrent_requests": 10,
         }
         self.request_history = defaultdict(deque)
         self.active_requests = defaultdict(int)
@@ -71,7 +73,9 @@ class AdvancedSecuritySystem:
         audit_thread = threading.Thread(target=self._audit_logging_loop, daemon=True)
         audit_thread.start()
 
-        monitoring_thread = threading.Thread(target=self._security_monitoring_loop, daemon=True)
+        monitoring_thread = threading.Thread(
+            target=self._security_monitoring_loop, daemon=True
+        )
         monitoring_thread.start()
 
         cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
@@ -79,7 +83,9 @@ class AdvancedSecuritySystem:
 
         logger.info("✅ Erweitertes Sicherheitssystem aktiviert")
 
-    def authenticate_request(self, api_key: str, request_data: Dict) -> Tuple[bool, str]:
+    def authenticate_request(
+        self, api_key: str, request_data: Dict
+    ) -> Tuple[bool, str]:
         """
         Authentifiziert eine API-Anfrage
 
@@ -92,7 +98,9 @@ class AdvancedSecuritySystem:
         """
         # Prüfe API-Schlüssel
         if api_key not in self.api_keys:
-            self._log_security_event("invalid_api_key", {"key_hash": self._hash_string(api_key)})
+            self._log_security_event(
+                "invalid_api_key", {"key_hash": self._hash_string(api_key)}
+            )
             return False, "Ungültiger API-Schlüssel"
 
         # Prüfe API-Schlüssel-Status
@@ -108,15 +116,18 @@ class AdvancedSecuritySystem:
         # Rate Limiting prüfen
         client_ip = request_data.get("client_ip", "unknown")
         if not self._check_rate_limits(client_ip, api_key):
-            self._log_security_event("rate_limit_exceeded", {"ip": client_ip, "key": self._hash_string(api_key)})
+            self._log_security_event(
+                "rate_limit_exceeded",
+                {"ip": client_ip, "key": self._hash_string(api_key)},
+            )
             return False, "Rate Limit überschritten"
 
         # Content-Filtering
         if not self._check_content_safety(request_data):
-            self._log_security_event("content_filter_triggered", {
-                "ip": client_ip,
-                "content_hash": self._hash_string(str(request_data))
-            })
+            self._log_security_event(
+                "content_filter_triggered",
+                {"ip": client_ip, "content_hash": self._hash_string(str(request_data))},
+            )
             return False, "Inhalt verstößt gegen Sicherheitsrichtlinien"
 
         # Threat Detection
@@ -129,11 +140,14 @@ class AdvancedSecuritySystem:
         self.key_last_used[api_key] = datetime.now()
 
         # Erfolgreiche Authentifizierung loggen
-        self._log_audit_event("authentication_success", {
-            "api_key_hash": self._hash_string(api_key),
-            "ip": client_ip,
-            "endpoint": request_data.get("endpoint", "unknown")
-        })
+        self._log_audit_event(
+            "authentication_success",
+            {
+                "api_key_hash": self._hash_string(api_key),
+                "ip": client_ip,
+                "endpoint": request_data.get("endpoint", "unknown"),
+            },
+        )
 
         return True, "Authentifizierung erfolgreich"
 
@@ -145,11 +159,17 @@ class AdvancedSecuritySystem:
 
         # Bereinige alte Einträge (älter als 1 Stunde)
         self.request_history[client_ip] = deque(
-            [req for req in self.request_history[client_ip] if current_time - req < 3600]
+            [
+                req
+                for req in self.request_history[client_ip]
+                if current_time - req < 3600
+            ]
         )
 
         # Prüfe Anfragen pro Minute
-        recent_requests = [req for req in self.request_history[client_ip] if current_time - req < 60]
+        recent_requests = [
+            req for req in self.request_history[client_ip] if current_time - req < 60
+        ]
         if len(recent_requests) >= self.rate_limits["requests_per_minute"]:
             return False
 
@@ -178,7 +198,9 @@ class AdvancedSecuritySystem:
         for filter_name, patterns in self.content_filters.items():
             for pattern in patterns:
                 if re.search(pattern, content, re.IGNORECASE):
-                    logger.warning(f"Content-Filter '{filter_name}' ausgelöst: {pattern}")
+                    logger.warning(
+                        f"Content-Filter '{filter_name}' ausgelöst: {pattern}"
+                    )
                     return False
 
         return True
@@ -193,12 +215,14 @@ class AdvancedSecuritySystem:
         for threat_type, patterns in self.threat_patterns.items():
             for pattern in patterns:
                 if re.search(pattern, content, re.IGNORECASE):
-                    self.suspicious_activities.append({
-                        "timestamp": datetime.now(),
-                        "threat_type": threat_type,
-                        "pattern": pattern,
-                        "content_hash": self._hash_string(content)
-                    })
+                    self.suspicious_activities.append(
+                        {
+                            "timestamp": datetime.now(),
+                            "threat_type": threat_type,
+                            "pattern": pattern,
+                            "content_hash": self._hash_string(content),
+                        }
+                    )
                     return True
 
         return False
@@ -210,24 +234,24 @@ class AdvancedSecuritySystem:
         return {
             "hate_speech": [
                 r"\b(hass|diskriminierung|vorurteil)\b",
-                r"\b(rassistisch|sexistisch|homophob)\b"
+                r"\b(rassistisch|sexistisch|homophob)\b",
             ],
             "violence": [
                 r"\b(gewalt|mord|töten|verletzen)\b",
-                r"\b(waffe|bombe|anschlag)\b"
+                r"\b(waffe|bombe|anschlag)\b",
             ],
             "illegal_activities": [
                 r"\b(drogen|illegal|schmuggel)\b",
-                r"\b(hacken|virus|malware)\b"
+                r"\b(hacken|virus|malware)\b",
             ],
             "political_extremism": [
                 r"\b(nazi|faschist|extremist)\b",
-                r"\b(revolution|umsturz|putsch)\b"
+                r"\b(revolution|umsturz|putsch)\b",
             ],
             "personal_data": [
                 r"\b(passwort|pin|ssn|social.security)\b",
-                r"\b(kreditkarte|bankdaten|iban)\b"
-            ]
+                r"\b(kreditkarte|bankdaten|iban)\b",
+            ],
         }
 
     def _load_threat_patterns(self) -> Dict[str, List[str]]:
@@ -238,23 +262,11 @@ class AdvancedSecuritySystem:
             "sql_injection": [
                 r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE)\b.*\b(FROM|INTO|TABLE)\b)",
                 r"(\bUNION\b.*\bSELECT\b)",
-                r"(\bOR\b.*\d+\s*=\s*\d+)"
+                r"(\bOR\b.*\d+\s*=\s*\d+)",
             ],
-            "xss": [
-                r"<script[^>]*>.*?</script>",
-                r"javascript:",
-                r"on\w+\s*="
-            ],
-            "path_traversal": [
-                r"\.\./",
-                r"\.\.\\",
-                r"%2e%2e%2f",
-                r"%2e%2e%5c"
-            ],
-            "command_injection": [
-                r"[;&|`$()<>]",
-                r"\b(rm|del|format|shutdown)\b"
-            ]
+            "xss": [r"<script[^>]*>.*?</script>", r"javascript:", r"on\w+\s*="],
+            "path_traversal": [r"\.\./", r"\.\.\\", r"%2e%2e%2f", r"%2e%2e%5c"],
+            "command_injection": [r"[;&|`$()<>]", r"\b(rm|del|format|shutdown)\b"],
         }
 
     def _load_geoip_database(self):
@@ -279,7 +291,7 @@ class AdvancedSecuritySystem:
                 "country": response.country.name,
                 "city": response.city.name,
                 "latitude": response.location.latitude,
-                "longitude": response.location.longitude
+                "longitude": response.location.longitude,
             }
         except:
             return None
@@ -292,7 +304,7 @@ class AdvancedSecuritySystem:
             "timestamp": datetime.now().isoformat(),
             "type": "security_event",
             "event_type": event_type,
-            "details": details
+            "details": details,
         }
 
         self.audit_queue.put(event)
@@ -306,7 +318,7 @@ class AdvancedSecuritySystem:
             "timestamp": datetime.now().isoformat(),
             "type": "audit_event",
             "event_type": event_type,
-            "details": details
+            "details": details,
         }
 
         self.audit_queue.put(event)
@@ -365,7 +377,9 @@ class AdvancedSecuritySystem:
         for ip, count in ip_counts.items():
             if count >= 10:  # Schwellenwert
                 self.blocked_ips.add(ip)
-                logger.warning(f"🚫 IP {ip} blockiert wegen {count} verdächtigen Aktivitäten")
+                logger.warning(
+                    f"🚫 IP {ip} blockiert wegen {count} verdächtigen Aktivitäten"
+                )
 
     def _check_brute_force_attempts(self):
         """Prüft auf Brute-Force-Angriffe"""
@@ -374,7 +388,8 @@ class AdvancedSecuritySystem:
         # Bereinige alte Einträge
         for ip in list(self.failed_login_attempts.keys()):
             self.failed_login_attempts[ip] = [
-                attempt for attempt in self.failed_login_attempts[ip]
+                attempt
+                for attempt in self.failed_login_attempts[ip]
                 if (current_time - attempt).seconds < 3600  # Letzte Stunde
             ]
             if not self.failed_login_attempts[ip]:
@@ -399,7 +414,11 @@ class AdvancedSecuritySystem:
                 current_time = time.time()
                 for ip in list(self.request_history.keys()):
                     self.request_history[ip] = deque(
-                        [req for req in self.request_history[ip] if current_time - req < 86400]  # 24 Stunden
+                        [
+                            req
+                            for req in self.request_history[ip]
+                            if current_time - req < 86400
+                        ]  # 24 Stunden
                     )
                     if not self.request_history[ip]:
                         del self.request_history[ip]
@@ -435,7 +454,7 @@ class AdvancedSecuritySystem:
             "created": datetime.now().isoformat(),
             "active": True,
             "permissions": permissions or ["read"],
-            "usage_count": 0
+            "usage_count": 0,
         }
 
         self._save_api_keys()
@@ -476,24 +495,37 @@ class AdvancedSecuritySystem:
         """
         return {
             "total_api_keys": len(self.api_keys),
-            "active_api_keys": len([k for k, v in self.api_keys.items() if v.get("active", True)]),
+            "active_api_keys": len(
+                [k for k, v in self.api_keys.items() if v.get("active", True)]
+            ),
             "blocked_ips": len(self.blocked_ips),
             "blocked_users": len(self.blocked_users),
-            "suspicious_activities_today": len([
-                a for a in self.suspicious_activities
-                if (datetime.now() - a["timestamp"]).days < 1
-            ]),
-            "audit_events_today": len([
-                e for e in self.audit_log
-                if e["timestamp"].startswith(datetime.now().strftime("%Y-%m-%d"))
-            ]),
-            "rate_limit_violations": sum(1 for events in self.request_history.values()
-                                       if len([e for e in events if time.time() - e < 3600]) >
-                                       self.rate_limits["requests_per_hour"])
+            "suspicious_activities_today": len(
+                [
+                    a
+                    for a in self.suspicious_activities
+                    if (datetime.now() - a["timestamp"]).days < 1
+                ]
+            ),
+            "audit_events_today": len(
+                [
+                    e
+                    for e in self.audit_log
+                    if e["timestamp"].startswith(datetime.now().strftime("%Y-%m-%d"))
+                ]
+            ),
+            "rate_limit_violations": sum(
+                1
+                for events in self.request_history.values()
+                if len([e for e in events if time.time() - e < 3600])
+                > self.rate_limits["requests_per_hour"]
+            ),
         }
+
 
 # Globale Instanz des Sicherheitssystems
 security_system = AdvancedSecuritySystem()
+
 
 def get_security_system():
     """Gibt die globale Instanz des Sicherheitssystems zurück"""

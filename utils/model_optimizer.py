@@ -3,17 +3,19 @@ Modell-Optimierung für Bundeskanzler-KI
 Implementiert Quantisierung, Pruning, Knowledge Distillation und Modell-Kompression
 """
 
-import tensorflow as tf
-import numpy as np
-import os
-import logging
-from typing import Optional, Dict, Any, Tuple, List
-import tempfile
 import json
-from pathlib import Path
+import logging
+import os
+import tempfile
 import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import tensorflow as tf
 
 logger = logging.getLogger(__name__)
+
 
 class ModelOptimizer:
     """Umfassende Modell-Optimierungsklasse"""
@@ -27,7 +29,7 @@ class ModelOptimizer:
         """Lädt das Originalmodell"""
         try:
             # GPU-Probleme vermeiden beim Laden
-            with tf.device('/CPU:0'):
+            with tf.device("/CPU:0"):
                 self.original_model = tf.keras.models.load_model(self.model_path)
             logger.info(f"✅ Modell geladen aus {self.model_path}")
             return self.original_model
@@ -50,7 +52,7 @@ class ModelOptimizer:
             # Wichtige Fixes für GRU-Kompatibilität
             converter.target_spec.supported_ops = [
                 tf.lite.OpsSet.TFLITE_BUILTINS,
-                tf.lite.OpsSet.SELECT_TF_OPS
+                tf.lite.OpsSet.SELECT_TF_OPS,
             ]
             converter._experimental_lower_tensor_list_ops = False
 
@@ -67,8 +69,8 @@ class ModelOptimizer:
             quantized_tflite_model = converter.convert()
 
             # Speichere quantisiertes Modell
-            quantized_path = self.model_path.replace('.keras', '_quantized_int8.tflite')
-            with open(quantized_path, 'wb') as f:
+            quantized_path = self.model_path.replace(".keras", "_quantized_int8.tflite")
+            with open(quantized_path, "wb") as f:
                 f.write(quantized_tflite_model)
 
             logger.info(f"✅ int8-Quantisiertes Modell gespeichert: {quantized_path}")
@@ -77,10 +79,10 @@ class ModelOptimizer:
             interpreter = tf.lite.Interpreter(model_content=quantized_tflite_model)
             interpreter.allocate_tensors()
 
-            self.optimized_models['int8'] = {
-                'path': quantized_path,
-                'interpreter': interpreter,
-                'type': 'tflite_int8'
+            self.optimized_models["int8"] = {
+                "path": quantized_path,
+                "interpreter": interpreter,
+                "type": "tflite_int8",
             }
 
             return interpreter
@@ -103,27 +105,29 @@ class ModelOptimizer:
             # GRU-Kompatibilität
             converter.target_spec.supported_ops = [
                 tf.lite.OpsSet.TFLITE_BUILTINS,
-                tf.lite.OpsSet.SELECT_TF_OPS
+                tf.lite.OpsSet.SELECT_TF_OPS,
             ]
             converter._experimental_lower_tensor_list_ops = False
 
             quantized_tflite_model = converter.convert()
 
             # Speichere quantisiertes Modell
-            quantized_path = self.model_path.replace('.keras', '_quantized_fp16.tflite')
-            with open(quantized_path, 'wb') as f:
+            quantized_path = self.model_path.replace(".keras", "_quantized_fp16.tflite")
+            with open(quantized_path, "wb") as f:
                 f.write(quantized_tflite_model)
 
-            logger.info(f"✅ float16-Quantisiertes Modell gespeichert: {quantized_path}")
+            logger.info(
+                f"✅ float16-Quantisiertes Modell gespeichert: {quantized_path}"
+            )
 
             # Interpreter für Inference
             interpreter = tf.lite.Interpreter(model_content=quantized_tflite_model)
             interpreter.allocate_tensors()
 
-            self.optimized_models['fp16'] = {
-                'path': quantized_path,
-                'interpreter': interpreter,
-                'type': 'tflite_fp16'
+            self.optimized_models["fp16"] = {
+                "path": quantized_path,
+                "interpreter": interpreter,
+                "type": "tflite_fp16",
             }
 
             return interpreter
@@ -133,7 +137,9 @@ class ModelOptimizer:
             logger.info("💡 Verwende alternative Optimierungen...")
             return None
 
-    def apply_pruning(self, model: tf.keras.Model, pruning_rate: float = 0.2) -> tf.keras.Model:
+    def apply_pruning(
+        self, model: tf.keras.Model, pruning_rate: float = 0.2
+    ) -> tf.keras.Model:
         """Wendet Pruning auf das Modell an"""
         logger.info(f"🔄 Wende Pruning mit Rate {pruning_rate} an...")
 
@@ -145,11 +151,11 @@ class ModelOptimizer:
 
             # Pruning konfigurieren
             pruning_params = {
-                'pruning_schedule': tfmot.sparsity.keras.PolynomialDecay(
+                "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
                     initial_sparsity=0.0,
                     final_sparsity=pruning_rate,
                     begin_step=0,
-                    end_step=1000
+                    end_step=1000,
                 )
             }
 
@@ -161,35 +167,39 @@ class ModelOptimizer:
 
             # Modell mit Pruning neu erstellen
             pruned_model = tf.keras.models.clone_model(
-                model,
-                clone_function=apply_pruning_to_layer
+                model, clone_function=apply_pruning_to_layer
             )
 
             # Kompilierung
             pruned_model.compile(
-                loss='categorical_crossentropy',
-                optimizer='adam',
-                metrics=['accuracy']
+                loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
             )
 
             logger.info("✅ Pruning erfolgreich angewendet")
-            self.optimized_models['pruned'] = {
-                'model': pruned_model,
-                'pruning_rate': pruning_rate,
-                'type': 'pruned'
+            self.optimized_models["pruned"] = {
+                "model": pruned_model,
+                "pruning_rate": pruning_rate,
+                "type": "pruned",
             }
 
             return pruned_model
 
         except ImportError:
-            logger.warning("TensorFlow Model Optimization nicht verfügbar, überspringe Pruning")
+            logger.warning(
+                "TensorFlow Model Optimization nicht verfügbar, überspringe Pruning"
+            )
             logger.info("💡 Installiere mit: pip install tensorflow-model-optimization")
             return model
 
-    def apply_knowledge_distillation(self, teacher_model: tf.keras.Model,
-                                   student_model: tf.keras.Model,
-                                   x_train: np.ndarray, y_train: np.ndarray,
-                                   temperature: float = 3.0, alpha: float = 0.1) -> tf.keras.Model:
+    def apply_knowledge_distillation(
+        self,
+        teacher_model: tf.keras.Model,
+        student_model: tf.keras.Model,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        temperature: float = 3.0,
+        alpha: float = 0.1,
+    ) -> tf.keras.Model:
         """Wendet Knowledge Distillation an"""
         logger.info("🔄 Starte Knowledge Distillation...")
 
@@ -207,7 +217,7 @@ class ModelOptimizer:
                 # Knowledge Distillation Loss
                 kd_loss = tf.keras.losses.categorical_crossentropy(
                     y_true_soft, y_pred_soft, from_logits=False
-                ) * (self.temperature ** 2)
+                ) * (self.temperature**2)
 
                 # Student Loss
                 student_loss = tf.keras.losses.categorical_crossentropy(
@@ -224,29 +234,25 @@ class ModelOptimizer:
         student_model.compile(
             loss=DistillationLoss(temperature, alpha),
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-            metrics=['accuracy']
+            metrics=["accuracy"],
         )
 
         # Training mit Knowledge Distillation
-        student_model.fit(
-            x_train, teacher_logits,
-            epochs=10,
-            batch_size=32,
-            verbose=1
-        )
+        student_model.fit(x_train, teacher_logits, epochs=10, batch_size=32, verbose=1)
 
         logger.info("✅ Knowledge Distillation abgeschlossen")
-        self.optimized_models['distilled'] = {
-            'model': student_model,
-            'temperature': temperature,
-            'alpha': alpha,
-            'type': 'distilled'
+        self.optimized_models["distilled"] = {
+            "model": student_model,
+            "temperature": temperature,
+            "alpha": alpha,
+            "type": "distilled",
         }
 
         return student_model
 
-    def create_compressed_model(self, model: tf.keras.Model,
-                              compression_factor: float = 0.5) -> tf.keras.Model:
+    def create_compressed_model(
+        self, model: tf.keras.Model, compression_factor: float = 0.5
+    ) -> tf.keras.Model:
         """Erstellt ein komprimiertes Modell mit reduzierter Komplexität"""
         logger.info(f"🔄 Komprimiere Modell um Faktor {compression_factor}...")
 
@@ -261,7 +267,7 @@ class ModelOptimizer:
                 return tf.keras.layers.Embedding(
                     input_dim=layer.input_dim,
                     output_dim=new_units,
-                    input_length=layer.input_length
+                    input_length=layer.input_length,
                 )
             elif isinstance(layer, tf.keras.layers.GRU):
                 # GRU Layer komprimieren
@@ -270,47 +276,45 @@ class ModelOptimizer:
                     new_units,
                     dropout=layer.dropout,
                     recurrent_dropout=layer.recurrent_dropout,
-                    return_sequences=layer.return_sequences
+                    return_sequences=layer.return_sequences,
                 )
             elif isinstance(layer, tf.keras.layers.Dense):
                 # Dense Layer komprimieren
                 new_units = max(32, int(layer.units * compression_factor))
-                return tf.keras.layers.Dense(
-                    new_units,
-                    activation=layer.activation
-                )
+                return tf.keras.layers.Dense(new_units, activation=layer.activation)
             return layer
 
         # Neues komprimiertes Modell erstellen
         compressed_model = tf.keras.models.clone_model(
-            model,
-            clone_function=compress_layer
+            model, clone_function=compress_layer
         )
 
         # Kompilierung
         compressed_model.compile(
-            loss='categorical_crossentropy',
-            optimizer='adam',
-            metrics=['accuracy']
+            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
         )
 
         compressed_params = compressed_model.count_params()
         compression_ratio = compressed_params / original_params
 
-        logger.info(f"✅ Modell komprimiert: {original_params} → {compressed_params} Parameter ({compression_ratio:.2f}x)")
+        logger.info(
+            f"✅ Modell komprimiert: {original_params} → {compressed_params} Parameter ({compression_ratio:.2f}x)"
+        )
 
-        self.optimized_models['compressed'] = {
-            'model': compressed_model,
-            'compression_factor': compression_factor,
-            'original_params': original_params,
-            'compressed_params': compressed_params,
-            'compression_ratio': compression_ratio,
-            'type': 'compressed'
+        self.optimized_models["compressed"] = {
+            "model": compressed_model,
+            "compression_factor": compression_factor,
+            "original_params": original_params,
+            "compressed_params": compressed_params,
+            "compression_ratio": compression_ratio,
+            "type": "compressed",
         }
 
         return compressed_model
 
-    def benchmark_models(self, test_data: np.ndarray, test_labels: np.ndarray) -> Dict[str, Dict[str, Any]]:
+    def benchmark_models(
+        self, test_data: np.ndarray, test_labels: np.ndarray
+    ) -> Dict[str, Dict[str, Any]]:
         """Benchmarkt alle optimierten Modelle"""
         logger.info("🚀 Starte Modell-Benchmarking...")
 
@@ -321,17 +325,21 @@ class ModelOptimizer:
         if self.original_model:
             logger.info("📊 Benchmarke Original-Modell...")
             start_time = time.time()
-            predictions = self.original_model.predict(test_data, batch_size=batch_size, verbose=0)
+            predictions = self.original_model.predict(
+                test_data, batch_size=batch_size, verbose=0
+            )
             inference_time = time.time() - start_time
 
-            loss, accuracy = self.original_model.evaluate(test_data, test_labels, verbose=0)
+            loss, accuracy = self.original_model.evaluate(
+                test_data, test_labels, verbose=0
+            )
 
-            results['original'] = {
-                'inference_time': inference_time,
-                'accuracy': accuracy,
-                'loss': loss,
-                'model_size': self._get_model_size(self.original_model),
-                'parameters': self.original_model.count_params()
+            results["original"] = {
+                "inference_time": inference_time,
+                "accuracy": accuracy,
+                "loss": loss,
+                "model_size": self._get_model_size(self.original_model),
+                "parameters": self.original_model.count_params(),
             }
 
         # Optimierte Modelle benchmarken
@@ -339,67 +347,81 @@ class ModelOptimizer:
             logger.info(f"📊 Benchmarke {name}-Modell...")
 
             try:
-                if 'interpreter' in model_info:
+                if "interpreter" in model_info:
                     # TFLite Modell
-                    interpreter = model_info['interpreter']
+                    interpreter = model_info["interpreter"]
                     start_time = time.time()
 
                     # Inference für alle Test-Daten
                     for i in range(0, len(test_data), batch_size):
-                        batch = test_data[i:i+batch_size]
+                        batch = test_data[i : i + batch_size]
                         # TFLite Inference (vereinfacht)
-                        interpreter.set_tensor(interpreter.get_input_details()[0]['index'],
-                                             batch.astype(np.float32))
+                        interpreter.set_tensor(
+                            interpreter.get_input_details()[0]["index"],
+                            batch.astype(np.float32),
+                        )
                         interpreter.invoke()
-                        output = interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
+                        output = interpreter.get_tensor(
+                            interpreter.get_output_details()[0]["index"]
+                        )
 
                     inference_time = time.time() - start_time
 
                     results[name] = {
-                        'inference_time': inference_time,
-                        'model_size': os.path.getsize(model_info['path']) if 'path' in model_info else 0,
-                        'type': model_info['type']
+                        "inference_time": inference_time,
+                        "model_size": (
+                            os.path.getsize(model_info["path"])
+                            if "path" in model_info
+                            else 0
+                        ),
+                        "type": model_info["type"],
                     }
 
-                elif 'model' in model_info:
+                elif "model" in model_info:
                     # Keras Modell
-                    model = model_info['model']
+                    model = model_info["model"]
                     start_time = time.time()
-                    predictions = model.predict(test_data, batch_size=batch_size, verbose=0)
+                    predictions = model.predict(
+                        test_data, batch_size=batch_size, verbose=0
+                    )
                     inference_time = time.time() - start_time
 
                     results[name] = {
-                        'inference_time': inference_time,
-                        'model_size': self._get_model_size(model),
-                        'parameters': model.count_params(),
-                        'type': model_info['type']
+                        "inference_time": inference_time,
+                        "model_size": self._get_model_size(model),
+                        "parameters": model.count_params(),
+                        "type": model_info["type"],
                     }
 
             except Exception as e:
                 logger.error(f"Fehler beim Benchmarking von {name}: {e}")
-                results[name] = {'error': str(e)}
+                results[name] = {"error": str(e)}
 
         return results
 
     def _get_model_size(self, model: tf.keras.Model) -> int:
         """Gibt die Größe des Modells in Bytes zurück"""
-        with tempfile.NamedTemporaryFile(suffix='.keras', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as f:
             model.save(f.name)
             size = os.path.getsize(f.name)
             os.unlink(f.name)
         return size
 
-    def save_optimization_report(self, benchmark_results: Dict, output_path: str = "model_optimization_report.json"):
+    def save_optimization_report(
+        self,
+        benchmark_results: Dict,
+        output_path: str = "model_optimization_report.json",
+    ):
         """Speichert einen Optimierungsbericht"""
         report = {
-            'timestamp': time.time(),
-            'original_model': self.model_path,
-            'optimizations_applied': list(self.optimized_models.keys()),
-            'benchmark_results': benchmark_results,
-            'recommendations': self._generate_recommendations(benchmark_results)
+            "timestamp": time.time(),
+            "original_model": self.model_path,
+            "optimizations_applied": list(self.optimized_models.keys()),
+            "benchmark_results": benchmark_results,
+            "recommendations": self._generate_recommendations(benchmark_results),
         }
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         logger.info(f"✅ Optimierungsbericht gespeichert: {output_path}")
@@ -409,15 +431,18 @@ class ModelOptimizer:
         """Generiert Empfehlungen basierend auf Benchmark-Ergebnissen"""
         recommendations = []
 
-        if 'original' in results and len(results) > 1:
-            original_time = results['original'].get('inference_time', float('inf'))
+        if "original" in results and len(results) > 1:
+            original_time = results["original"].get("inference_time", float("inf"))
 
             # Finde schnellstes Modell
             fastest_model = min(
-                [(name, data.get('inference_time', float('inf')))
-                 for name, data in results.items() if name != 'original'],
+                [
+                    (name, data.get("inference_time", float("inf")))
+                    for name, data in results.items()
+                    if name != "original"
+                ],
                 key=lambda x: x[1],
-                default=None
+                default=None,
             )
 
             if fastest_model and fastest_model[1] < original_time:
@@ -428,7 +453,9 @@ class ModelOptimizer:
 
         # Größenvergleich
         if len(results) > 1:
-            sizes = [(name, data.get('model_size', 0)) for name, data in results.items()]
+            sizes = [
+                (name, data.get("model_size", 0)) for name, data in results.items()
+            ]
             smallest = min(sizes, key=lambda x: x[1])
             largest = max(sizes, key=lambda x: x[1])
 
@@ -440,8 +467,13 @@ class ModelOptimizer:
 
         return recommendations
 
-    def optimize_all(self, x_train: np.ndarray, y_train: np.ndarray,
-                    x_test: np.ndarray, y_test: np.ndarray) -> Dict[str, Any]:
+    def optimize_all(
+        self,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        x_test: np.ndarray,
+        y_test: np.ndarray,
+    ) -> Dict[str, Any]:
         """Führt alle verfügbaren Optimierungen durch und erstellt Bericht"""
         logger.info("🚀 Starte vollständige Modell-Optimierung...")
 

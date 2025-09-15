@@ -1,10 +1,12 @@
 """
 Performance-Tests für die Bundeskanzler KI
 """
-import pytest
+
 import time
-import numpy as np
 from unittest.mock import patch
+
+import numpy as np
+import pytest
 import pytest_benchmark
 
 
@@ -17,7 +19,9 @@ class TestPerformance:
         from bundeskanzler_api import generate_embedding
 
         def generate_test_embedding():
-            return generate_embedding("Das ist ein Test für die Performance-Messung der Embedding-Generierung.")
+            return generate_embedding(
+                "Das ist ein Test für die Performance-Messung der Embedding-Generierung."
+            )
 
         result = benchmark(generate_test_embedding)
         assert result.shape == (512,)
@@ -26,34 +30,42 @@ class TestPerformance:
 
     def test_memory_system_performance(self, benchmark):
         """Test Memory-System Performance"""
-        from optimized_memory import OptimizedHierarchicalMemory
-        import tempfile
         import os
+        import tempfile
+
+        from optimized_memory import OptimizedHierarchicalMemory
 
         with tempfile.TemporaryDirectory() as temp_dir:
             memory = OptimizedHierarchicalMemory(
                 short_term_capacity=100,
                 long_term_capacity=1000,
                 embedding_dim=512,
-                persistence_path=os.path.join(temp_dir, "memory.pkl")
+                persistence_path=os.path.join(temp_dir, "memory.pkl"),
             )
 
             def add_memory_item():
                 embedding = np.random.rand(512).astype(np.float32)
-                memory.add_memory("Test content for performance measurement", embedding, importance=0.5)
+                memory.add_memory(
+                    "Test content for performance measurement",
+                    embedding,
+                    importance=0.5,
+                )
 
             benchmark(add_memory_item)
 
     def test_context_processing_performance(self, benchmark):
         """Test Context-Processing Performance"""
-        from hierarchical_memory import EnhancedContextProcessor
         import tempfile
+
+        from hierarchical_memory import EnhancedContextProcessor
 
         with tempfile.TemporaryDirectory() as temp_dir:
             processor = EnhancedContextProcessor(memory_path=temp_dir)
 
             def process_context():
-                return processor.get_relevant_context("Wie geht es Deutschland?", max_results=5)
+                return processor.get_relevant_context(
+                    "Wie geht es Deutschland?", max_results=5
+                )
 
             result = benchmark(process_context)
             assert isinstance(result, list)
@@ -77,18 +89,24 @@ class TestPerformance:
 @pytest.mark.performance
 def test_api_response_time(benchmark):
     """Test API Response Time"""
-    import requests
     from unittest.mock import patch
 
+    import requests
+
     def mock_api_call():
-        with patch('requests.post') as mock_post:
+        with patch("requests.post") as mock_post:
             mock_post.return_value.status_code = 200
-            mock_post.return_value.json.return_value = {"response": "Test", "confidence": 0.8}
+            mock_post.return_value.json.return_value = {
+                "response": "Test",
+                "confidence": 0.8,
+            }
 
             # Simuliere API-Call
-            response = requests.post("http://localhost:8000/chat",
-                                   json={"message": "Test", "session_id": "perf-test"},
-                                   headers={"Authorization": "Bearer test"})
+            response = requests.post(
+                "http://localhost:8000/chat",
+                json={"message": "Test", "session_id": "perf-test"},
+                headers={"Authorization": "Bearer test"},
+            )
             return response.status_code
 
     result = benchmark(mock_api_call)
@@ -98,16 +116,17 @@ def test_api_response_time(benchmark):
 @pytest.mark.performance
 def test_memory_stats_performance(benchmark):
     """Test Memory Stats Performance"""
-    from optimized_memory import OptimizedHierarchicalMemory
-    import tempfile
     import os
+    import tempfile
+
+    from optimized_memory import OptimizedHierarchicalMemory
 
     with tempfile.TemporaryDirectory() as temp_dir:
         memory = OptimizedHierarchicalMemory(
             short_term_capacity=100,
             long_term_capacity=1000,
             embedding_dim=512,
-            persistence_path=os.path.join(temp_dir, "memory.pkl")
+            persistence_path=os.path.join(temp_dir, "memory.pkl"),
         )
 
         # Füge einige Testdaten hinzu

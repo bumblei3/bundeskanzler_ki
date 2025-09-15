@@ -3,15 +3,17 @@ GPU-Batching-System für beschleunigte Embedding-Verarbeitung
 Unterstützt CUDA, ROCm und CPU-Fallback mit optimierter Batch-Verarbeitung
 """
 
-import numpy as np
 import asyncio
+import logging
 import threading
 import time
-from typing import List, Optional, Dict, Any, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor
-import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
+
 
 class GPUBatchProcessor:
     """
@@ -27,7 +29,7 @@ class GPUBatchProcessor:
         embedding_dim: int = 512,
         enable_async: bool = True,
         enable_memory_pooling: bool = True,  # NEU: Memory-Pooling aktivieren
-        memory_pool_size_mb: int = 512  # NEU: Memory-Pool Größe
+        memory_pool_size_mb: int = 512,  # NEU: Memory-Pool Größe
     ):
         self.batch_size = batch_size
         self.max_workers = max_workers
@@ -39,7 +41,9 @@ class GPUBatchProcessor:
 
         # GPU/CPU Setup
         self.gpu_available = self._setup_gpu()
-        self.executor = ThreadPoolExecutor(max_workers=max_workers) if enable_async else None
+        self.executor = (
+            ThreadPoolExecutor(max_workers=max_workers) if enable_async else None
+        )
 
         # NEU: GPU Memory Pooling
         self.memory_pool = None
@@ -54,10 +58,12 @@ class GPUBatchProcessor:
             "cpu_fallback_count": 0,
             "memory_pool_hits": 0,  # NEU: Memory-Pool Statistiken
             "memory_pool_misses": 0,
-            "dynamic_batch_adjustments": 0  # NEU: Dynamische Batch-Anpassungen
+            "dynamic_batch_adjustments": 0,  # NEU: Dynamische Batch-Anpassungen
         }
 
-        logger.info(f"GPU-Batch-Processor initialisiert: Device={self.device}, GPU={'Verfügbar' if self.gpu_available else 'Nicht verfügbar'}, Memory-Pooling={'Aktiviert' if enable_memory_pooling else 'Deaktiviert'}")
+        logger.info(
+            f"GPU-Batch-Processor initialisiert: Device={self.device}, GPU={'Verfügbar' if self.gpu_available else 'Nicht verfügbar'}, Memory-Pooling={'Aktiviert' if enable_memory_pooling else 'Deaktiviert'}"
+        )
 
     def cleanup(self):
         """Räumt GPU-Ressourcen auf"""
@@ -68,6 +74,7 @@ class GPUBatchProcessor:
                 self.memory_pool = None
                 if self.gpu_available:
                     import torch
+
                     torch.cuda.empty_cache()
                 logger.info("✅ GPU Memory Pool bereinigt")
             except Exception as e:
@@ -79,11 +86,13 @@ class GPUBatchProcessor:
     def get_stats(self) -> Dict[str, Any]:
         """Erweiterte Statistiken abrufen"""
         stats = self.stats.copy()
-        
+
         # Grundlegende GPU-Informationen hinzufügen
         stats["device"] = self.device
         stats["gpu_available"] = self.gpu_available
-        stats["memory_pooling_enabled"] = self.enable_memory_pooling and self.memory_pool is not None
+        stats["memory_pooling_enabled"] = (
+            self.enable_memory_pooling and self.memory_pool is not None
+        )
         stats["dynamic_batching"] = self.enable_memory_pooling
         stats["batch_size"] = self.batch_size
         stats["async_enabled"] = self.enable_async
@@ -92,9 +101,16 @@ class GPUBatchProcessor:
         if self.gpu_available:
             try:
                 import torch
-                stats["current_gpu_memory_mb"] = torch.cuda.memory_allocated() / (1024 * 1024)
-                stats["max_gpu_memory_mb"] = torch.cuda.max_memory_allocated() / (1024 * 1024)
-                stats["gpu_memory_total_mb"] = torch.cuda.get_device_properties(0).total_memory / (1024 * 1024)
+
+                stats["current_gpu_memory_mb"] = torch.cuda.memory_allocated() / (
+                    1024 * 1024
+                )
+                stats["max_gpu_memory_mb"] = torch.cuda.max_memory_allocated() / (
+                    1024 * 1024
+                )
+                stats["gpu_memory_total_mb"] = torch.cuda.get_device_properties(
+                    0
+                ).total_memory / (1024 * 1024)
             except:
                 pass
 
@@ -103,28 +119,39 @@ class GPUBatchProcessor:
             stats["memory_pool_stats"] = {
                 "hits": self.stats.get("memory_pool_hits", 0),
                 "misses": self.stats.get("memory_pool_misses", 0),
-                "efficiency": 0.0
+                "efficiency": 0.0,
             }
-            
+
             # Effizienz berechnen
-            total_pool_accesses = stats["memory_pool_stats"]["hits"] + stats["memory_pool_stats"]["misses"]
+            total_pool_accesses = (
+                stats["memory_pool_stats"]["hits"]
+                + stats["memory_pool_stats"]["misses"]
+            )
             if total_pool_accesses > 0:
-                stats["memory_pool_stats"]["efficiency"] = stats["memory_pool_stats"]["hits"] / total_pool_accesses
+                stats["memory_pool_stats"]["efficiency"] = (
+                    stats["memory_pool_stats"]["hits"] / total_pool_accesses
+                )
 
         # Performance-Metriken hinzufügen
         optimal_batch_size = self.batch_size
         if self.gpu_available:
             try:
                 import torch
-                available_memory_mb = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / (1024 * 1024)
-                optimal_batch_size = self._calculate_optimal_batch_size(available_memory_mb)
+
+                available_memory_mb = (
+                    torch.cuda.get_device_properties(0).total_memory
+                    - torch.cuda.memory_allocated()
+                ) / (1024 * 1024)
+                optimal_batch_size = self._calculate_optimal_batch_size(
+                    available_memory_mb
+                )
             except:
                 optimal_batch_size = self.batch_size
-                
+
         stats["performance_stats"] = {
             "avg_batch_time_ms": self.stats.get("avg_batch_time", 0) * 1000,
             "current_batch_size": self.batch_size,
-            "optimal_batch_size": optimal_batch_size
+            "optimal_batch_size": optimal_batch_size,
         }
 
         return stats
@@ -136,9 +163,10 @@ class GPUBatchProcessor:
 
         try:
             import torch
+
             if torch.cuda.is_available():
                 return "cuda"
-            elif hasattr(torch, 'hip') and torch.hip.is_available():
+            elif hasattr(torch, "hip") and torch.hip.is_available():
                 return "rocm"
         except ImportError:
             pass
@@ -162,7 +190,7 @@ class GPUBatchProcessor:
                     torch.backends.cudnn.enabled = True
                     return True
             elif self.device == "rocm":
-                if hasattr(torch, 'hip') and torch.hip.is_available():
+                if hasattr(torch, "hip") and torch.hip.is_available():
                     # ROCm setup
                     return True
 
@@ -185,25 +213,31 @@ class GPUBatchProcessor:
 
             # Pre-alloziere häufig verwendete Tensor-Größen
             self.memory_pool = {
-                'small': torch.empty((16, self.embedding_dim), dtype=torch.float32, device='cuda'),
-                'medium': torch.empty((32, self.embedding_dim), dtype=torch.float32, device='cuda'),
-                'large': torch.empty((64, self.embedding_dim), dtype=torch.float32, device='cuda'),
+                "small": torch.empty(
+                    (16, self.embedding_dim), dtype=torch.float32, device="cuda"
+                ),
+                "medium": torch.empty(
+                    (32, self.embedding_dim), dtype=torch.float32, device="cuda"
+                ),
+                "large": torch.empty(
+                    (64, self.embedding_dim), dtype=torch.float32, device="cuda"
+                ),
             }
 
             # Markiere als nicht verwendet (wird bei Bedarf überschrieben)
             for tensor in self.memory_pool.values():
                 tensor.zero_()
 
-            logger.info(f"✅ GPU Memory Pool initialisiert: {self.memory_pool_size_mb}MB")
+            logger.info(
+                f"✅ GPU Memory Pool initialisiert: {self.memory_pool_size_mb}MB"
+            )
 
         except Exception as e:
             logger.warning(f"GPU Memory Pool konnte nicht initialisiert werden: {e}")
             self.memory_pool = None
 
     async def process_batch_async(
-        self,
-        texts: List[str],
-        operation: str = "embed"  # "embed", "search", "compare"
+        self, texts: List[str], operation: str = "embed"  # "embed", "search", "compare"
     ) -> np.ndarray:
         """
         Async batch processing für mehrere Texte
@@ -213,16 +247,11 @@ class GPUBatchProcessor:
 
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            self.executor,
-            self.process_batch_sync,
-            texts,
-            operation
+            self.executor, self.process_batch_sync, texts, operation
         )
 
     def process_batch_sync(
-        self,
-        texts: List[str],
-        operation: str = "embed"
+        self, texts: List[str], operation: str = "embed"
     ) -> np.ndarray:
         """
         Synchrone batch processing für mehrere Texte
@@ -248,9 +277,10 @@ class GPUBatchProcessor:
         self.stats["batches_processed"] += len(batches)
         self.stats["total_embeddings"] += len(texts)
         self.stats["avg_batch_time"] = (
-            (self.stats["avg_batch_time"] * (self.stats["batches_processed"] - len(batches)) +
-             batch_time) / self.stats["batches_processed"]
-        )
+            self.stats["avg_batch_time"]
+            * (self.stats["batches_processed"] - len(batches))
+            + batch_time
+        ) / self.stats["batches_processed"]
 
         return final_result
 
@@ -260,7 +290,7 @@ class GPUBatchProcessor:
             # Fallback zur statischen Batch-Größe
             batches = []
             for i in range(0, len(texts), self.batch_size):
-                batch = texts[i:i + self.batch_size]
+                batch = texts[i : i + self.batch_size]
                 batches.append(batch)
             return batches
 
@@ -270,13 +300,15 @@ class GPUBatchProcessor:
 
         batches = []
         for i in range(0, len(texts), optimal_batch_size):
-            batch = texts[i:i + optimal_batch_size]
+            batch = texts[i : i + optimal_batch_size]
             if batch:  # Sicherstellen, dass Batch nicht leer ist
                 batches.append(batch)
 
         if optimal_batch_size != self.batch_size:
             self.stats["dynamic_batch_adjustments"] += 1
-            logger.debug(f"Dynamische Batch-Größe angepasst: {self.batch_size} → {optimal_batch_size}")
+            logger.debug(
+                f"Dynamische Batch-Größe angepasst: {self.batch_size} → {optimal_batch_size}"
+            )
 
         return batches
 
@@ -284,8 +316,11 @@ class GPUBatchProcessor:
         """Ermittelt verfügbaren GPU-Speicher"""
         try:
             import torch
-            return (torch.cuda.get_device_properties(0).total_memory -
-                   torch.cuda.memory_allocated()) / (1024 * 1024)
+
+            return (
+                torch.cuda.get_device_properties(0).total_memory
+                - torch.cuda.memory_allocated()
+            ) / (1024 * 1024)
         except:
             return 1024  # Fallback: 1GB annehmen
 
@@ -305,11 +340,7 @@ class GPUBatchProcessor:
 
         return optimal_batch_size
 
-    def _process_single_batch(
-        self,
-        batch: List[str],
-        operation: str
-    ) -> np.ndarray:
+    def _process_single_batch(self, batch: List[str], operation: str) -> np.ndarray:
         """
         Verarbeitet einen einzelnen Batch
         """
@@ -331,14 +362,20 @@ class GPUBatchProcessor:
 
             # NEU: Verwende Memory Pool wenn verfügbar und passend
             if self.memory_pool and batch_size <= 64:
-                pool_key = 'small' if batch_size <= 16 else 'medium' if batch_size <= 32 else 'large'
+                pool_key = (
+                    "small"
+                    if batch_size <= 16
+                    else "medium" if batch_size <= 32 else "large"
+                )
                 if pool_key in self.memory_pool:
                     # Verwende gepoolten Speicher
                     embeddings = self.memory_pool[pool_key][:batch_size].clone()
                     self.stats["memory_pool_hits"] += 1
                 else:
                     # Fallback: Neuer Tensor
-                    embeddings = torch.randn(batch_size, self.embedding_dim, device=device)
+                    embeddings = torch.randn(
+                        batch_size, self.embedding_dim, device=device
+                    )
                     self.stats["memory_pool_misses"] += 1
             else:
                 # Normaler Tensor für große Batches oder wenn Pooling deaktiviert
@@ -386,7 +423,7 @@ class GPUBatchProcessor:
         self,
         query_embedding: np.ndarray,
         candidate_embeddings: np.ndarray,
-        top_k: int = 5
+        top_k: int = 5,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Async batch search für ähnliche Embeddings
@@ -400,14 +437,14 @@ class GPUBatchProcessor:
             self.search_batch_sync,
             query_embedding,
             candidate_embeddings,
-            top_k
+            top_k,
         )
 
     def search_batch_sync(
         self,
         query_embedding: np.ndarray,
         candidate_embeddings: np.ndarray,
-        top_k: int = 5
+        top_k: int = 5,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Synchrone batch search für ähnliche Embeddings
@@ -418,10 +455,7 @@ class GPUBatchProcessor:
             return self._cpu_batch_search(query_embedding, candidate_embeddings, top_k)
 
     def _gpu_batch_search(
-        self,
-        query_embedding: np.ndarray,
-        candidate_embeddings: np.ndarray,
-        top_k: int
+        self, query_embedding: np.ndarray, candidate_embeddings: np.ndarray, top_k: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         GPU-accelerated batch similarity search
@@ -448,17 +482,15 @@ class GPUBatchProcessor:
             return self._cpu_batch_search(query_embedding, candidate_embeddings, top_k)
 
     def _cpu_batch_search(
-        self,
-        query_embedding: np.ndarray,
-        candidate_embeddings: np.ndarray,
-        top_k: int
+        self, query_embedding: np.ndarray, candidate_embeddings: np.ndarray, top_k: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         CPU-basierte batch similarity search
         """
         # Kosinus-Ähnlichkeit berechnen
         similarities = np.dot(candidate_embeddings, query_embedding) / (
-            np.linalg.norm(candidate_embeddings, axis=1) * np.linalg.norm(query_embedding)
+            np.linalg.norm(candidate_embeddings, axis=1)
+            * np.linalg.norm(query_embedding)
         )
 
         # Top-K Indizes und Werte
@@ -475,6 +507,7 @@ class GPUBatchProcessor:
         if self.gpu_available:
             try:
                 import torch
+
                 if self.device == "cuda":
                     torch.cuda.empty_cache()
             except:
@@ -492,10 +525,7 @@ class AsyncBatchManager:
         self.task_lock = asyncio.Lock()
 
     async def submit_batch_task(
-        self,
-        task_id: str,
-        texts: List[str],
-        operation: str = "embed"
+        self, task_id: str, texts: List[str], operation: str = "embed"
     ) -> str:
         """
         Submit async batch task

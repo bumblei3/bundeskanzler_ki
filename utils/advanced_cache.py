@@ -3,20 +3,21 @@ Erweitertes Caching-System für Bundeskanzler-KI
 Unterstützt Memory, Redis, Filesystem-Cache mit TTL, Statistiken und Monitoring
 """
 
-import json
-import pickle
 import hashlib
-import time
-import threading
-import os
-from typing import Any, Dict, Optional, Union, Callable
-from datetime import datetime, timedelta
-from pathlib import Path
+import json
 import logging
+import os
+import pickle
+import threading
+import time
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
 from functools import wraps
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
+
 
 class CacheStats:
     """Cache-Statistiken und Monitoring"""
@@ -54,14 +55,14 @@ class CacheStats:
             total_requests = self.hits + self.misses
             hit_rate = (self.hits / total_requests * 100) if total_requests > 0 else 0
             return {
-                'hits': self.hits,
-                'misses': self.misses,
-                'sets': self.sets,
-                'deletes': self.deletes,
-                'errors': self.errors,
-                'total_requests': total_requests,
-                'hit_rate': hit_rate,
-                'miss_rate': 100 - hit_rate
+                "hits": self.hits,
+                "misses": self.misses,
+                "sets": self.sets,
+                "deletes": self.deletes,
+                "errors": self.errors,
+                "total_requests": total_requests,
+                "hit_rate": hit_rate,
+                "miss_rate": 100 - hit_rate,
             }
 
     def reset(self):
@@ -72,10 +73,13 @@ class CacheStats:
             self.deletes = 0
             self.errors = 0
 
+
 class CacheEntry:
     """Cache-Eintrag mit TTL und Metadaten"""
 
-    def __init__(self, value: Any, ttl: Optional[int] = None, metadata: Optional[Dict] = None):
+    def __init__(
+        self, value: Any, ttl: Optional[int] = None, metadata: Optional[Dict] = None
+    ):
         self.value = value
         self.created_at = time.time()
         self.ttl = ttl
@@ -97,26 +101,25 @@ class CacheEntry:
     def to_dict(self) -> Dict:
         """Konvertiert zu Dictionary für Serialisierung"""
         return {
-            'value': self.value,
-            'created_at': self.created_at,
-            'ttl': self.ttl,
-            'metadata': self.metadata,
-            'access_count': self.access_count,
-            'last_accessed': self.last_accessed
+            "value": self.value,
+            "created_at": self.created_at,
+            "ttl": self.ttl,
+            "metadata": self.metadata,
+            "access_count": self.access_count,
+            "last_accessed": self.last_accessed,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'CacheEntry':
+    def from_dict(cls, data: Dict) -> "CacheEntry":
         """Erstellt CacheEntry aus Dictionary"""
         entry = cls(
-            value=data['value'],
-            ttl=data['ttl'],
-            metadata=data.get('metadata', {})
+            value=data["value"], ttl=data["ttl"], metadata=data.get("metadata", {})
         )
-        entry.created_at = data['created_at']
-        entry.access_count = data.get('access_count', 0)
-        entry.last_accessed = data.get('last_accessed', entry.created_at)
+        entry.created_at = data["created_at"]
+        entry.access_count = data.get("access_count", 0)
+        entry.last_accessed = data.get("last_accessed", entry.created_at)
         return entry
+
 
 class CacheBackend(ABC):
     """Abstrakte Basisklasse für Cache-Backends"""
@@ -152,6 +155,7 @@ class CacheBackend(ABC):
     def get_stats(self) -> Dict[str, Any]:
         """Gibt Cache-Statistiken zurück"""
         return self.stats.get_stats()
+
 
 class MemoryCache(CacheBackend):
     """In-Memory Cache Backend"""
@@ -213,10 +217,10 @@ class MemoryCache(CacheBackend):
         if not self.cache:
             return
 
-        lru_key = min(self.cache.keys(),
-                     key=lambda k: self.cache[k].last_accessed)
+        lru_key = min(self.cache.keys(), key=lambda k: self.cache[k].last_accessed)
         del self.cache[lru_key]
         logger.debug(f"Evicted LRU key: {lru_key}")
+
 
 class FileSystemCache(CacheBackend):
     """Filesystem-basierter Cache"""
@@ -243,7 +247,7 @@ class FileSystemCache(CacheBackend):
             return None
 
         try:
-            with open(cache_path, 'rb') as f:
+            with open(cache_path, "rb") as f:
                 data = pickle.load(f)
 
             entry = CacheEntry.from_dict(data)
@@ -307,7 +311,7 @@ class FileSystemCache(CacheBackend):
             return False
 
         try:
-            with open(cache_path, 'rb') as f:
+            with open(cache_path, "rb") as f:
                 data = pickle.load(f)
             entry = CacheEntry.from_dict(data)
             return not entry.is_expired()
@@ -316,7 +320,7 @@ class FileSystemCache(CacheBackend):
 
     def _save_entry(self, path: Path, entry: CacheEntry):
         """Speichert CacheEntry in Datei"""
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             pickle.dump(entry.to_dict(), f)
 
     def _check_size_limit(self):
@@ -328,7 +332,7 @@ class FileSystemCache(CacheBackend):
                 cache_files = []
                 for f in self.cache_dir.rglob("*.cache"):
                     try:
-                        with open(f, 'rb') as file:
+                        with open(f, "rb") as file:
                             data = pickle.load(file)
                         entry = CacheEntry.from_dict(data)
                         cache_files.append((f, entry.last_accessed))
@@ -349,13 +353,21 @@ class FileSystemCache(CacheBackend):
         except Exception as e:
             logger.error(f"Size limit check error: {e}")
 
+
 class RedisCache(CacheBackend):
     """Redis-basierter Cache (optional)"""
 
-    def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0, password: Optional[str] = None):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 6379,
+        db: int = 0,
+        password: Optional[str] = None,
+    ):
         super().__init__()
         try:
             import redis
+
             self.redis = redis.Redis(host=host, port=port, db=db, password=password)
             self.redis.ping()  # Test connection
             self.available = True
@@ -377,7 +389,7 @@ class RedisCache(CacheBackend):
                 self.stats.miss()
                 return None
 
-            entry_dict = json.loads(data.decode('utf-8'))
+            entry_dict = json.loads(data.decode("utf-8"))
             entry = CacheEntry.from_dict(entry_dict)
 
             if entry.is_expired():
@@ -444,13 +456,16 @@ class RedisCache(CacheBackend):
             return False
         return bool(self.redis.exists(key))
 
+
 class MultiLevelCache:
     """Multi-Level Cache mit L1 (Memory) und L2 (Filesystem/Redis)"""
 
-    def __init__(self,
-                 l1_cache: Optional[CacheBackend] = None,
-                 l2_cache: Optional[CacheBackend] = None,
-                 enable_l2: bool = True):
+    def __init__(
+        self,
+        l1_cache: Optional[CacheBackend] = None,
+        l2_cache: Optional[CacheBackend] = None,
+        enable_l2: bool = True,
+    ):
         self.l1_cache = l1_cache or MemoryCache(max_size=500)
         self.l2_cache = l2_cache
         self.enable_l2 = enable_l2 and (l2_cache is not None)
@@ -477,7 +492,9 @@ class MultiLevelCache:
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         # Setze in L1
-        l1_success = self.l1_cache.set(key, value, ttl=min(ttl or 3600, 300))  # Max 5 Min in L1
+        l1_success = self.l1_cache.set(
+            key, value, ttl=min(ttl or 3600, 300)
+        )  # Max 5 Min in L1
 
         # Setze in L2 falls aktiviert
         l2_success = True
@@ -497,15 +514,16 @@ class MultiLevelCache:
         return l1_cleared and l2_cleared
 
     def has_key(self, key: str) -> bool:
-        return self.l1_cache.has_key(key) or (self.enable_l2 and self.l2_cache.has_key(key))
+        return self.l1_cache.has_key(key) or (
+            self.enable_l2 and self.l2_cache.has_key(key)
+        )
 
     def get_stats(self) -> Dict[str, Any]:
-        stats = {
-            'l1': self.l1_cache.get_stats()
-        }
+        stats = {"l1": self.l1_cache.get_stats()}
         if self.enable_l2:
-            stats['l2'] = self.l2_cache.get_stats()
+            stats["l2"] = self.l2_cache.get_stats()
         return stats
+
 
 class CacheManager:
     """Haupt-Cache-Manager für verschiedene Cache-Typen"""
@@ -514,29 +532,31 @@ class CacheManager:
         self.caches: Dict[str, MultiLevelCache] = {}
         self.lock = threading.RLock()
 
-    def create_cache(self,
-                    name: str,
-                    l1_size: int = 500,
-                    l2_type: str = 'filesystem',
-                    l2_config: Optional[Dict] = None) -> MultiLevelCache:
+    def create_cache(
+        self,
+        name: str,
+        l1_size: int = 500,
+        l2_type: str = "filesystem",
+        l2_config: Optional[Dict] = None,
+    ) -> MultiLevelCache:
         """Erstellt einen neuen Cache"""
 
         l1_cache = MemoryCache(max_size=l1_size)
         l2_cache = None
 
-        if l2_type == 'filesystem':
+        if l2_type == "filesystem":
             config = l2_config or {}
             l2_cache = FileSystemCache(
-                cache_dir=config.get('cache_dir', f'./cache/{name}'),
-                max_size_mb=config.get('max_size_mb', 500)
+                cache_dir=config.get("cache_dir", f"./cache/{name}"),
+                max_size_mb=config.get("max_size_mb", 500),
             )
-        elif l2_type == 'redis':
+        elif l2_type == "redis":
             config = l2_config or {}
             l2_cache = RedisCache(
-                host=config.get('host', 'localhost'),
-                port=config.get('port', 6379),
-                db=config.get('db', 0),
-                password=config.get('password')
+                host=config.get("host", "localhost"),
+                port=config.get("port", 6379),
+                db=config.get("db", 0),
+                password=config.get("password"),
             )
 
         cache = MultiLevelCache(l1_cache=l1_cache, l2_cache=l2_cache)
@@ -554,10 +574,14 @@ class CacheManager:
         with self.lock:
             return {name: cache.get_stats() for name, cache in self.caches.items()}
 
+
 # Globale Cache-Manager Instanz
 cache_manager = CacheManager()
 
-def cached(cache_name: str, ttl: Optional[int] = None, key_func: Optional[Callable] = None):
+
+def cached(
+    cache_name: str, ttl: Optional[int] = None, key_func: Optional[Callable] = None
+):
     """Decorator für automatische Cache-Funktionalität"""
 
     def decorator(func):
@@ -591,44 +615,47 @@ def cached(cache_name: str, ttl: Optional[int] = None, key_func: Optional[Callab
             return result
 
         return wrapper
+
     return decorator
+
 
 def initialize_caches():
     """Initialisiert Standard-Caches für die Bundeskanzler-KI"""
 
     # Model-Cache für vortrainierte Modelle
     cache_manager.create_cache(
-        'models',
+        "models",
         l1_size=10,  # Wenige Modelle im Memory
-        l2_type='filesystem',
-        l2_config={'cache_dir': './cache/models', 'max_size_mb': 2000}
+        l2_type="filesystem",
+        l2_config={"cache_dir": "./cache/models", "max_size_mb": 2000},
     )
 
     # Embedding-Cache für häufig verwendete Embeddings
     cache_manager.create_cache(
-        'embeddings',
+        "embeddings",
         l1_size=1000,
-        l2_type='filesystem',
-        l2_config={'cache_dir': './cache/embeddings', 'max_size_mb': 1000}
+        l2_type="filesystem",
+        l2_config={"cache_dir": "./cache/embeddings", "max_size_mb": 1000},
     )
 
     # API-Response-Cache für wiederholte Anfragen
     cache_manager.create_cache(
-        'api_responses',
+        "api_responses",
         l1_size=500,
-        l2_type='filesystem',
-        l2_config={'cache_dir': './cache/api_responses', 'max_size_mb': 500}
+        l2_type="filesystem",
+        l2_config={"cache_dir": "./cache/api_responses", "max_size_mb": 500},
     )
 
     # Translation-Cache für Übersetzungen
     cache_manager.create_cache(
-        'translations',
+        "translations",
         l1_size=2000,
-        l2_type='filesystem',
-        l2_config={'cache_dir': './cache/translations', 'max_size_mb': 200}
+        l2_type="filesystem",
+        l2_config={"cache_dir": "./cache/translations", "max_size_mb": 200},
     )
 
     logger.info("✅ Caching-System initialisiert")
+
 
 # Cache-Statistiken für Monitoring
 def get_cache_stats() -> Dict[str, Any]:

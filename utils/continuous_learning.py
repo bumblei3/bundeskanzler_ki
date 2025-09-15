@@ -4,29 +4,31 @@ Kontinuierliches Lernsystem für die Bundeskanzler KI
 Automatisches Training, Modell-Optimierung und Performance-Monitoring
 """
 
-import torch
+import json
+import logging
+import os
+import threading
+import time
+from datetime import datetime, timedelta
+from queue import Queue
+from typing import Dict, List, Optional, Tuple
+
+import GPUtil
+import numpy as np
+import psutil
 import tensorflow as tf
+import torch
+from datasets import Dataset, load_dataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-from datasets import Dataset, load_dataset
-import numpy as np
-import logging
-import os
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-import threading
-import time
-from queue import Queue
-import psutil
-import GPUtil
 
 logger = logging.getLogger(__name__)
+
 
 class ContinuousLearningSystem:
     """
@@ -54,7 +56,7 @@ class ContinuousLearningSystem:
             "max_steps": 1000,
             "save_steps": 500,
             "evaluation_steps": 250,
-            "warmup_steps": 100
+            "warmup_steps": 100,
         }
 
         # Monitoring
@@ -62,7 +64,7 @@ class ContinuousLearningSystem:
             "response_quality": [],
             "response_time": [],
             "user_satisfaction": [],
-            "model_accuracy": []
+            "model_accuracy": [],
         }
 
         # Starte Hintergrund-Threads
@@ -71,11 +73,15 @@ class ContinuousLearningSystem:
     def _start_background_threads(self):
         """Startet Hintergrund-Threads für kontinuierliches Lernen"""
         # Feedback-Verarbeitung
-        feedback_thread = threading.Thread(target=self._process_feedback_loop, daemon=True)
+        feedback_thread = threading.Thread(
+            target=self._process_feedback_loop, daemon=True
+        )
         feedback_thread.start()
 
         # Performance-Monitoring
-        monitoring_thread = threading.Thread(target=self._performance_monitoring_loop, daemon=True)
+        monitoring_thread = threading.Thread(
+            target=self._performance_monitoring_loop, daemon=True
+        )
         monitoring_thread.start()
 
         # Automatisches Training
@@ -91,11 +97,9 @@ class ContinuousLearningSystem:
         Args:
             interaction: Dictionary mit Interaktion-Daten
         """
-        self.feedback_queue.put({
-            "timestamp": datetime.now(),
-            "type": "user_feedback",
-            "data": interaction
-        })
+        self.feedback_queue.put(
+            {"timestamp": datetime.now(), "type": "user_feedback", "data": interaction}
+        )
 
     def record_performance_metric(self, metric_type: str, value: float):
         """
@@ -106,14 +110,15 @@ class ContinuousLearningSystem:
             value: Metrikwert
         """
         if metric_type in self.performance_metrics:
-            self.performance_metrics[metric_type].append({
-                "timestamp": datetime.now(),
-                "value": value
-            })
+            self.performance_metrics[metric_type].append(
+                {"timestamp": datetime.now(), "value": value}
+            )
 
             # Behalte nur die letzten 1000 Einträge
             if len(self.performance_metrics[metric_type]) > 1000:
-                self.performance_metrics[metric_type] = self.performance_metrics[metric_type][-1000:]
+                self.performance_metrics[metric_type] = self.performance_metrics[
+                    metric_type
+                ][-1000:]
 
     def _process_feedback_loop(self):
         """Verarbeitet kontinuierlich User-Feedback"""
@@ -171,7 +176,7 @@ class ContinuousLearningSystem:
                 "input": question,
                 "output": correct_response,
                 "source": "user_correction",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             # Speichere für späteres Training
@@ -188,11 +193,13 @@ class ContinuousLearningSystem:
                 model_metrics = self._collect_model_metrics()
 
                 # Speichere Metriken
-                self.performance_queue.put({
-                    "timestamp": datetime.now(),
-                    "system": system_metrics,
-                    "model": model_metrics
-                })
+                self.performance_queue.put(
+                    {
+                        "timestamp": datetime.now(),
+                        "system": system_metrics,
+                        "model": model_metrics,
+                    }
+                )
 
                 # Prüfe auf Performance-Probleme
                 self._check_performance_thresholds(system_metrics, model_metrics)
@@ -220,7 +227,7 @@ class ContinuousLearningSystem:
                         "gpu_usage": gpu.load * 100,
                         "gpu_memory_used": gpu.memoryUsed,
                         "gpu_memory_total": gpu.memoryTotal,
-                        "gpu_temperature": gpu.temperature
+                        "gpu_temperature": gpu.temperature,
                     }
             except:
                 pass
@@ -230,7 +237,7 @@ class ContinuousLearningSystem:
                 "memory_usage": memory.percent,
                 "memory_used_gb": memory.used / (1024**3),
                 "memory_available_gb": memory.available / (1024**3),
-                **gpu_metrics
+                **gpu_metrics,
             }
 
         except Exception as e:
@@ -283,7 +290,9 @@ class ContinuousLearningSystem:
         """Behandelt Performance-Alerts"""
         if "High CPU usage" in alert:
             # Reduziere Batch-Size oder erhöhe Wartezeiten
-            self.training_config["batch_size"] = max(1, self.training_config["batch_size"] // 2)
+            self.training_config["batch_size"] = max(
+                1, self.training_config["batch_size"] // 2
+            )
 
         elif "High memory usage" in alert:
             # Aktiviere Memory-Optimierung
@@ -328,15 +337,16 @@ class ContinuousLearningSystem:
         # 3. Modell ist älter als 7 Tage
 
         feedback_count = self.feedback_queue.qsize()
-        satisfaction_avg = np.mean([m["value"] for m in self.performance_metrics["user_satisfaction"][-50:]] or [4.0])
+        satisfaction_avg = np.mean(
+            [m["value"] for m in self.performance_metrics["user_satisfaction"][-50:]]
+            or [4.0]
+        )
 
         last_training = self._get_last_training_time()
         days_since_training = (datetime.now() - last_training).days
 
         return (
-            feedback_count >= 100 or
-            satisfaction_avg < 3.5 or
-            days_since_training >= 7
+            feedback_count >= 100 or satisfaction_avg < 3.5 or days_since_training >= 7
         )
 
     def _collect_training_data(self) -> List[Dict]:
@@ -349,11 +359,13 @@ class ContinuousLearningSystem:
             if feedback["type"] == "user_feedback":
                 data = feedback["data"]
                 if "correction" in data:
-                    training_data.append({
-                        "input": data["question"],
-                        "output": data["correction"],
-                        "source": "user_feedback"
-                    })
+                    training_data.append(
+                        {
+                            "input": data["question"],
+                            "output": data["correction"],
+                            "source": "user_feedback",
+                        }
+                    )
 
         return training_data
 
@@ -368,8 +380,18 @@ class ContinuousLearningSystem:
             tokenizer.pad_token = tokenizer.eos_token
 
             def tokenize_function(examples):
-                inputs = tokenizer(examples["input"], truncation=True, padding="max_length", max_length=512)
-                outputs = tokenizer(examples["output"], truncation=True, padding="max_length", max_length=512)
+                inputs = tokenizer(
+                    examples["input"],
+                    truncation=True,
+                    padding="max_length",
+                    max_length=512,
+                )
+                outputs = tokenizer(
+                    examples["output"],
+                    truncation=True,
+                    padding="max_length",
+                    max_length=512,
+                )
                 inputs["labels"] = outputs["input_ids"]
                 return inputs
 
@@ -385,14 +407,16 @@ class ContinuousLearningSystem:
                 output_dir=os.path.join(self.model_path, "checkpoints"),
                 num_train_epochs=1,
                 per_device_train_batch_size=self.training_config["batch_size"],
-                gradient_accumulation_steps=self.training_config["gradient_accumulation_steps"],
+                gradient_accumulation_steps=self.training_config[
+                    "gradient_accumulation_steps"
+                ],
                 learning_rate=self.training_config["learning_rate"],
                 warmup_steps=self.training_config["warmup_steps"],
                 save_steps=self.training_config["save_steps"],
                 evaluation_steps=self.training_config["evaluation_steps"],
                 save_total_limit=3,
                 load_best_model_at_end=True,
-                metric_for_best_model="loss"
+                metric_for_best_model="loss",
             )
 
             # Trainer
@@ -400,7 +424,9 @@ class ContinuousLearningSystem:
                 model=model,
                 args=training_args,
                 train_dataset=tokenized_dataset,
-                data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+                data_collator=DataCollatorForLanguageModeling(
+                    tokenizer=tokenizer, mlm=False
+                ),
             )
 
             # Training
@@ -421,7 +447,7 @@ class ContinuousLearningSystem:
         self.model_versions[self.current_version] = {
             "created": datetime.now().isoformat(),
             "training_data_size": len(self._collect_training_data()),
-            "base_version": self.current_version - 1
+            "base_version": self.current_version - 1,
         }
 
         self._save_model_versions()
@@ -440,7 +466,13 @@ class ContinuousLearningSystem:
         if os.path.exists(versions_file):
             with open(versions_file, "r") as f:
                 return json.load(f)
-        return {1: {"created": datetime.now().isoformat(), "training_data_size": 0, "base_version": None}}
+        return {
+            1: {
+                "created": datetime.now().isoformat(),
+                "training_data_size": 0,
+                "base_version": None,
+            }
+        }
 
     def _save_model_versions(self):
         """Speichert Modell-Versionen"""
@@ -476,8 +508,10 @@ class ContinuousLearningSystem:
         # Implementierung von Response-Time-Optimierungen
         # z.B. Modell-Quantisierung, Caching, etc.
 
+
 # Globale Instanz für kontinuierliches Lernen
 continuous_learning_system = ContinuousLearningSystem()
+
 
 def get_continuous_learning_system():
     """Gibt die globale Instanz des kontinuierlichen Lernsystems zurück"""

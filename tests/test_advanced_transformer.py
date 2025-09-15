@@ -4,19 +4,21 @@ Test script for the AdvancedTransformerModel
 Tests basic functionality of GPT-2, BERT, and RoBERTa models
 """
 
-import sys
 import os
-sys.path.append('/home/tobber/bkki_venv')
+import sys
 
-from advanced_transformer_model import AdvancedTransformerModel
+sys.path.append("/home/tobber/bkki_venv")
+
 import torch
+from advanced_transformer_model import AdvancedTransformerModel
+
 
 def test_gpt2_model():
     """Test GPT-2 model loading and text generation"""
     print("Testing GPT-2 model...")
 
     try:
-        model = AdvancedTransformerModel(model_type='gpt2')
+        model = AdvancedTransformerModel(model_type="gpt2")
         print("✓ GPT-2 model loaded successfully")
 
         # Test text generation
@@ -33,12 +35,13 @@ def test_gpt2_model():
         print(f"✗ GPT-2 test failed: {e}")
         return False
 
+
 def test_bert_model():
     """Test BERT model loading and functionality"""
     print("\nTesting BERT model...")
 
     try:
-        model = AdvancedTransformerModel(model_type='bert')
+        model = AdvancedTransformerModel(model_type="bert")
         print("✓ BERT model loaded successfully")
 
         # Test embedding extraction
@@ -51,12 +54,13 @@ def test_bert_model():
         print(f"✗ BERT test failed: {e}")
         return False
 
+
 def test_roberta_model():
     """Test RoBERTa model loading and functionality"""
     print("\nTesting RoBERTa model...")
 
     try:
-        model = AdvancedTransformerModel(model_type='roberta')
+        model = AdvancedTransformerModel(model_type="roberta")
         print("✓ RoBERTa model loaded successfully")
 
         # Test embedding extraction
@@ -69,12 +73,13 @@ def test_roberta_model():
         print(f"✗ RoBERTa test failed: {e}")
         return False
 
+
 def test_hybrid_model():
     """Test hybrid model creation"""
     print("\nTesting hybrid model creation...")
 
     try:
-        model = AdvancedTransformerModel(model_type='hybrid')
+        model = AdvancedTransformerModel(model_type="hybrid")
         print("✓ Hybrid model created successfully")
 
         # Test with sample text
@@ -87,6 +92,7 @@ def test_hybrid_model():
         print(f"✗ Hybrid model test failed: {e}")
         return False
 
+
 def main():
     """Run all tests"""
     print("🚀 Starting Advanced Transformer Model Tests")
@@ -97,12 +103,7 @@ def main():
     if torch.cuda.is_available():
         print(f"CUDA device: {torch.cuda.get_device_name()}")
 
-    tests = [
-        test_gpt2_model,
-        test_bert_model,
-        test_roberta_model,
-        test_hybrid_model
-    ]
+    tests = [test_gpt2_model, test_bert_model, test_roberta_model, test_hybrid_model]
 
     passed = 0
     total = len(tests)
@@ -120,6 +121,7 @@ def main():
     else:
         print("⚠️  Some tests failed. Check the output above.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

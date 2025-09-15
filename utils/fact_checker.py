@@ -3,38 +3,46 @@ Faktenprüfung und Quellenvalidierung für die Bundeskanzler KI
 Implementiert Faktenvalidierung, Bias-Erkennung und Quellenbewertung
 """
 
-import re
-import json
-import requests
-from typing import Dict, List, Optional, Tuple, Any
-from datetime import datetime, timedelta
-import logging
-from dataclasses import dataclass
-from urllib.parse import urlparse
 import hashlib
+import json
+import logging
+import re
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
+
+import requests
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class FactCheckResult:
     """Ergebnis einer Faktenprüfung"""
+
     statement: str
     confidence_score: float  # 0.0 - 1.0
     sources: List[Dict[str, Any]]
     bias_score: float  # -1.0 (links) bis +1.0 (rechts)
-    verification_status: str  # "verified", "partially_verified", "unverified", "contradicted"
+    verification_status: (
+        str  # "verified", "partially_verified", "unverified", "contradicted"
+    )
     explanation: str
     timestamp: datetime
+
 
 @dataclass
 class SourceCredibility:
     """Bewertung der Glaubwürdigkeit einer Quelle"""
+
     domain: str
     credibility_score: float  # 0.0 - 1.0
     political_bias: float  # -1.0 bis +1.0
     fact_checking_rating: float  # 0.0 - 1.0
     last_updated: datetime
     category: str  # "government", "media", "academic", "ngo", etc.
+
 
 class FactChecker:
     """
@@ -47,14 +55,29 @@ class FactChecker:
 
         # Politische Bias-Indikatoren (vereinfacht)
         self.bias_indicators = {
-            'left_bias': [
-                'sozial', 'gerechtigkeit', 'umwelt', 'klima', 'gleichheit',
-                'migration', 'asyl', 'antirassismus', 'inklusion', 'diversität'
+            "left_bias": [
+                "sozial",
+                "gerechtigkeit",
+                "umwelt",
+                "klima",
+                "gleichheit",
+                "migration",
+                "asyl",
+                "antirassismus",
+                "inklusion",
+                "diversität",
             ],
-            'right_bias': [
-                'sicherheit', 'ordnung', 'tradition', 'nation', 'grenze',
-                'wirtschaftsfreiheit', 'eigenverantwortung', 'leistung', 'disziplin'
-            ]
+            "right_bias": [
+                "sicherheit",
+                "ordnung",
+                "tradition",
+                "nation",
+                "grenze",
+                "wirtschaftsfreiheit",
+                "eigenverantwortung",
+                "leistung",
+                "disziplin",
+            ],
         }
 
         # Vertrauenswürdige Quellen für Cross-Referencing
@@ -71,20 +94,21 @@ class FactChecker:
             "spiegel.de",
             "welt.de",
             "tagesschau.de",
-            "dw.com"
+            "dw.com",
         ]
 
     def _load_source_credibility(self) -> Dict[str, SourceCredibility]:
         """Lädt die Quellen-Glaubwürdigkeitsdatenbank"""
         try:
-            with open(self.credibility_db_path, 'r', encoding='utf-8') as f:
+            with open(self.credibility_db_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {
-                    domain: SourceCredibility(**info)
-                    for domain, info in data.items()
+                    domain: SourceCredibility(**info) for domain, info in data.items()
                 }
         except FileNotFoundError:
-            logger.warning(f"Credibility database not found: {self.credibility_db_path}")
+            logger.warning(
+                f"Credibility database not found: {self.credibility_db_path}"
+            )
             return self._create_default_credibility_db()
 
     def _create_default_credibility_db(self) -> Dict[str, SourceCredibility]:
@@ -96,7 +120,7 @@ class FactChecker:
                 "political_bias": 0.0,
                 "fact_checking_rating": 0.9,
                 "last_updated": datetime.now().isoformat(),
-                "category": "government"
+                "category": "government",
             },
             "bundestag.de": {
                 "domain": "bundestag.de",
@@ -104,7 +128,7 @@ class FactChecker:
                 "political_bias": 0.0,
                 "fact_checking_rating": 0.9,
                 "last_updated": datetime.now().isoformat(),
-                "category": "government"
+                "category": "government",
             },
             "destatis.de": {
                 "domain": "destatis.de",
@@ -112,7 +136,7 @@ class FactChecker:
                 "political_bias": 0.0,
                 "fact_checking_rating": 0.95,
                 "last_updated": datetime.now().isoformat(),
-                "category": "government"
+                "category": "government",
             },
             "zeit.de": {
                 "domain": "zeit.de",
@@ -120,7 +144,7 @@ class FactChecker:
                 "political_bias": -0.2,
                 "fact_checking_rating": 0.8,
                 "last_updated": datetime.now().isoformat(),
-                "category": "media"
+                "category": "media",
             },
             "faz.net": {
                 "domain": "faz.net",
@@ -128,7 +152,7 @@ class FactChecker:
                 "political_bias": 0.1,
                 "fact_checking_rating": 0.75,
                 "last_updated": datetime.now().isoformat(),
-                "category": "media"
+                "category": "media",
             },
             "spiegel.de": {
                 "domain": "spiegel.de",
@@ -136,7 +160,7 @@ class FactChecker:
                 "political_bias": -0.3,
                 "fact_checking_rating": 0.7,
                 "last_updated": datetime.now().isoformat(),
-                "category": "media"
+                "category": "media",
             },
             "welt.de": {
                 "domain": "welt.de",
@@ -144,12 +168,12 @@ class FactChecker:
                 "political_bias": 0.4,
                 "fact_checking_rating": 0.65,
                 "last_updated": datetime.now().isoformat(),
-                "category": "media"
-            }
+                "category": "media",
+            },
         }
 
         # Speichere die Standarddatenbank
-        with open(self.credibility_db_path, 'w', encoding='utf-8') as f:
+        with open(self.credibility_db_path, "w", encoding="utf-8") as f:
             json.dump(default_sources, f, indent=2, ensure_ascii=False)
 
         return {
@@ -157,7 +181,9 @@ class FactChecker:
             for domain, info in default_sources.items()
         }
 
-    def check_fact(self, statement: str, context: Optional[Dict[str, Any]] = None) -> FactCheckResult:
+    def check_fact(
+        self, statement: str, context: Optional[Dict[str, Any]] = None
+    ) -> FactCheckResult:
         """
         Führt eine umfassende Faktenprüfung durch
         """
@@ -173,10 +199,14 @@ class FactChecker:
         confidence_score = self._calculate_confidence(statement, sources, bias_score)
 
         # 4. Verifikationsstatus bestimmen
-        verification_status = self._determine_verification_status(confidence_score, sources)
+        verification_status = self._determine_verification_status(
+            confidence_score, sources
+        )
 
         # 5. Erklärung generieren
-        explanation = self._generate_explanation(verification_status, confidence_score, bias_score, sources)
+        explanation = self._generate_explanation(
+            verification_status, confidence_score, bias_score, sources
+        )
 
         return FactCheckResult(
             statement=statement,
@@ -185,7 +215,7 @@ class FactChecker:
             bias_score=bias_score,
             verification_status=verification_status,
             explanation=explanation,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
     def _analyze_bias(self, statement: str) -> float:
@@ -199,10 +229,10 @@ class FactChecker:
         right_score = 0
 
         # Zähle Bias-Indikatoren
-        for word in self.bias_indicators['left_bias']:
+        for word in self.bias_indicators["left_bias"]:
             left_score += statement_lower.count(word)
 
-        for word in self.bias_indicators['right_bias']:
+        for word in self.bias_indicators["right_bias"]:
             right_score += statement_lower.count(word)
 
         total_indicators = left_score + right_score
@@ -229,22 +259,63 @@ class FactChecker:
             sources.extend(mock_sources)
 
         # Filtere und sortiere Quellen nach Relevanz
-        sources = sorted(sources, key=lambda x: x.get('relevance_score', 0), reverse=True)
+        sources = sorted(
+            sources, key=lambda x: x.get("relevance_score", 0), reverse=True
+        )
         return sources[:5]  # Maximal 5 Quellen
 
     def _extract_keywords(self, statement: str) -> List[str]:
         """Extrahiert Schlüsselwörter aus der Aussage"""
         # Entferne Stoppwörter und extrahiere wichtige Begriffe
-        stopwords = {'der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einer', 'eines',
-                    'und', 'oder', 'aber', 'doch', 'weil', 'da', 'als', 'wie', 'so', 'dass',
-                    'ist', 'sind', 'war', 'waren', 'wird', 'werden', 'hat', 'haben', 'hatte'}
+        stopwords = {
+            "der",
+            "die",
+            "das",
+            "den",
+            "dem",
+            "des",
+            "ein",
+            "eine",
+            "einer",
+            "eines",
+            "und",
+            "oder",
+            "aber",
+            "doch",
+            "weil",
+            "da",
+            "als",
+            "wie",
+            "so",
+            "dass",
+            "ist",
+            "sind",
+            "war",
+            "waren",
+            "wird",
+            "werden",
+            "hat",
+            "haben",
+            "hatte",
+        }
 
-        words = re.findall(r'\b\w+\b', statement.lower())
+        words = re.findall(r"\b\w+\b", statement.lower())
         keywords = [word for word in words if len(word) > 3 and word not in stopwords]
 
         # Priorisiere politische und wirtschaftliche Begriffe
-        priority_terms = {'regierung', 'bundeskanzler', 'politik', 'wirtschaft', 'europa',
-                         'klima', 'energie', 'digital', 'bildung', 'gesundheit', 'migration'}
+        priority_terms = {
+            "regierung",
+            "bundeskanzler",
+            "politik",
+            "wirtschaft",
+            "europa",
+            "klima",
+            "energie",
+            "digital",
+            "bildung",
+            "gesundheit",
+            "migration",
+        }
 
         priority_keywords = [kw for kw in keywords if kw in priority_terms]
         other_keywords = [kw for kw in keywords if kw not in priority_terms]
@@ -262,7 +333,7 @@ class FactChecker:
                 "credibility_score": 0.95,
                 "relevance_score": 0.9,
                 "publication_date": (datetime.now() - timedelta(days=30)).isoformat(),
-                "summary": f"Offizielle Informationen der Bundesregierung zu {keyword}."
+                "summary": f"Offizielle Informationen der Bundesregierung zu {keyword}.",
             },
             {
                 "title": f"Analyse: {keyword.title()} in Deutschland",
@@ -271,14 +342,20 @@ class FactChecker:
                 "credibility_score": 0.85,
                 "relevance_score": 0.7,
                 "publication_date": (datetime.now() - timedelta(days=15)).isoformat(),
-                "summary": f"Journalistische Analyse zu {keyword}."
-            }
+                "summary": f"Journalistische Analyse zu {keyword}.",
+            },
         ]
 
         # Filtere nach verfügbaren Domains
-        return [source for source in mock_sources if source['domain'] in self.source_credibility]
+        return [
+            source
+            for source in mock_sources
+            if source["domain"] in self.source_credibility
+        ]
 
-    def _calculate_confidence(self, statement: str, sources: List[Dict], bias_score: float) -> float:
+    def _calculate_confidence(
+        self, statement: str, sources: List[Dict], bias_score: float
+    ) -> float:
         """
         Berechnet einen Confidence-Score für die Aussage
         """
@@ -286,7 +363,7 @@ class FactChecker:
             return 0.3  # Niedrige Confidence ohne Quellen
 
         # Basis-Confidence aus Quellen-Glaubwürdigkeit
-        credibility_scores = [s.get('credibility_score', 0.5) for s in sources]
+        credibility_scores = [s.get("credibility_score", 0.5) for s in sources]
         avg_credibility = sum(credibility_scores) / len(credibility_scores)
 
         # Anzahl der Quellen berücksichtigen
@@ -295,11 +372,15 @@ class FactChecker:
         # Bias berücksichtigen (neutrale Aussagen sind vertrauenswürdiger)
         bias_penalty = abs(bias_score) * 0.2
 
-        confidence = (avg_credibility * 0.6) + (source_count_factor * 0.3) + (0.1 - bias_penalty)
+        confidence = (
+            (avg_credibility * 0.6) + (source_count_factor * 0.3) + (0.1 - bias_penalty)
+        )
 
         return max(0.0, min(1.0, confidence))
 
-    def _determine_verification_status(self, confidence: float, sources: List[Dict]) -> str:
+    def _determine_verification_status(
+        self, confidence: float, sources: List[Dict]
+    ) -> str:
         """Bestimmt den Verifikationsstatus"""
         if confidence >= 0.8 and len(sources) >= 2:
             return "verified"
@@ -310,18 +391,19 @@ class FactChecker:
         else:
             return "contradicted"
 
-    def _generate_explanation(self, status: str, confidence: float,
-                            bias_score: float, sources: List[Dict]) -> str:
+    def _generate_explanation(
+        self, status: str, confidence: float, bias_score: float, sources: List[Dict]
+    ) -> str:
         """Generiert eine Erklärung für das Faktenprüfungsergebnis"""
         explanations = {
             "verified": f"Diese Aussage ist gut belegt (Konfidenz: {confidence:.1f}). "
-                       f"Sie wurde von {len(sources)} vertrauenswürdigen Quellen bestätigt.",
+            f"Sie wurde von {len(sources)} vertrauenswürdigen Quellen bestätigt.",
             "partially_verified": f"Diese Aussage ist teilweise belegt (Konfidenz: {confidence:.1f}). "
-                                f"Es gibt einige Quellen, aber weitere Überprüfung wäre ratsam.",
+            f"Es gibt einige Quellen, aber weitere Überprüfung wäre ratsam.",
             "unverified": f"Diese Aussage konnte nicht ausreichend überprüft werden (Konfidenz: {confidence:.1f}). "
-                         f"Es fehlen verlässliche Quellen oder Daten.",
+            f"Es fehlen verlässliche Quellen oder Daten.",
             "contradicted": f"Diese Aussage widerspricht verfügbaren Informationen (Konfidenz: {confidence:.1f}). "
-                           f"Bitte überprüfen Sie die Fakten."
+            f"Bitte überprüfen Sie die Fakten.",
         }
 
         explanation = explanations.get(status, "Faktenprüfung nicht möglich.")
@@ -347,13 +429,15 @@ class FactChecker:
         for statement in statements:
             if len(statement.strip()) > 10:  # Nur substantielle Aussagen prüfen
                 result = self.check_fact(statement)
-                validation_results.append({
-                    "statement": statement,
-                    "confidence": result.confidence_score,
-                    "bias": result.bias_score,
-                    "status": result.verification_status,
-                    "explanation": result.explanation
-                })
+                validation_results.append(
+                    {
+                        "statement": statement,
+                        "confidence": result.confidence_score,
+                        "bias": result.bias_score,
+                        "status": result.verification_status,
+                        "explanation": result.explanation,
+                    }
+                )
                 overall_confidence += result.confidence_score
                 overall_bias += result.bias_score
 
@@ -365,13 +449,15 @@ class FactChecker:
             "overall_confidence": overall_confidence,
             "overall_bias": overall_bias,
             "statement_validations": validation_results,
-            "recommendations": self._generate_recommendations(overall_confidence, overall_bias)
+            "recommendations": self._generate_recommendations(
+                overall_confidence, overall_bias
+            ),
         }
 
     def _split_into_statements(self, text: str) -> List[str]:
         """Teilt Text in einzelne Aussagen auf"""
         # Einfache Aufteilung an Satzenden
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
         return [s.strip() for s in sentences if s.strip()]
 
     def _generate_recommendations(self, confidence: float, bias: float) -> List[str]:
@@ -379,7 +465,9 @@ class FactChecker:
         recommendations = []
 
         if confidence < 0.7:
-            recommendations.append("Fügen Sie mehr spezifische Fakten und Quellen hinzu.")
+            recommendations.append(
+                "Fügen Sie mehr spezifische Fakten und Quellen hinzu."
+            )
             recommendations.append("Vermeiden Sie vage Formulierungen.")
 
         if abs(bias) > 0.4:
@@ -387,6 +475,12 @@ class FactChecker:
             recommendations.append("Berücksichtigen Sie verschiedene Perspektiven.")
 
         if confidence < 0.5:
-            recommendations.append("Diese Antwort sollte mit offiziellen Quellen überprüft werden.")
+            recommendations.append(
+                "Diese Antwort sollte mit offiziellen Quellen überprüft werden."
+            )
 
-        return recommendations if recommendations else ["Die Antwort scheint gut fundiert zu sein."]
+        return (
+            recommendations
+            if recommendations
+            else ["Die Antwort scheint gut fundiert zu sein."]
+        )

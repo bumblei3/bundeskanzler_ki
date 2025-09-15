@@ -3,30 +3,37 @@ Multilingual Bundeskanzler KI - Mehrsprachige Unterstützung
 Erweitert die Bundeskanzler KI um Unterstützung für Deutsch, Englisch und Französisch.
 """
 
-import os
-import sys
 import logging
-from typing import Dict, List, Optional, Tuple, Any
-from datetime import datetime
-import time
+import os
 
 # Bestehende KI importieren
 import sys
-sys.path.append('/home/tobber/bkki_venv/core')
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+sys.path.append("/home/tobber/bkki_venv/core")
+from bundeskanzler_ki import detect_language as legacy_detect_language
 from bundeskanzler_ki import (
-    setup_model, generate_response, preprocess,
-    detect_language as legacy_detect_language
+    generate_response,
+    preprocess,
+    setup_model,
 )
 
 # Mehrsprachige Services importieren
-from language_detection import detect_language, get_supported_languages, is_language_supported
-from translation_service import TranslationService
+from language_detection import (
+    detect_language,
+    get_supported_languages,
+    is_language_supported,
+)
 
 # Multimodale KI für erweiterte Features
 from multimodal_ki import MultimodalTransformerModel
+from translation_service import TranslationService
 
 # Debug-System
-from webgui_ki import DebugSystem, DebugLevel
+from webgui_ki import DebugLevel, DebugSystem
+
 
 class MultilingualBundeskanzlerKI:
     """
@@ -34,7 +41,7 @@ class MultilingualBundeskanzlerKI:
     Unterstützt Deutsch, Englisch und Französisch mit automatischer Übersetzung.
     """
 
-    def __init__(self, model_tier: str = 'rtx2070', debug: bool = True):
+    def __init__(self, model_tier: str = "rtx2070", debug: bool = True):
         """
         Initialisiert die mehrsprachige KI.
 
@@ -61,19 +68,31 @@ class MultilingualBundeskanzlerKI:
         self.logger = logging.getLogger(__name__)
 
         if self.debug_system:
-            self.debug_system.log(DebugLevel.INFO, "Multilingual Bundeskanzler KI initialisiert")
-            self.debug_system.log(DebugLevel.INFO, f"Unterstützte Sprachen: {list(self.supported_languages.keys())}")
+            self.debug_system.log(
+                DebugLevel.INFO, "Multilingual Bundeskanzler KI initialisiert"
+            )
+            self.debug_system.log(
+                DebugLevel.INFO,
+                f"Unterstützte Sprachen: {list(self.supported_languages.keys())}",
+            )
 
     def initialize_multimodal_model(self):
         """Initialisiert das multimodale Modell für erweiterte Features."""
         try:
             if self.debug_system:
-                self.debug_system.log(DebugLevel.INFO, f"Initialisiere multimodales Modell (Tier: {self.model_tier})")
+                self.debug_system.log(
+                    DebugLevel.INFO,
+                    f"Initialisiere multimodales Modell (Tier: {self.model_tier})",
+                )
 
-            self.multimodal_model = MultimodalTransformerModel(model_tier=self.model_tier)
+            self.multimodal_model = MultimodalTransformerModel(
+                model_tier=self.model_tier
+            )
 
             if self.debug_system:
-                self.debug_system.log(DebugLevel.SUCCESS, "Multimodales Modell erfolgreich initialisiert")
+                self.debug_system.log(
+                    DebugLevel.SUCCESS, "Multimodales Modell erfolgreich initialisiert"
+                )
 
         except Exception as e:
             error_msg = f"Fehler beim Initialisieren des multimodalen Modells: {e}"
@@ -95,7 +114,9 @@ class MultilingualBundeskanzlerKI:
             detected_lang = detect_language(text)
 
             if self.debug_system:
-                self.debug_system.log(DebugLevel.INFO, f"Sprache erkannt: {detected_lang}")
+                self.debug_system.log(
+                    DebugLevel.INFO, f"Sprache erkannt: {detected_lang}"
+                )
 
             return detected_lang
 
@@ -104,7 +125,7 @@ class MultilingualBundeskanzlerKI:
             self.logger.error(error_msg)
             if self.debug_system:
                 self.debug_system.log(DebugLevel.ERROR, error_msg)
-            return 'unknown'
+            return "unknown"
 
     def translate_text(self, text: str, source_lang: str, target_lang: str) -> str:
         """
@@ -122,11 +143,15 @@ class MultilingualBundeskanzlerKI:
             if source_lang == target_lang:
                 return text
 
-            translated = self.translation_service.translate(text, source_lang, target_lang)
+            translated = self.translation_service.translate(
+                text, source_lang, target_lang
+            )
 
             if self.debug_system:
-                self.debug_system.log(DebugLevel.INFO,
-                    f"Übersetzung: {source_lang} -> {target_lang} ({len(text)} -> {len(translated)} Zeichen)")
+                self.debug_system.log(
+                    DebugLevel.INFO,
+                    f"Übersetzung: {source_lang} -> {target_lang} ({len(text)} -> {len(translated)} Zeichen)",
+                )
 
             return translated
 
@@ -137,7 +162,9 @@ class MultilingualBundeskanzlerKI:
                 self.debug_system.log(DebugLevel.ERROR, error_msg)
             return text  # Fallback: Originaltext zurückgeben
 
-    def process_multilingual_query(self, query: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+    def process_multilingual_query(
+        self, query: str, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Verarbeitet eine mehrsprachige Anfrage.
 
@@ -161,13 +188,18 @@ class MultilingualBundeskanzlerKI:
             detected_lang = self.detect_language(query)
 
             if self.debug_system:
-                self.debug_system.log(DebugLevel.INFO, f"Verarbeite Anfrage in Sprache: {detected_lang}")
+                self.debug_system.log(
+                    DebugLevel.INFO, f"Verarbeite Anfrage in Sprache: {detected_lang}"
+                )
 
             # 2. Übersetze nach Deutsch falls nötig
-            if detected_lang != 'de' and detected_lang != 'unknown':
-                query_de = self.translate_text(query, detected_lang, 'de')
+            if detected_lang != "de" and detected_lang != "unknown":
+                query_de = self.translate_text(query, detected_lang, "de")
                 if self.debug_system:
-                    self.debug_system.log(DebugLevel.INFO, f"Anfrage übersetzt nach Deutsch: {len(query_de)} Zeichen")
+                    self.debug_system.log(
+                        DebugLevel.INFO,
+                        f"Anfrage übersetzt nach Deutsch: {len(query_de)} Zeichen",
+                    )
             else:
                 query_de = query
 
@@ -180,29 +212,36 @@ class MultilingualBundeskanzlerKI:
                 response_de = generate_response(query_de, user_id=user_id)
 
             # 4. Übersetze Antwort zurück in Originalsprache falls nötig
-            if detected_lang != 'de' and detected_lang != 'unknown':
-                response_original = self.translate_text(response_de, 'de', detected_lang)
+            if detected_lang != "de" and detected_lang != "unknown":
+                response_original = self.translate_text(
+                    response_de, "de", detected_lang
+                )
                 if self.debug_system:
-                    self.debug_system.log(DebugLevel.INFO, f"Antwort übersetzt nach {detected_lang}: {len(response_original)} Zeichen")
+                    self.debug_system.log(
+                        DebugLevel.INFO,
+                        f"Antwort übersetzt nach {detected_lang}: {len(response_original)} Zeichen",
+                    )
             else:
                 response_original = response_de
 
             # 5. Metadaten sammeln
             processing_time = time.time() - start_time
             result = {
-                'response': response_original,
-                'detected_language': detected_lang,
-                'original_query': query,
-                'german_query': query_de,
-                'german_response': response_de,
-                'processing_time': processing_time,
-                'supported_languages': list(self.supported_languages.keys()),
-                'translation_used': detected_lang != 'de'
+                "response": response_original,
+                "detected_language": detected_lang,
+                "original_query": query,
+                "german_query": query_de,
+                "german_response": response_de,
+                "processing_time": processing_time,
+                "supported_languages": list(self.supported_languages.keys()),
+                "translation_used": detected_lang != "de",
             }
 
             if self.debug_system:
-                self.debug_system.log(DebugLevel.SUCCESS,
-                    f"Anfrage erfolgreich verarbeitet in {processing_time:.2f}s")
+                self.debug_system.log(
+                    DebugLevel.SUCCESS,
+                    f"Anfrage erfolgreich verarbeitet in {processing_time:.2f}s",
+                )
 
             return result
 
@@ -217,17 +256,17 @@ class MultilingualBundeskanzlerKI:
             try:
                 fallback_response = generate_response(query, user_id=user_id)
                 return {
-                    'response': fallback_response,
-                    'detected_language': 'unknown',
-                    'error': str(e),
-                    'fallback_used': True
+                    "response": fallback_response,
+                    "detected_language": "unknown",
+                    "error": str(e),
+                    "fallback_used": True,
                 }
             except Exception as fallback_error:
                 return {
-                    'response': 'Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.',
-                    'detected_language': 'unknown',
-                    'error': str(e),
-                    'fallback_error': str(fallback_error)
+                    "response": "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
+                    "detected_language": "unknown",
+                    "error": str(e),
+                    "fallback_error": str(fallback_error),
                 }
 
     def get_supported_languages_info(self) -> Dict[str, str]:
@@ -247,20 +286,23 @@ class MultilingualBundeskanzlerKI:
             Debug-Informationen als Dictionary
         """
         if not self.debug_system:
-            return {'debug_disabled': True}
+            return {"debug_disabled": True}
 
         return {
-            'messages': self.debug_system.messages,
-            'api_calls': self.debug_system.api_calls,
-            'message_count': len(self.debug_system.messages),
-            'api_call_count': len(self.debug_system.api_calls)
+            "messages": self.debug_system.messages,
+            "api_calls": self.debug_system.api_calls,
+            "message_count": len(self.debug_system.messages),
+            "api_call_count": len(self.debug_system.api_calls),
         }
 
 
 # Globale Instanz für einfachen Zugriff
 _multilingual_ki_instance = None
 
-def get_multilingual_ki(model_tier: str = 'rtx2070', debug: bool = True) -> MultilingualBundeskanzlerKI:
+
+def get_multilingual_ki(
+    model_tier: str = "rtx2070", debug: bool = True
+) -> MultilingualBundeskanzlerKI:
     """
     Gibt eine globale Instanz der mehrsprachigen KI zurück.
 
@@ -274,12 +316,16 @@ def get_multilingual_ki(model_tier: str = 'rtx2070', debug: bool = True) -> Mult
     global _multilingual_ki_instance
 
     if _multilingual_ki_instance is None:
-        _multilingual_ki_instance = MultilingualBundeskanzlerKI(model_tier=model_tier, debug=debug)
+        _multilingual_ki_instance = MultilingualBundeskanzlerKI(
+            model_tier=model_tier, debug=debug
+        )
 
     return _multilingual_ki_instance
 
 
-def multilingual_query(query: str, user_id: Optional[str] = None, model_tier: str = 'rtx2070') -> Dict[str, Any]:
+def multilingual_query(
+    query: str, user_id: Optional[str] = None, model_tier: str = "rtx2070"
+) -> Dict[str, Any]:
     """
     Convenience-Funktion für mehrsprachige Anfragen.
 
@@ -305,7 +351,7 @@ if __name__ == "__main__":
     test_queries = [
         "Was ist die Klimapolitik der Bundesregierung?",
         "What is the climate policy of the German government?",
-        "Quelle est la politique climatique du gouvernement fédéral allemand?"
+        "Quelle est la politique climatique du gouvernement fédéral allemand?",
     ]
 
     for query in test_queries:

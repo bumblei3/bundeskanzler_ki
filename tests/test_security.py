@@ -1,10 +1,12 @@
 """
 Security-Tests für die Bundeskanzler KI API
 """
-import pytest
-from fastapi.testclient import TestClient
-from bundeskanzler_api import app
+
 import json
+
+import pytest
+from bundeskanzler_api import app
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -25,7 +27,9 @@ class TestAuthenticationSecurity:
     def test_chat_requires_authentication(self, client):
         """Chat-Endpoint sollte Authentifizierung erfordern"""
         response = client.post("/chat", json={"message": "Test"})
-        assert response.status_code == 403  # API gibt 403 für nicht authentifizierte Requests zurück
+        assert (
+            response.status_code == 403
+        )  # API gibt 403 für nicht authentifizierte Requests zurück
 
     def test_invalid_token_rejected(self, client):
         """Ungültige Tokens sollten abgelehnt werden"""
@@ -37,6 +41,7 @@ class TestAuthenticationSecurity:
         """Admin-Endpunkte sollten Admin-Token erfordern"""
         # Erstelle normalen User-Token
         from bundeskanzler_api import create_access_token
+
         user_token = create_access_token(data={"sub": "test_user"})
 
         headers = {"Authorization": f"Bearer {user_token}"}
@@ -46,6 +51,7 @@ class TestAuthenticationSecurity:
     def test_admin_token_allows_admin_access(self, client):
         """Admin-Token sollte Admin-Zugang erlauben"""
         from bundeskanzler_api import create_admin_token
+
         admin_token = create_admin_token("admin_user")
 
         headers = {"Authorization": f"Bearer {admin_token}"}
@@ -60,6 +66,7 @@ class TestInputValidation:
     def test_sql_injection_prevention(self, client):
         """SQL-Injection sollte verhindert werden"""
         from bundeskanzler_api import create_access_token
+
         token = create_access_token(data={"sub": "test_user"})
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -72,24 +79,29 @@ class TestInputValidation:
         ]
 
         for malicious_input in malicious_inputs:
-            response = client.post("/chat",
-                                 json={"message": malicious_input, "session_id": "test"},
-                                 headers=headers)
+            response = client.post(
+                "/chat",
+                json={"message": malicious_input, "session_id": "test"},
+                headers=headers,
+            )
             # Sollte nicht 500 (Server Error) zurückgeben
             assert response.status_code in [200, 400, 422]
 
     def test_large_input_handling(self, client):
         """Große Inputs sollten sicher verarbeitet werden"""
         from bundeskanzler_api import create_access_token
+
         token = create_access_token(data={"sub": "test_user"})
         headers = {"Authorization": f"Bearer {token}"}
 
         # Test mit sehr großem Input
         large_message = "Test message " * 10000  # 120.000 Zeichen
 
-        response = client.post("/chat",
-                             json={"message": large_message, "session_id": "test"},
-                             headers=headers)
+        response = client.post(
+            "/chat",
+            json={"message": large_message, "session_id": "test"},
+            headers=headers,
+        )
 
         # Sollte nicht zu einem Server-Crash führen
         assert response.status_code in [200, 400, 413, 422]
@@ -97,6 +109,7 @@ class TestInputValidation:
     def test_special_characters_handling(self, client):
         """Sonderzeichen sollten sicher verarbeitet werden"""
         from bundeskanzler_api import create_access_token
+
         token = create_access_token(data={"sub": "test_user"})
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -108,14 +121,17 @@ class TestInputValidation:
         ]
 
         for message in special_messages:
-            response = client.post("/chat",
-                                 json={"message": message, "session_id": "test"},
-                                 headers=headers)
+            response = client.post(
+                "/chat",
+                json={"message": message, "session_id": "test"},
+                headers=headers,
+            )
             assert response.status_code in [200, 400, 422]
 
     def test_json_injection_prevention(self, client):
         """JSON-Injection sollte verhindert werden"""
         from bundeskanzler_api import create_access_token
+
         token = create_access_token(data={"sub": "test_user"})
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -124,7 +140,7 @@ class TestInputValidation:
             "message": "Test",
             "session_id": "test",
             "__proto__": {"malicious": "data"},
-            "constructor": {"prototype": {"evil": "code"}}
+            "constructor": {"prototype": {"evil": "code"}},
         }
 
         response = client.post("/chat", json=malicious_json, headers=headers)
@@ -144,15 +160,18 @@ class TestRateLimiting:
     def test_rate_limiting_works(self, client):
         """Rate-Limiting sollte funktionieren"""
         from bundeskanzler_api import create_access_token
+
         token = create_access_token(data={"sub": "test_user"})
         headers = {"Authorization": f"Bearer {token}"}
 
         # Sende einige Requests (weniger als das erwartete Limit)
         responses = []
         for i in range(10):  # Weniger als das Limit
-            response = client.post("/chat",
-                                 json={"message": f"Test {i}", "session_id": "test"},
-                                 headers=headers)
+            response = client.post(
+                "/chat",
+                json={"message": f"Test {i}", "session_id": "test"},
+                headers=headers,
+            )
             responses.append(response.status_code)
 
         # Sollte alle 200 sein (Rate limiting nicht ausgelöst)
@@ -174,7 +193,7 @@ class TestHTTPSecurityHeaders:
             "Strict-Transport-Security",
             "Content-Security-Policy",
             "Referrer-Policy",
-            "Permissions-Policy"
+            "Permissions-Policy",
         ]
 
         for header in required_headers:

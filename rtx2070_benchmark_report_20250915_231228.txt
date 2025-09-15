@@ -1,0 +1,46 @@
+
+🚀 RTX 2070 Bundeskanzler-KI Performance Report
+===============================================
+Generated: 2025-09-15 23:12:28
+
+📊 SYSTEM INFORMATION
+- GPU Available: True
+- Tensor Cores: True
+- VRAM Total: 8.0 GB
+- Memory Fraction: 90.0%
+
+⚡ RAG PERFORMANCE COMPARISON
+
+💾 MEMORY UTILIZATION
+- Baseline: 1.9 GB
+- Peak Usage: 1.9 GB
+- Utilization: 23.3%
+- Efficiency: 0.0%
+
+🔥 MIXED PRECISION PERFORMANCE
+- FP32 Time: 271.7ms
+- FP16 Time: 282.6ms
+- Tensor Core Speedup: 0.96x
+
+📈 THROUGHPUT ANALYSIS
+- Single Query: 3.8 queries/sec
+- Batch Processing: 3.7 queries/sec
+- Optimal Batch Size: 64
+
+🌡️ THERMAL PERFORMANCE
+- Initial Temperature: 42°C
+- Peak Temperature: 42°C
+- Average Temperature: 41.0°C
+- Thermal Throttling: ✅ No
+
+⏱️ BENCHMARK DURATION
+Total Time: 40.38 seconds
+
+🎯 RTX 2070 OPTIMIZATION SUMMARY
+⚠️ Room for Improvement
+Overall Score: 32.0/100
+
+📝 RECOMMENDATIONS
+• Prüfe CUDA Installation und GPU Memory Settings
+• Erhöhe max_memory_fraction für bessere VRAM Nutzung
+• Aktiviere Mixed Precision für bessere Tensor Core Nutzung

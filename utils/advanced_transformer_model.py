@@ -3,23 +3,25 @@ Advanced Transformer Model für Bundeskanzler KI
 Integriert vortrainierte Modelle wie GPT-2, BERT für bessere Sprachverarbeitung
 """
 
-import torch
-from transformers import (
-    GPT2LMHeadModel,
-    GPT2Tokenizer,
-    BertModel,
-    BertTokenizer,
-    RobertaModel,
-    RobertaTokenizer,
-    AutoModelForCausalLM,
-    AutoTokenizer
-)
-import tensorflow as tf
-from tensorflow.keras import layers
-import numpy as np
 import logging
 
+import numpy as np
+import tensorflow as tf
+import torch
+from tensorflow.keras import layers
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BertModel,
+    BertTokenizer,
+    GPT2LMHeadModel,
+    GPT2Tokenizer,
+    RobertaModel,
+    RobertaTokenizer,
+)
+
 logger = logging.getLogger(__name__)
+
 
 class AdvancedTransformerModel:
     """
@@ -75,7 +77,9 @@ class AdvancedTransformerModel:
             self.model.to(self.device)
             self.model.eval()
 
-            logger.info(f"✅ {self.model_type.upper()} Modell '{self.model_name}' erfolgreich geladen")
+            logger.info(
+                f"✅ {self.model_type.upper()} Modell '{self.model_name}' erfolgreich geladen"
+            )
 
         except Exception as e:
             logger.error(f"❌ Fehler beim Laden des Modells {self.model_name}: {e}")
@@ -128,7 +132,7 @@ class AdvancedTransformerModel:
                 pad_token_id=self.tokenizer.eos_token_id,
                 num_return_sequences=1,
                 no_repeat_ngram_size=3,
-                early_stopping=True
+                early_stopping=True,
             )
 
         # Decode der generierten Tokens
@@ -136,7 +140,7 @@ class AdvancedTransformerModel:
 
         # Nur den neuen Teil zurückgeben (nach dem Prompt)
         if generated_text.startswith(prompt):
-            response = generated_text[len(prompt):].strip()
+            response = generated_text[len(prompt) :].strip()
         else:
             response = generated_text.strip()
 
@@ -148,11 +152,7 @@ class AdvancedTransformerModel:
         # In der Praxis würde man hier ein Sequence-to-Sequence Modell verwenden
 
         inputs = self.tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            padding=True,
-            max_length=512
+            prompt, return_tensors="pt", truncation=True, padding=True, max_length=512
         ).to(self.device)
 
         with torch.no_grad():
@@ -182,11 +182,7 @@ class AdvancedTransformerModel:
         """
         try:
             inputs = self.tokenizer(
-                text,
-                return_tensors="pt",
-                truncation=True,
-                padding=True,
-                max_length=512
+                text, return_tensors="pt", truncation=True, padding=True, max_length=512
             ).to(self.device)
 
             with torch.no_grad():
@@ -204,6 +200,7 @@ class AdvancedTransformerModel:
         except Exception as e:
             logger.error(f"Fehler bei Embedding-Generierung: {e}")
             return np.zeros((1, 768))  # Fallback embedding
+
 
 def create_hybrid_model(maxlen, vocab_size, output_size, transformer_model=None):
     """
@@ -230,24 +227,27 @@ def create_hybrid_model(maxlen, vocab_size, output_size, transformer_model=None)
     x = layers.LSTM(64)(x)
 
     # Dense Layer
-    x = layers.Dense(64, activation='relu')(x)
+    x = layers.Dense(64, activation="relu")(x)
     x = layers.Dropout(0.3)(x)
 
     # Output
-    outputs = layers.Dense(output_size, activation='softmax')(x)
+    outputs = layers.Dense(output_size, activation="softmax")(x)
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
+        loss="categorical_crossentropy",
+        metrics=["accuracy"],
     )
 
     return model
 
+
 # Kompatibilitätsfunktion für bestehende Codebasis
-def create_enhanced_transformer_model(maxlen, vocab_size, output_size, use_transformer=True):
+def create_enhanced_transformer_model(
+    maxlen, vocab_size, output_size, use_transformer=True
+):
     """
     Erstellt ein erweitertes Modell mit optionaler Transformer-Unterstützung
 

@@ -5,31 +5,33 @@ Startet einen lokalen HTTP-Server mit Admin-Interface
 """
 
 import http.server
-import socketserver
-import webbrowser
 import json
+import socketserver
 import urllib.parse
-import requests
+import webbrowser
 from pathlib import Path
+
+import requests
+
 
 class AdminPanelHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/' or self.path == '/admin':
+        if self.path == "/" or self.path == "/admin":
             self.send_admin_panel()
-        elif self.path.startswith('/api/'):
+        elif self.path.startswith("/api/"):
             self.handle_api_request()
         else:
             super().do_GET()
-    
+
     def do_POST(self):
-        if self.path.startswith('/api/'):
+        if self.path.startswith("/api/"):
             self.handle_api_request()
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def send_admin_panel(self):
-        html = '''
+        html = """
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -318,37 +320,39 @@ class AdminPanelHandler(http.server.SimpleHTTPRequestHandler):
     </script>
 </body>
 </html>
-        '''
-        
+        """
+
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.send_header('Content-Length', str(len(html.encode('utf-8'))))
+        self.send_header("Content-type", "text/html")
+        self.send_header("Content-Length", str(len(html.encode("utf-8"))))
         self.end_headers()
-        self.wfile.write(html.encode('utf-8'))
-    
+        self.wfile.write(html.encode("utf-8"))
+
     def handle_api_request(self):
         # Proxy to actual API
         self.send_response(404)
         self.end_headers()
 
+
 def start_admin_panel():
     PORT = 8080
-    
+
     with socketserver.TCPServer(("", PORT), AdminPanelHandler) as httpd:
         print(f"🚀 Admin-Panel gestartet auf http://localhost:{PORT}")
         print("📖 Öffne http://localhost:8080 in deinem Browser")
         print("🔐 Login: admin / admin123!")
         print("⏹️  Strg+C zum Beenden")
-        
+
         try:
-            webbrowser.open(f'http://localhost:{PORT}')
+            webbrowser.open(f"http://localhost:{PORT}")
         except:
             pass
-            
+
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\\n👋 Admin-Panel beendet")
+
 
 if __name__ == "__main__":
     start_admin_panel()

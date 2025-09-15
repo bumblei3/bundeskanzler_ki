@@ -5,36 +5,37 @@ Unterstützt Text, Bilder, Audio und Video für umfassende Interaktion
 MIT UPGRADE-OPTIONEN: GPT-4, Claude, LLaVA, SigLIP, Whisper Large
 """
 
+import gc
+import io
+import logging
+import os
+from typing import Dict, List, Optional, Union
+
+import anthropic
+import cv2
+import librosa
+import numpy as np
+import requests
+import tensorflow as tf
 import torch
+from openai import OpenAI
+from PIL import Image
+from tensorflow.keras import layers
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    CLIPProcessor,
+    BitsAndBytesConfig,
     CLIPModel,
-    WhisperProcessor,
-    WhisperForConditionalGeneration,
-    pipeline,
+    CLIPProcessor,
+    SiglipModel,
     SiglipProcessor,
-    SiglipModel
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
+    pipeline,
 )
-import tensorflow as tf
-import gc
-import os
-from tensorflow.keras import layers
-import numpy as np
-import logging
-from typing import Dict, List, Optional, Union
-import cv2
-import librosa
-from PIL import Image
-import io
-import os
-import requests
-from openai import OpenAI
-import anthropic
-from transformers import BitsAndBytesConfig
 
 logger = logging.getLogger(__name__)
+
 
 class MultimodalTransformerModel:
     """
@@ -52,7 +53,10 @@ class MultimodalTransformerModel:
 
         # RTX 2070 Spezifikation
         self.gpu_memory_gb = 8 if torch.cuda.is_available() else 0
-        self.is_rtx2070 = torch.cuda.is_available() and torch.cuda.get_device_properties(0).total_memory >= 7.5 * 1024**3  # ~8GB
+        self.is_rtx2070 = (
+            torch.cuda.is_available()
+            and torch.cuda.get_device_properties(0).total_memory >= 7.5 * 1024**3
+        )  # ~8GB
 
         # API-Clients für Premium-Modelle
         self.openai_client = None
@@ -128,11 +132,15 @@ class MultimodalTransformerModel:
         logger.info("🎮 RTX 2070 Modus aktiviert - Optimiere für 8GB VRAM")
 
         # RTX 2070: 8-bit quantization für alle Modelle
-        quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            llm_int8_enable_fp32_cpu_offload=True,
-            llm_int8_skip_modules=["lm_head"]  # Preserve output layer precision
-        ) if torch.cuda.is_available() else None
+        quantization_config = (
+            BitsAndBytesConfig(
+                load_in_8bit=True,
+                llm_int8_enable_fp32_cpu_offload=True,
+                llm_int8_skip_modules=["lm_head"],  # Preserve output layer precision
+            )
+            if torch.cuda.is_available()
+            else None
+        )
 
         # Text-Modell: GPT-2 Medium (355M Parameter - passt in 8GB)
         try:
@@ -143,7 +151,7 @@ class MultimodalTransformerModel:
                 torch_dtype=torch.float16,
                 device_map="auto",
                 low_cpu_mem_usage=True,
-                trust_remote_code=True
+                trust_remote_code=True,
             )
             self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
             self.text_model_type = "gpt2_medium_rtx2070"
@@ -152,19 +160,23 @@ class MultimodalTransformerModel:
         except Exception as e:
             logger.warning(f"⚠️ GPT-2 Medium fehlgeschlagen: {e}")
             # 4-bit Fallback
-            quantization_4bit = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4"
-            ) if torch.cuda.is_available() else None
+            quantization_4bit = (
+                BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                )
+                if torch.cuda.is_available()
+                else None
+            )
 
             self.text_tokenizer = AutoTokenizer.from_pretrained("gpt2")
             self.text_model = AutoModelForCausalLM.from_pretrained(
                 "gpt2",
                 quantization_config=quantization_4bit,
                 device_map="auto",
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
             self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
             self.text_model_type = "gpt2_base_rtx2070"
@@ -172,13 +184,15 @@ class MultimodalTransformerModel:
 
         # Vision-Modell: SigLIP Base (optimiert für 8GB)
         try:
-            self.vision_processor = SiglipProcessor.from_pretrained("google/siglip-base-patch16-224")
+            self.vision_processor = SiglipProcessor.from_pretrained(
+                "google/siglip-base-patch16-224"
+            )
             self.vision_model = SiglipModel.from_pretrained(
                 "google/siglip-base-patch16-224",
                 quantization_config=quantization_config,
                 torch_dtype=torch.float16,
                 device_map="auto",
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
             self.vision_model_type = "siglip_base_rtx2070"
             logger.info("✅ SigLIP Base (RTX 2070 optimiert)")
@@ -191,20 +205,24 @@ class MultimodalTransformerModel:
                 quantization_config=quantization_config,
                 torch_dtype=torch.float16,
                 device_map="auto",
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
-            self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+            self.vision_processor = CLIPProcessor.from_pretrained(
+                "openai/clip-vit-base-patch32"
+            )
             self.vision_model_type = "clip_base_rtx2070"
             logger.info("✅ CLIP Base (RTX 2070 Fallback)")
 
         # Audio-Modell: Whisper Base (optimiert für 8GB)
         try:
-            self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-base")
+            self.audio_processor = WhisperProcessor.from_pretrained(
+                "openai/whisper-base"
+            )
             self.audio_model = WhisperForConditionalGeneration.from_pretrained(
                 "openai/whisper-base",
                 torch_dtype=torch.float16,
                 device_map="auto",
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
             self.audio_model_type = "whisper_base_rtx2070"
             logger.info("✅ Whisper Base (RTX 2070 optimiert)")
@@ -212,12 +230,14 @@ class MultimodalTransformerModel:
         except Exception as e:
             logger.warning(f"⚠️ Whisper Base fehlgeschlagen: {e}")
             # Tiny Fallback ohne quantization
-            self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
+            self.audio_processor = WhisperProcessor.from_pretrained(
+                "openai/whisper-tiny"
+            )
             self.audio_model = WhisperForConditionalGeneration.from_pretrained(
                 "openai/whisper-tiny",
                 torch_dtype=torch.float16,
                 device_map="auto",
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
             self.audio_model_type = "whisper_tiny_rtx2070"
             logger.info("✅ Whisper Tiny (RTX 2070 Fallback)")
@@ -226,15 +246,21 @@ class MultimodalTransformerModel:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             gc.collect()
-            logger.info(f"🧹 GPU Speicher bereinigt - Verwendet: {torch.cuda.memory_allocated() // 1024**2}MB")
+            logger.info(
+                f"🧹 GPU Speicher bereinigt - Verwendet: {torch.cuda.memory_allocated() // 1024**2}MB"
+            )
 
     def _load_advanced_models(self):
         """Lädt fortgeschrittene lokale Modelle optimiert für RTX 2070 (8GB VRAM)"""
         # RTX 2070 Optimierung: 8-bit quantization für bessere Speichereffizienz
-        quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            llm_int8_enable_fp32_cpu_offload=True  # CPU offloading für große Modelle
-        ) if torch.cuda.is_available() else None
+        quantization_config = (
+            BitsAndBytesConfig(
+                load_in_8bit=True,
+                llm_int8_enable_fp32_cpu_offload=True,  # CPU offloading für große Modelle
+            )
+            if torch.cuda.is_available()
+            else None
+        )
 
         # Text-Modell (RTX 2070 optimiert: GPT-2 Medium statt XL)
         try:
@@ -245,10 +271,12 @@ class MultimodalTransformerModel:
             self.text_model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 quantization_config=quantization_config,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                torch_dtype=(
+                    torch.float16 if torch.cuda.is_available() else torch.float32
+                ),
                 device_map="auto" if torch.cuda.is_available() else None,
                 low_cpu_mem_usage=True,
-                trust_remote_code=True
+                trust_remote_code=True,
             )
             self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
 
@@ -265,20 +293,26 @@ class MultimodalTransformerModel:
             logger.warning(f"⚠️ GPT-2 Medium Laden fehlgeschlagen: {e}")
             # Fallback zu GPT-2 Base mit 4-bit quantization
             try:
-                quantization_config_4bit = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4"
-                ) if torch.cuda.is_available() else None
+                quantization_config_4bit = (
+                    BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4",
+                    )
+                    if torch.cuda.is_available()
+                    else None
+                )
 
                 self.text_tokenizer = AutoTokenizer.from_pretrained("gpt2")
                 self.text_model = AutoModelForCausalLM.from_pretrained(
                     "gpt2",
                     quantization_config=quantization_config_4bit,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    torch_dtype=(
+                        torch.float16 if torch.cuda.is_available() else torch.float32
+                    ),
                     device_map="auto" if torch.cuda.is_available() else None,
-                    low_cpu_mem_usage=True
+                    low_cpu_mem_usage=True,
                 )
                 self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
 
@@ -308,9 +342,11 @@ class MultimodalTransformerModel:
             self.vision_model = SiglipModel.from_pretrained(
                 vision_model_name,
                 quantization_config=quantization_config,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                torch_dtype=(
+                    torch.float16 if torch.cuda.is_available() else torch.float32
+                ),
                 device_map="auto" if torch.cuda.is_available() else None,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
 
             if torch.cuda.is_available():
@@ -324,21 +360,29 @@ class MultimodalTransformerModel:
             logger.warning(f"⚠️ SigLIP Laden fehlgeschlagen: {e}")
             # Fallback zu CLIP Base mit 4-bit
             try:
-                quantization_config_4bit = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4"
-                ) if torch.cuda.is_available() else None
+                quantization_config_4bit = (
+                    BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4",
+                    )
+                    if torch.cuda.is_available()
+                    else None
+                )
 
                 self.vision_model = CLIPModel.from_pretrained(
                     "openai/clip-vit-base-patch32",
                     quantization_config=quantization_config_4bit,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    torch_dtype=(
+                        torch.float16 if torch.cuda.is_available() else torch.float32
+                    ),
                     device_map="auto" if torch.cuda.is_available() else None,
-                    low_cpu_mem_usage=True
+                    low_cpu_mem_usage=True,
                 )
-                self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+                self.vision_processor = CLIPProcessor.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                )
 
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
@@ -350,8 +394,12 @@ class MultimodalTransformerModel:
             except Exception as e2:
                 logger.error(f"❌ Auch CLIP Base fehlgeschlagen: {e2}")
                 # CPU-Only Fallback
-                self.vision_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-                self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+                self.vision_model = CLIPModel.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                )
+                self.vision_processor = CLIPProcessor.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                )
                 self.vision_model.to("cpu")
                 self.vision_model_type = "clip_cpu_only"
                 logger.info("✅ CLIP CPU-Only Fallback")
@@ -365,9 +413,11 @@ class MultimodalTransformerModel:
             self.audio_model = WhisperForConditionalGeneration.from_pretrained(
                 audio_model_name,
                 quantization_config=quantization_config,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                torch_dtype=(
+                    torch.float16 if torch.cuda.is_available() else torch.float32
+                ),
                 device_map="auto" if torch.cuda.is_available() else None,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
 
             if torch.cuda.is_available():
@@ -381,20 +431,28 @@ class MultimodalTransformerModel:
             logger.warning(f"⚠️ Whisper Base Laden fehlgeschlagen: {e}")
             # Fallback zu Whisper Tiny mit 4-bit
             try:
-                quantization_config_4bit = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4"
-                ) if torch.cuda.is_available() else None
+                quantization_config_4bit = (
+                    BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4",
+                    )
+                    if torch.cuda.is_available()
+                    else None
+                )
 
-                self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
+                self.audio_processor = WhisperProcessor.from_pretrained(
+                    "openai/whisper-tiny"
+                )
                 self.audio_model = WhisperForConditionalGeneration.from_pretrained(
                     "openai/whisper-tiny",
                     quantization_config=quantization_config_4bit,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    torch_dtype=(
+                        torch.float16 if torch.cuda.is_available() else torch.float32
+                    ),
                     device_map="auto" if torch.cuda.is_available() else None,
-                    low_cpu_mem_usage=True
+                    low_cpu_mem_usage=True,
                 )
 
                 if torch.cuda.is_available():
@@ -407,8 +465,12 @@ class MultimodalTransformerModel:
             except Exception as e2:
                 logger.error(f"❌ Auch Whisper Tiny fehlgeschlagen: {e2}")
                 # CPU-Only Fallback
-                self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
-                self.audio_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny")
+                self.audio_processor = WhisperProcessor.from_pretrained(
+                    "openai/whisper-tiny"
+                )
+                self.audio_model = WhisperForConditionalGeneration.from_pretrained(
+                    "openai/whisper-tiny"
+                )
                 self.audio_model.to("cpu")
                 self.audio_model_type = "whisper_cpu_only"
                 logger.info("✅ Whisper CPU-Only Fallback")
@@ -424,13 +486,17 @@ class MultimodalTransformerModel:
 
         # CLIP für Bildverständnis
         self.vision_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-        self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        self.vision_processor = CLIPProcessor.from_pretrained(
+            "openai/clip-vit-base-patch32"
+        )
         self.vision_model.to(self.device)
         self.vision_model_type = "clip"
 
         # Whisper für Audio-Transkription
         self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-        self.audio_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
+        self.audio_model = WhisperForConditionalGeneration.from_pretrained(
+            "openai/whisper-small"
+        )
         self.audio_model.to(self.device)
 
         logger.info("✅ Basic-Modelle geladen")
@@ -455,11 +521,14 @@ class MultimodalTransformerModel:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": "Du bist eine fortschrittliche KI-Assistentin für politische Kommunikation in Deutschland. Antworte professionell, sachlich und hilfreich."},
-                    {"role": "user", "content": text}
+                    {
+                        "role": "system",
+                        "content": "Du bist eine fortschrittliche KI-Assistentin für politische Kommunikation in Deutschland. Antworte professionell, sachlich und hilfreich.",
+                    },
+                    {"role": "user", "content": text},
                 ],
                 max_tokens=max_length,
-                temperature=0.7
+                temperature=0.7,
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
@@ -473,9 +542,7 @@ class MultimodalTransformerModel:
                 model="claude-3-sonnet-20240229",
                 max_tokens=max_length,
                 system="Du bist eine fortschrittliche KI-Assistentin für politische Kommunikation in Deutschland. Antworte professionell, sachlich und hilfreich.",
-                messages=[
-                    {"role": "user", "content": text}
-                ]
+                messages=[{"role": "user", "content": text}],
             )
             return response.content[0].text.strip()
         except Exception as e:
@@ -490,17 +557,17 @@ class MultimodalTransformerModel:
             with torch.no_grad():
                 outputs = self.text_model.generate(
                     **inputs,
-                    max_length=max_length + len(inputs['input_ids'][0]),
+                    max_length=max_length + len(inputs["input_ids"][0]),
                     temperature=0.8,
                     top_p=0.9,
                     do_sample=True,
-                    pad_token_id=self.text_tokenizer.eos_token_id
+                    pad_token_id=self.text_tokenizer.eos_token_id,
                 )
 
             response = self.text_tokenizer.decode(outputs[0], skip_special_tokens=True)
             # Entferne die ursprüngliche Eingabe aus der Antwort
             if response.startswith(text):
-                response = response[len(text):].strip()
+                response = response[len(text) :].strip()
             return response
 
         except Exception as e:
@@ -523,7 +590,7 @@ class MultimodalTransformerModel:
                 "eine Wirtschaftsstatistik",
                 "eine Umweltinitiative",
                 "eine technologische Innovation",
-                "eine internationale Konferenz"
+                "eine internationale Konferenz",
             ]
 
             if self.vision_model_type == "siglip":
@@ -533,15 +600,17 @@ class MultimodalTransformerModel:
 
         except Exception as e:
             logger.error(f"Bild-Verarbeitung fehlgeschlagen: {e}")
-            return {"description": "Bild konnte nicht analysiert werden", "confidence": 0.0}
+            return {
+                "description": "Bild konnte nicht analysiert werden",
+                "confidence": 0.0,
+            }
 
-    def _process_image_clip(self, image: Image.Image, descriptions: List[str]) -> Dict[str, Union[str, float]]:
+    def _process_image_clip(
+        self, image: Image.Image, descriptions: List[str]
+    ) -> Dict[str, Union[str, float]]:
         """Verarbeitet Bild mit CLIP-Modell"""
         inputs = self.vision_processor(
-            text=descriptions,
-            images=image,
-            return_tensors="pt",
-            padding=True
+            text=descriptions, images=image, return_tensors="pt", padding=True
         ).to(self.device)
 
         with torch.no_grad():
@@ -557,17 +626,19 @@ class MultimodalTransformerModel:
             "confidence": confidence,
             "all_descriptions": descriptions,
             "all_probabilities": probs[0].cpu().numpy(),
-            "model": "CLIP"
+            "model": "CLIP",
         }
 
-    def _process_image_siglip(self, image: Image.Image, descriptions: List[str]) -> Dict[str, Union[str, float]]:
+    def _process_image_siglip(
+        self, image: Image.Image, descriptions: List[str]
+    ) -> Dict[str, Union[str, float]]:
         """Verarbeitet Bild mit SigLIP-Modell (höhere Genauigkeit)"""
         # SigLIP verwendet eine andere API
         inputs = self.vision_processor(
             text=descriptions,
             images=[image] * len(descriptions),  # Wiederhole Bild für jeden Text
             return_tensors="pt",
-            padding=True
+            padding=True,
         ).to(self.device)
 
         with torch.no_grad():
@@ -584,7 +655,7 @@ class MultimodalTransformerModel:
             "confidence": confidence,
             "all_descriptions": descriptions,
             "all_probabilities": probs[0].cpu().numpy(),
-            "model": "SigLIP"
+            "model": "SigLIP",
         }
 
     def process_audio(self, audio_path: str) -> str:
@@ -594,21 +665,26 @@ class MultimodalTransformerModel:
             audio, sr = librosa.load(audio_path, sr=16000)
 
             # Whisper erwartet 16kHz Audio
-            inputs = self.audio_processor(audio, sampling_rate=16000, return_tensors="pt")
+            inputs = self.audio_processor(
+                audio, sampling_rate=16000, return_tensors="pt"
+            )
             inputs = {key: val.to(self.device) for key, val in inputs.items()}
 
             with torch.no_grad():
                 predicted_ids = self.audio_model.generate(**inputs)
 
-            transcription = self.audio_processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+            transcription = self.audio_processor.batch_decode(
+                predicted_ids, skip_special_tokens=True
+            )[0]
             return transcription
 
         except Exception as e:
             logger.error(f"Audio-Verarbeitung fehlgeschlagen: {e}")
             return "Audio konnte nicht transkribiert werden."
 
-    def multimodal_response(self, text: str = None, image_path: str = None,
-                          audio_path: str = None) -> Dict[str, str]:
+    def multimodal_response(
+        self, text: str = None, image_path: str = None, audio_path: str = None
+    ) -> Dict[str, str]:
         """
         Erstellt eine multimodale Antwort basierend auf allen verfügbaren Eingaben
         """
@@ -616,7 +692,7 @@ class MultimodalTransformerModel:
             "text_response": "",
             "image_analysis": "",
             "audio_transcription": "",
-            "integrated_response": ""
+            "integrated_response": "",
         }
 
         # Verarbeite Text
@@ -626,7 +702,9 @@ class MultimodalTransformerModel:
         # Verarbeite Bild
         if image_path:
             image_result = self.process_image(image_path)
-            response["image_analysis"] = f"Das Bild zeigt {image_result['description']} (Konfidenz: {image_result['confidence']:.2f})"
+            response["image_analysis"] = (
+                f"Das Bild zeigt {image_result['description']} (Konfidenz: {image_result['confidence']:.2f})"
+            )
 
         # Verarbeite Audio
         if audio_path:
@@ -635,7 +713,9 @@ class MultimodalTransformerModel:
         # Erstelle integrierte Antwort
         integrated_parts = []
         if text:
-            integrated_parts.append(f"Basierend auf Ihrer Frage '{text}': {response['text_response']}")
+            integrated_parts.append(
+                f"Basierend auf Ihrer Frage '{text}': {response['text_response']}"
+            )
         if image_path:
             integrated_parts.append(response["image_analysis"])
         if audio_path:
@@ -644,6 +724,7 @@ class MultimodalTransformerModel:
         response["integrated_response"] = " ".join(integrated_parts)
 
         return response
+
 
 class AdvancedReasoningEngine:
     """
@@ -655,23 +736,25 @@ class AdvancedReasoningEngine:
             "politik": {
                 "bundeskanzler": "Der Bundeskanzler ist das Staatsoberhaupt der Bundesrepublik Deutschland",
                 "bundestag": "Das Parlament der Bundesrepublik Deutschland",
-                "grundgesetz": "Die Verfassung der Bundesrepublik Deutschland"
+                "grundgesetz": "Die Verfassung der Bundesrepublik Deutschland",
             },
             "wirtschaft": {
                 "bruttoinlandsprodukt": "Das Bruttoinlandsprodukt misst die Wirtschaftsleistung",
                 "inflation": "Der Anstieg der Verbraucherpreise über einen Zeitraum",
-                "arbeitslosigkeit": "Der Anteil der erwerbsfähigen Bevölkerung ohne Arbeit"
-            }
+                "arbeitslosigkeit": "Der Anteil der erwerbsfähigen Bevölkerung ohne Arbeit",
+            },
         }
 
         # QA Pipeline für präzise Antworten
         self.qa_pipeline = pipeline(
             "question-answering",
             model="deepset/roberta-base-squad2",
-            device=0 if torch.cuda.is_available() else -1
+            device=0 if torch.cuda.is_available() else -1,
         )
 
-    def reason_about_topic(self, question: str, context: str = None) -> Dict[str, Union[str, float]]:
+    def reason_about_topic(
+        self, question: str, context: str = None
+    ) -> Dict[str, Union[str, float]]:
         """
         Führt logisches Reasoning über ein Thema durch
         """
@@ -685,8 +768,8 @@ class AdvancedReasoningEngine:
             # Wenn Kontext verfügbar, verwende QA-Modell
             if context:
                 qa_result = self.qa_pipeline(question=question, context=context)
-                answer = qa_result['answer']
-                confidence = qa_result['score']
+                answer = qa_result["answer"]
+                confidence = qa_result["score"]
             else:
                 answer = self._generate_reasoned_answer(question, relevant_knowledge)
                 confidence = 0.7  # Standard-Konfidenz für generierte Antworten
@@ -696,7 +779,7 @@ class AdvancedReasoningEngine:
                 "confidence": confidence,
                 "key_concepts": key_concepts,
                 "relevant_knowledge": relevant_knowledge,
-                "reasoning_type": "qa_based" if context else "knowledge_based"
+                "reasoning_type": "qa_based" if context else "knowledge_based",
             }
 
         except Exception as e:
@@ -706,14 +789,24 @@ class AdvancedReasoningEngine:
                 "confidence": 0.0,
                 "key_concepts": [],
                 "relevant_knowledge": {},
-                "reasoning_type": "error"
+                "reasoning_type": "error",
             }
 
     def _extract_key_concepts(self, text: str) -> List[str]:
         """Extrahiert Schlüsselkonzepte aus dem Text"""
         # Einfache Schlüsselwort-Extraktion (kann durch NER erweitert werden)
-        keywords = ["politik", "wirtschaft", "bundeskanzler", "regierung", "gesetz",
-                   "europa", "usa", "china", "klima", "digitalisierung"]
+        keywords = [
+            "politik",
+            "wirtschaft",
+            "bundeskanzler",
+            "regierung",
+            "gesetz",
+            "europa",
+            "usa",
+            "china",
+            "klima",
+            "digitalisierung",
+        ]
 
         found_concepts = []
         text_lower = text.lower()
@@ -735,7 +828,9 @@ class AdvancedReasoningEngine:
 
         return relevant
 
-    def _generate_reasoned_answer(self, question: str, knowledge: Dict[str, str]) -> str:
+    def _generate_reasoned_answer(
+        self, question: str, knowledge: Dict[str, str]
+    ) -> str:
         """Generiert eine durchdachte Antwort basierend auf Wissen"""
         if not knowledge:
             return "Basierend auf meinem aktuellen Wissensstand kann ich diese Frage nicht beantworten."
@@ -747,10 +842,12 @@ class AdvancedReasoningEngine:
 
         return " ".join(answer_parts)
 
+
 # Kompatibilitätsfunktionen für bestehende Codebasis
 def create_multimodal_model(model_tier="rtx2070"):
     """Erstellt ein multimodales Modell (standardmäßig RTX 2070 optimiert)"""
     return MultimodalTransformerModel(model_tier=model_tier)
+
 
 def create_reasoning_engine():
     """Erstellt eine Reasoning-Engine"""

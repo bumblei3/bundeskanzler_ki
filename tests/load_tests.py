@@ -2,9 +2,11 @@
 Load-Tests für die Bundeskanzler KI API mit Locust
 Führen Sie aus mit: locust -f tests/load_tests.py --host=http://localhost:8000
 """
-from locust import HttpUser, task, between
+
 import json
 import time
+
+from locust import HttpUser, between, task
 
 
 class BundeskanzlerUser(HttpUser):
@@ -15,10 +17,9 @@ class BundeskanzlerUser(HttpUser):
     def on_start(self):
         """Wird beim Start jedes Users ausgeführt"""
         # Admin-Token für authentifizierte Requests
-        response = self.client.post("/auth/admin-token", data={
-            "username": "admin",
-            "password": "admin123!"
-        })
+        response = self.client.post(
+            "/auth/admin-token", data={"username": "admin", "password": "admin123!"}
+        )
         if response.status_code == 200:
             self.token = response.json()["access_token"]
             self.headers = {"Authorization": f"Bearer {self.token}"}
@@ -39,7 +40,7 @@ class BundeskanzlerUser(HttpUser):
                 "message": "Wie geht es der deutschen Wirtschaft?",
                 "session_id": f"load_test_{self.user_id}_{int(time.time())}",
                 "include_sources": False,
-                "max_length": 300
+                "max_length": 300,
             }
             self.client.post("/chat", json=chat_data, headers=self.headers)
 
@@ -61,10 +62,9 @@ class AggressiveUser(HttpUser):
     wait_time = between(0.1, 0.5)  # Sehr kurze Wartezeiten
 
     def on_start(self):
-        response = self.client.post("/auth/admin-token", data={
-            "username": "admin",
-            "password": "admin123!"
-        })
+        response = self.client.post(
+            "/auth/admin-token", data={"username": "admin", "password": "admin123!"}
+        )
         if response.status_code == 200:
             self.token = response.json()["access_token"]
             self.headers = {"Authorization": f"Bearer {self.token}"}
@@ -80,7 +80,7 @@ class AggressiveUser(HttpUser):
                 "message": "Test message for load testing",
                 "session_id": f"stress_test_{int(time.time() * 1000)}",
                 "include_sources": False,
-                "max_length": 200
+                "max_length": 200,
             }
             self.client.post("/chat", json=chat_data, headers=self.headers)
 
@@ -91,10 +91,9 @@ class MemoryIntensiveUser(HttpUser):
     wait_time = between(2, 5)
 
     def on_start(self):
-        response = self.client.post("/auth/admin-token", data={
-            "username": "admin",
-            "password": "admin123!"
-        })
+        response = self.client.post(
+            "/auth/admin-token", data={"username": "admin", "password": "admin123!"}
+        )
         if response.status_code == 200:
             self.token = response.json()["access_token"]
             self.headers = {"Authorization": f"Bearer {self.token}"}
@@ -106,12 +105,15 @@ class MemoryIntensiveUser(HttpUser):
     def long_context_chat(self):
         """Chat mit langen Kontexten"""
         if self.token:
-            long_message = "Bitte analysieren Sie die aktuelle Situation in Deutschland bezüglich Klimapolitik, Wirtschaftsentwicklung, Digitalisierung und Sozialpolitik. Geben Sie eine umfassende Bewertung der aktuellen Herausforderungen und Zukunftsaussichten. " * 3
+            long_message = (
+                "Bitte analysieren Sie die aktuelle Situation in Deutschland bezüglich Klimapolitik, Wirtschaftsentwicklung, Digitalisierung und Sozialpolitik. Geben Sie eine umfassende Bewertung der aktuellen Herausforderungen und Zukunftsaussichten. "
+                * 3
+            )
 
             chat_data = {
                 "message": long_message,
                 "session_id": f"memory_test_{int(time.time())}",
                 "include_sources": True,
-                "max_length": 800
+                "max_length": 800,
             }
             self.client.post("/chat", json=chat_data, headers=self.headers)

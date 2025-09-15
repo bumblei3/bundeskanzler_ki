@@ -3,14 +3,16 @@
 Integrationstest für die aktualisierte bundeskanzler_ki.py mit AdvancedTransformerModel
 """
 
-import sys
 import os
-sys.path.append('/home/tobber/bkki_venv')
+import sys
 
-from bundeskanzler_ki import init_model, generate_transformer_response
-from advanced_transformer_model import AdvancedTransformerModel
-from tensorflow.keras.preprocessing.text import Tokenizer
+sys.path.append("/home/tobber/bkki_venv")
+
 import numpy as np
+from advanced_transformer_model import AdvancedTransformerModel
+from bundeskanzler_ki import generate_transformer_response, init_model
+from tensorflow.keras.preprocessing.text import Tokenizer
+
 
 def test_init_model():
     """Teste die aktualisierte init_model Funktion"""
@@ -22,7 +24,7 @@ def test_init_model():
             "Die KI-Entwicklung ist wichtig für Deutschland.",
             "Künstliche Intelligenz verändert unsere Welt.",
             "Bundeskanzler Scholz besucht Berlin.",
-            "Die Digitalisierung schreitet voran."
+            "Die Digitalisierung schreitet voran.",
         ]
 
         tokenizer = Tokenizer(num_words=1000)
@@ -45,17 +47,22 @@ def test_init_model():
         print(f"✗ init_model Test fehlgeschlagen: {e}")
         return False
 
+
 def test_transformer_response():
     """Teste die generate_transformer_response Funktion"""
     print("\nTesting generate_transformer_response Funktion...")
 
     try:
         # Initialisiere Transformer-Modell
-        transformer_model = AdvancedTransformerModel(model_type="gpt2", model_name="gpt2")
+        transformer_model = AdvancedTransformerModel(
+            model_type="gpt2", model_name="gpt2"
+        )
 
         # Teste Antwortgenerierung
         test_question = "Was ist der Sinn des Lebens?"
-        response = generate_transformer_response(test_question, transformer_model, max_length=50)
+        response = generate_transformer_response(
+            test_question, transformer_model, max_length=50
+        )
 
         print("✓ Transformer-Antwortgenerierung erfolgreich")
         print(f"✓ Frage: {test_question}")
@@ -66,6 +73,7 @@ def test_transformer_response():
     except Exception as e:
         print(f"✗ Transformer-Response Test fehlgeschlagen: {e}")
         return False
+
 
 def test_fallback_to_lstm():
     """Teste Fallback zu LSTM wenn Transformer fehlschlägt"""
@@ -92,16 +100,13 @@ def test_fallback_to_lstm():
         print(f"✗ LSTM Fallback Test fehlgeschlagen: {e}")
         return False
 
+
 def main():
     """Führe alle Integrationstests aus"""
     print("🚀 Starting Bundeskanzler KI Integration Tests")
     print("=" * 60)
 
-    tests = [
-        test_init_model,
-        test_transformer_response,
-        test_fallback_to_lstm
-    ]
+    tests = [test_init_model, test_transformer_response, test_fallback_to_lstm]
 
     passed = 0
     total = len(tests)
@@ -114,11 +119,14 @@ def main():
     print(f"Integration Test Results: {passed}/{total} tests passed")
 
     if passed == total:
-        print("🎉 All integration tests passed! Bundeskanzler KI is ready with Transformer support.")
+        print(
+            "🎉 All integration tests passed! Bundeskanzler KI is ready with Transformer support."
+        )
         return 0
     else:
         print("⚠️  Some integration tests failed. Check the output above.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

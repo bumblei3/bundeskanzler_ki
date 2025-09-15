@@ -2,16 +2,23 @@
 Tests für advanced_cache.py - Erweitertes Caching-System
 """
 
-import pytest
-import tempfile
-import os
-import time
 import json
-from unittest.mock import Mock, patch, MagicMock
+import os
+import tempfile
+import time
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 from advanced_cache import (
-    CacheStats, CacheEntry, CacheBackend, MemoryCache,
-    FileSystemCache, RedisCache, MultiLevelCache, CacheManager
+    CacheBackend,
+    CacheEntry,
+    CacheManager,
+    CacheStats,
+    FileSystemCache,
+    MemoryCache,
+    MultiLevelCache,
+    RedisCache,
 )
 
 
@@ -26,7 +33,7 @@ class TestCacheStats:
         assert stats.sets == 0
         assert stats.deletes == 0
         assert stats.errors == 0
-        assert hasattr(stats, 'lock')
+        assert hasattr(stats, "lock")
 
     def test_hit(self):
         """Test hit Methode"""
@@ -61,8 +68,8 @@ class TestCacheStats:
     def test_thread_safety(self):
         """Test Thread-Sicherheit"""
         stats = CacheStats()
-        import threading
         import concurrent.futures
+        import threading
 
         def increment_hits():
             for _ in range(100):
@@ -275,11 +282,7 @@ class TestFileSystemCache:
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = FileSystemCache(cache_dir=temp_dir)
 
-            test_data = {
-                "list": [1, 2, 3],
-                "dict": {"nested": "value"},
-                "number": 42
-            }
+            test_data = {"list": [1, 2, 3], "dict": {"nested": "value"}, "number": 42}
 
             cache.set("complex_key", test_data)
             result = cache.get("complex_key")
@@ -365,7 +368,7 @@ class TestCacheManager:
     def test_init(self):
         """Test CacheManager Initialisierung"""
         manager = CacheManager()
-        assert hasattr(manager, 'caches')
+        assert hasattr(manager, "caches")
         assert isinstance(manager.caches, dict)
 
     def test_create_cache(self):
@@ -373,7 +376,9 @@ class TestCacheManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = CacheManager()
 
-            cache = manager.create_cache("test_cache", l2_config={"cache_dir": temp_dir})
+            cache = manager.create_cache(
+                "test_cache", l2_config={"cache_dir": temp_dir}
+            )
             assert isinstance(cache, MultiLevelCache)
             assert "test_cache" in manager.caches
 
@@ -392,7 +397,7 @@ class TestCacheManager:
             # Get non-existing cache
             assert manager.get_cache("nonexistent") is None
 
-    @patch('advanced_cache.FileSystemCache')
+    @patch("advanced_cache.FileSystemCache")
     def test_create_cache_filesystem(self, mock_fs_cache):
         """Test create_cache mit filesystem"""
         mock_instance = MagicMock()
@@ -404,7 +409,7 @@ class TestCacheManager:
         mock_fs_cache.assert_called_once()
         assert isinstance(cache, MultiLevelCache)
 
-    @patch('advanced_cache.RedisCache')
+    @patch("advanced_cache.RedisCache")
     def test_create_cache_redis(self, mock_redis_cache):
         """Test create_cache mit redis"""
         mock_instance = MagicMock()

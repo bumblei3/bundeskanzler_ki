@@ -2,10 +2,12 @@
 Memory Network Implementation für die Bundeskanzler-KI.
 Implementiert ein neuronales Gedächtnis-Netzwerk für Kontext-Verarbeitung.
 """
-from typing import List, Optional, Tuple, Dict, Any
+
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import tensorflow as tf
-import time
 
 
 class MemoryNetwork:
@@ -18,7 +20,7 @@ class MemoryNetwork:
         memory_size: int = 1000,
         key_dim: int = 512,
         num_heads: int = 8,
-        embedding_dim: Optional[int] = None
+        embedding_dim: Optional[int] = None,
     ):
         """
         Initialisiert das Memory Network.
@@ -37,15 +39,13 @@ class MemoryNetwork:
         # Memory Storage - TensorFlow Variablen für Kompatibilität mit Tests
         self.memory = tf.Variable(
             tf.zeros((memory_size, self.embedding_dim), dtype=tf.float32),
-            trainable=False
+            trainable=False,
         )
         self.timestamps = tf.Variable(
-            tf.zeros((memory_size,), dtype=tf.float32),
-            trainable=False
+            tf.zeros((memory_size,), dtype=tf.float32), trainable=False
         )
         self.importance = tf.Variable(
-            tf.zeros((memory_size,), dtype=tf.float32),
-            trainable=False
+            tf.zeros((memory_size,), dtype=tf.float32), trainable=False
         )
         self.current_position = tf.Variable(0, dtype=tf.int32, trainable=False)
 
@@ -68,16 +68,22 @@ class MemoryNetwork:
         current_pos = int(self.current_position.numpy())
 
         # Speichere in TensorFlow Variablen
-        if hasattr(embedding, 'numpy'):
+        if hasattr(embedding, "numpy"):
             emb_array = embedding.numpy()
         else:
             emb_array = np.array(embedding)
 
         # Aktualisiere Memory an aktueller Position
         indices = tf.reshape(tf.constant([current_pos]), [1])
-        self.memory.scatter_nd_update(indices[:, tf.newaxis], tf.expand_dims(emb_array, 0))
-        self.timestamps.scatter_nd_update(indices, tf.constant([time.time()], dtype=tf.float32))
-        self.importance.scatter_nd_update(indices, tf.constant([importance], dtype=tf.float32))
+        self.memory.scatter_nd_update(
+            indices[:, tf.newaxis], tf.expand_dims(emb_array, 0)
+        )
+        self.timestamps.scatter_nd_update(
+            indices, tf.constant([time.time()], dtype=tf.float32)
+        )
+        self.importance.scatter_nd_update(
+            indices, tf.constant([importance], dtype=tf.float32)
+        )
 
         # Aktualisiere Position (kreisförmig)
         self.current_position.assign((current_pos + 1) % self.memory_size)
@@ -89,9 +95,9 @@ class MemoryNetwork:
 
         # Begrenze Listen-Größe
         if len(self.keys) > self.memory_size:
-            self.keys = self.keys[-self.memory_size:]
-            self.values = self.values[-self.memory_size:]
-            self.importance_scores = self.importance_scores[-self.memory_size:]
+            self.keys = self.keys[-self.memory_size :]
+            self.values = self.values[-self.memory_size :]
+            self.importance_scores = self.importance_scores[-self.memory_size :]
 
     def query(self, embedding: tf.Tensor, k: int = 5) -> Tuple[tf.Tensor, tf.Tensor]:
         """
@@ -111,7 +117,7 @@ class MemoryNetwork:
             return empty_emb, empty_scores
 
         # Konvertiere Query
-        if hasattr(embedding, 'numpy'):
+        if hasattr(embedding, "numpy"):
             query_vec = embedding.numpy()
         else:
             query_vec = np.array(embedding)
@@ -119,7 +125,7 @@ class MemoryNetwork:
         # Berechne Cosine Similarity mit allen gespeicherten Embeddings
         similarities = []
         embeddings_list = []
-        
+
         for stored_emb in self.keys:  # Alle gespeicherten Embeddings
             stored_vec = np.array(stored_emb)
             embeddings_list.append(stored_vec)
@@ -138,7 +144,7 @@ class MemoryNetwork:
             sorted_indices = np.argsort(similarities)[::-1][:k]
             top_embeddings = [embeddings_list[i] for i in sorted_indices]
             top_scores = [similarities[i] for i in sorted_indices]
-            
+
             similar_embeddings = tf.constant(top_embeddings, dtype=tf.float32)
             scores = tf.constant(top_scores, dtype=tf.float32)
         else:
@@ -159,13 +165,12 @@ class MemoryNetwork:
             self.importance_scores[index] = new_importance
             # Aktualisiere auch TensorFlow Variable
             indices = tf.reshape(tf.constant([index]), [1])
-            self.importance.scatter_nd_update(indices, tf.constant([new_importance], dtype=tf.float32))
+            self.importance.scatter_nd_update(
+                indices, tf.constant([new_importance], dtype=tf.float32)
+            )
 
     def update_memory(
-        self,
-        keys: tf.Tensor,
-        values: tf.Tensor,
-        importance: tf.Tensor
+        self, keys: tf.Tensor, values: tf.Tensor, importance: tf.Tensor
     ) -> None:
         """
         Aktualisiert das Gedächtnis mit neuen Schlüssel-Wert-Paaren.
@@ -176,7 +181,7 @@ class MemoryNetwork:
             importance: Wichtigkeits-Scores [batch_size, seq_len]
         """
         # Konvertiere zu Listen für Speicherung
-        if hasattr(keys, 'numpy'):
+        if hasattr(keys, "numpy"):
             keys_list = keys.numpy().tolist()
             values_list = values.numpy().tolist()
             importance_list = importance.numpy().tolist()
@@ -198,8 +203,7 @@ class MemoryNetwork:
             self.importance_scores = self.importance_scores[excess:]
 
     def __call__(
-        self,
-        query_embeddings: tf.Tensor
+        self, query_embeddings: tf.Tensor
     ) -> Tuple[tf.Tensor, Optional[tf.Tensor]]:
         """
         Ruft relevante Erinnerungen basierend auf Query-Embeddings ab.
@@ -225,12 +229,14 @@ class MemoryNetwork:
             Dictionary mit Memory-Statistiken
         """
         return {
-            'total_memories': len(self.keys),
-            'memory_size': self.memory_size,
-            'key_dim': self.key_dim,
-            'num_heads': self.num_heads,
-            'embedding_dim': self.embedding_dim,
-            'memory_utilization': len(self.keys) / self.memory_size if self.memory_size > 0 else 0.0
+            "total_memories": len(self.keys),
+            "memory_size": self.memory_size,
+            "key_dim": self.key_dim,
+            "num_heads": self.num_heads,
+            "embedding_dim": self.embedding_dim,
+            "memory_utilization": (
+                len(self.keys) / self.memory_size if self.memory_size > 0 else 0.0
+            ),
         }
 
     def clear_memory(self) -> None:

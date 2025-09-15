@@ -4,15 +4,17 @@ Kombiniert semantische Suche mit generativer KI für kontextuelle Antworten
 """
 
 import json
-import numpy as np
-import faiss
-import pickle
-import os
 import logging
-from typing import List, Dict, Tuple, Optional, Any
-from sentence_transformers import SentenceTransformer
-import tensorflow as tf
+import os
+import pickle
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+import faiss
+import numpy as np
+import tensorflow as tf
+from sentence_transformers import SentenceTransformer
+
 
 class RAGSystem:
     """
@@ -20,7 +22,11 @@ class RAGSystem:
     Verwendet FAISS für effiziente Vektor-Suche und Sentence Transformers für Embeddings
     """
 
-    def __init__(self, corpus_path: str = None, embedding_model: str = 'paraphrase-multilingual-MiniLM-L12-v2'):
+    def __init__(
+        self,
+        corpus_path: str = None,
+        embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2",
+    ):
         """
         Initialisiert das RAG-System
 
@@ -32,8 +38,8 @@ class RAGSystem:
         if corpus_path is None:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.dirname(script_dir)
-            corpus_path = os.path.join(project_root, 'data', 'corpus.json')
-        
+            corpus_path = os.path.join(project_root, "data", "corpus.json")
+
         self.corpus_path = corpus_path
         self.embedding_model_name = embedding_model
         self.embedding_model = None
@@ -43,10 +49,10 @@ class RAGSystem:
 
         # Konfiguration
         self.config = {
-            'top_k': 5,  # Anzahl der abzurufenden Dokumente
-            'similarity_threshold': 0.3,  # Mindest-Ähnlichkeit für Retrieval
-            'max_context_length': 1000,  # Maximale Länge des Kontexts
-            'embedding_dimension': 384  # Dimension der Embeddings (für MiniLM)
+            "top_k": 5,  # Anzahl der abzurufenden Dokumente
+            "similarity_threshold": 0.3,  # Mindest-Ähnlichkeit für Retrieval
+            "max_context_length": 1000,  # Maximale Länge des Kontexts
+            "embedding_dimension": 384,  # Dimension der Embeddings (für MiniLM)
         }
 
         self._initialize_system()
@@ -78,14 +84,19 @@ class RAGSystem:
         logging.info(f"📚 Lade Corpus aus {self.corpus_path}")
 
         try:
-            with open(self.corpus_path, 'r', encoding='utf-8') as f:
+            with open(self.corpus_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                self.corpus_entries = data.get('entries', [])
+
+                # Handle both formats: array of entries or object with entries
+                if isinstance(data, list):
+                    self.corpus_entries = data
+                else:
+                    self.corpus_entries = data.get("entries", [])
 
             logging.info(f"✅ Corpus geladen: {len(self.corpus_entries)} Einträge")
 
             # Erstelle Text-Liste für Embeddings
-            self.corpus_texts = [entry['text'] for entry in self.corpus_entries]
+            self.corpus_texts = [entry["text"] for entry in self.corpus_entries]
 
         except Exception as e:
             logging.error(f"❌ Fehler beim Laden des Corpus: {e}")
@@ -96,17 +107,17 @@ class RAGSystem:
         # Dynamische Pfade zu den Modell-Dateien
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
-        models_dir = os.path.join(project_root, 'models')
-        
-        index_path = os.path.join(models_dir, 'rag_index.faiss')
-        embeddings_path = os.path.join(models_dir, 'rag_embeddings.pkl')
+        models_dir = os.path.join(project_root, "models")
+
+        index_path = os.path.join(models_dir, "rag_index.faiss")
+        embeddings_path = os.path.join(models_dir, "rag_embeddings.pkl")
 
         if os.path.exists(index_path) and os.path.exists(embeddings_path):
             # Lade vorhandenen Index
             logging.info("📥 Lade vorhandenen FAISS-Index...")
             self.index = faiss.read_index(index_path)
 
-            with open(embeddings_path, 'rb') as f:
+            with open(embeddings_path, "rb") as f:
                 self.embeddings = pickle.load(f)
 
             logging.info("✅ Vorhandener Index geladen")
@@ -121,9 +132,7 @@ class RAGSystem:
         # Erstelle Embeddings für alle Corpus-Einträge
         logging.info("🔄 Erstelle Embeddings für Corpus...")
         self.embeddings = self.embedding_model.encode(
-            self.corpus_texts,
-            show_progress_bar=True,
-            convert_to_numpy=True
+            self.corpus_texts, show_progress_bar=True, convert_to_numpy=True
         )
 
         # Normalisiere Embeddings für Kosinus-Ähnlichkeit
@@ -131,7 +140,9 @@ class RAGSystem:
 
         # Erstelle FAISS Index
         dimension = self.embeddings.shape[1]
-        self.index = faiss.IndexFlatIP(dimension)  # Inner Product für normalisierte Vektoren = Kosinus-Ähnlichkeit
+        self.index = faiss.IndexFlatIP(
+            dimension
+        )  # Inner Product für normalisierte Vektoren = Kosinus-Ähnlichkeit
 
         # Füge Embeddings zum Index hinzu
         self.index.add(self.embeddings)
@@ -139,22 +150,26 @@ class RAGSystem:
         # Speichere Index und Embeddings in models/ Verzeichnis
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
-        models_dir = os.path.join(project_root, 'models')
-        
+        models_dir = os.path.join(project_root, "models")
+
         # Erstelle models/ Verzeichnis falls es nicht existiert
         os.makedirs(models_dir, exist_ok=True)
-        
-        index_path = os.path.join(models_dir, 'rag_index.faiss')
-        embeddings_path = os.path.join(models_dir, 'rag_embeddings.pkl')
-        
+
+        index_path = os.path.join(models_dir, "rag_index.faiss")
+        embeddings_path = os.path.join(models_dir, "rag_embeddings.pkl")
+
         faiss.write_index(self.index, index_path)
 
-        with open(embeddings_path, 'wb') as f:
+        with open(embeddings_path, "wb") as f:
             pickle.dump(self.embeddings, f)
 
-        logging.info(f"💾 Index gespeichert: {len(self.corpus_texts)} Dokumente, Dimension {dimension}")
+        logging.info(
+            f"💾 Index gespeichert: {len(self.corpus_texts)} Dokumente, Dimension {dimension}"
+        )
 
-    def retrieve_relevant_documents(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+    def retrieve_relevant_documents(
+        self, query: str, top_k: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         """
         Ruft relevante Dokumente für eine Query ab
 
@@ -166,7 +181,7 @@ class RAGSystem:
             Liste der relevanten Dokumente mit Scores
         """
         if top_k is None:
-            top_k = self.config['top_k']
+            top_k = self.config["top_k"]
 
         # Erstelle Embedding für die Query
         query_embedding = self.embedding_model.encode([query], convert_to_numpy=True)
@@ -178,12 +193,12 @@ class RAGSystem:
         # Sammle Ergebnisse
         results = []
         for score, idx in zip(scores[0], indices[0]):
-            if score >= self.config['similarity_threshold']:
+            if score >= self.config["similarity_threshold"]:
                 result = {
-                    'document': self.corpus_entries[idx],
-                    'score': float(score),
-                    'text': self.corpus_texts[idx],
-                    'index': int(idx)
+                    "document": self.corpus_entries[idx],
+                    "score": float(score),
+                    "text": self.corpus_texts[idx],
+                    "index": int(idx),
                 }
                 results.append(result)
 
@@ -206,17 +221,17 @@ class RAGSystem:
         context_parts = [f"Query: {query}\n"]
 
         # Sortiere Dokumente nach Relevanz
-        sorted_docs = sorted(relevant_docs, key=lambda x: x['score'], reverse=True)
+        sorted_docs = sorted(relevant_docs, key=lambda x: x["score"], reverse=True)
 
         context_parts.append("Relevante Informationen:")
         total_length = 0
 
         for i, doc in enumerate(sorted_docs, 1):
-            doc_text = doc['text']
+            doc_text = doc["text"]
             doc_length = len(doc_text)
 
             # Prüfe, ob das Hinzufügen die maximale Länge überschreiten würde
-            if total_length + doc_length > self.config['max_context_length']:
+            if total_length + doc_length > self.config["max_context_length"]:
                 break
 
             context_parts.append(f"\n{i}. {doc_text}")
@@ -226,7 +241,9 @@ class RAGSystem:
 
         return "\n".join(context_parts)
 
-    def rag_answer(self, query: str, generation_model=None, generation_tokenizer=None) -> Dict[str, Any]:
+    def rag_answer(
+        self, query: str, generation_model=None, generation_tokenizer=None
+    ) -> Dict[str, Any]:
         """
         Generiert eine RAG-basierte Antwort
 
@@ -249,22 +266,26 @@ class RAGSystem:
         # 3. Generation: Generiere Antwort basierend auf Kontext
         if generation_model and generation_tokenizer:
             # Verwende bereitgestelltes Modell
-            answer = self._generate_with_model(context, generation_model, generation_tokenizer)
+            answer = self._generate_with_model(
+                context, generation_model, generation_tokenizer
+            )
         else:
             # Fallback: Verwende einfache Extraktion
             answer = self._extract_answer_from_context(context, relevant_docs)
 
         result = {
-            'query': query,
-            'answer': answer,
-            'context': context,
-            'relevant_documents': relevant_docs,
-            'num_documents': len(relevant_docs),
-            'timestamp': datetime.now().isoformat(),
-            'method': 'model_generation' if generation_model else 'context_extraction'
+            "query": query,
+            "answer": answer,
+            "context": context,
+            "relevant_documents": relevant_docs,
+            "num_documents": len(relevant_docs),
+            "timestamp": datetime.now().isoformat(),
+            "method": "model_generation" if generation_model else "context_extraction",
         }
 
-        logging.info(f"✅ RAG-Antwort generiert: {len(relevant_docs)} Dokumente verwendet")
+        logging.info(
+            f"✅ RAG-Antwort generiert: {len(relevant_docs)} Dokumente verwendet"
+        )
         return result
 
     def _generate_with_model(self, context: str, model, tokenizer) -> str:
@@ -283,7 +304,7 @@ class RAGSystem:
             # Tokenisiere Kontext
             input_sequence = tokenizer.texts_to_sequences([context])
             input_padded = tf.keras.preprocessing.sequence.pad_sequences(
-                input_sequence, maxlen=self.config.get('maxlen', 100), padding='post'
+                input_sequence, maxlen=self.config.get("maxlen", 100), padding="post"
             )
 
             # Generiere Antwort
@@ -298,18 +319,20 @@ class RAGSystem:
             for token in predicted_sequence:
                 if token > 0 and token in reverse_word_index:
                     word = reverse_word_index[token]
-                    if word not in ['<OOV>', '<UNK>']:
+                    if word not in ["<OOV>", "<UNK>"]:
                         predicted_text.append(word)
                 if len(predicted_text) >= 50:  # Begrenze Länge
                     break
 
-            return ' '.join(predicted_text).strip()
+            return " ".join(predicted_text).strip()
 
         except Exception as e:
             logging.warning(f"⚠️ Fehler bei der Modell-Generierung: {e}")
             return "Fehler bei der Antwortgenerierung."
 
-    def _extract_answer_from_context(self, context: str, relevant_docs: List[Dict[str, Any]]) -> str:
+    def _extract_answer_from_context(
+        self, context: str, relevant_docs: List[Dict[str, Any]]
+    ) -> str:
         """
         Extrahiert eine einfache Antwort aus dem Kontext
 
@@ -324,8 +347,8 @@ class RAGSystem:
             return "Keine relevanten Informationen gefunden."
 
         # Verwende den Text des relevantesten Dokuments als Basis-Antwort
-        top_doc = max(relevant_docs, key=lambda x: x['score'])
-        answer = top_doc['text']
+        top_doc = max(relevant_docs, key=lambda x: x["score"])
+        answer = top_doc["text"]
 
         # Begrenze Länge
         if len(answer) > 200:
@@ -344,7 +367,7 @@ class RAGSystem:
 
         # Füge neue Einträge hinzu
         self.corpus_entries.extend(new_entries)
-        self.corpus_texts.extend([entry['text'] for entry in new_entries])
+        self.corpus_texts.extend([entry["text"] for entry in new_entries])
 
         # Rebuild Index
         self._create_vector_index()
@@ -354,16 +377,18 @@ class RAGSystem:
     def get_statistics(self) -> Dict[str, Any]:
         """Gibt Statistiken über das RAG-System zurück"""
         return {
-            'total_documents': len(self.corpus_entries),
-            'embedding_dimension': self.embeddings.shape[1] if self.embeddings is not None else 0,
-            'index_size': self.index.ntotal if self.index else 0,
-            'embedding_model': self.embedding_model_name,
-            'config': self.config
+            "total_documents": len(self.corpus_entries),
+            "embedding_dimension": (
+                self.embeddings.shape[1] if self.embeddings is not None else 0
+            ),
+            "index_size": self.index.ntotal if self.index else 0,
+            "embedding_model": self.embedding_model_name,
+            "config": self.config,
         }
 
 
 # Standalone-Funktionen für einfache Verwendung
-def initialize_rag_system(corpus_path: str = 'corpus.json') -> RAGSystem:
+def initialize_rag_system(corpus_path: str = "corpus.json") -> RAGSystem:
     """
     Initialisiert ein RAG-System
 
@@ -376,7 +401,9 @@ def initialize_rag_system(corpus_path: str = 'corpus.json') -> RAGSystem:
     return RAGSystem(corpus_path=corpus_path)
 
 
-def rag_query(query: str, rag_system: RAGSystem, generation_model=None, generation_tokenizer=None) -> Dict[str, Any]:
+def rag_query(
+    query: str, rag_system: RAGSystem, generation_model=None, generation_tokenizer=None
+) -> Dict[str, Any]:
     """
     Führt eine RAG-Abfrage aus
 
@@ -411,11 +438,14 @@ if __name__ == "__main__":
 
         # Statistiken
         stats = rag.get_statistics()
-        print(f"📈 Statistiken: {stats['total_documents']} Dokumente, {stats['embedding_dimension']}D Embeddings")
+        print(
+            f"📈 Statistiken: {stats['total_documents']} Dokumente, {stats['embedding_dimension']}D Embeddings"
+        )
 
         print("✅ RAG-System funktioniert!")
 
     except Exception as e:
         print(f"❌ Fehler beim Testen: {e}")
         import traceback
+
         traceback.print_exc()

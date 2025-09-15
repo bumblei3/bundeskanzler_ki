@@ -4,15 +4,17 @@ Implementiert effiziente Speicherverwaltung, Lazy Loading und Garbage Collection
 """
 
 import gc
-import os
-import psutil
 import logging
-from typing import Iterator, List, Optional
-from contextlib import contextmanager
 import mmap
+import os
+from contextlib import contextmanager
+from typing import Iterator, List, Optional
+
 import numpy as np
+import psutil
 
 logger = logging.getLogger(__name__)
+
 
 class MemoryOptimizer:
     """Memory-Optimierungsklasse für effiziente Speicherverwaltung"""
@@ -56,8 +58,11 @@ class MemoryOptimizer:
                 arrays.append(obj)
 
         total_size = sum(arr.nbytes for arr in arrays) / 1024 / 1024
-        logger.info(f"📊 NumPy Arrays optimiert: {len(arrays)} Arrays, {total_size:.1f} MB")
+        logger.info(
+            f"📊 NumPy Arrays optimiert: {len(arrays)} Arrays, {total_size:.1f} MB"
+        )
         return total_size
+
 
 class LazyFileReader:
     """Lazy File Reader für große Dateien"""
@@ -70,9 +75,9 @@ class LazyFileReader:
     def read_lines_lazy(self) -> Iterator[str]:
         """Liest Datei zeilenweise ohne alles in den Speicher zu laden"""
         try:
-            with open(self.file_path, 'r', encoding='utf-8') as f:
+            with open(self.file_path, "r", encoding="utf-8") as f:
                 for line in f:
-                    yield line.rstrip('\n\r')
+                    yield line.rstrip("\n\r")
         except FileNotFoundError:
             logger.warning(f"Datei nicht gefunden: {self.file_path}")
             return
@@ -91,6 +96,7 @@ class LazyFileReader:
         if chunk:  # Rest verarbeiten
             yield chunk
 
+
 class MemoryMappedCorpus:
     """Memory-Mapped Corpus für effizienten Zugriff auf große Textdaten"""
 
@@ -108,11 +114,11 @@ class MemoryMappedCorpus:
         logger.info(f"Erstelle Memory-Map Index für {self.corpus_file}")
         self.line_positions = []
 
-        with open(self.corpus_file, 'r', encoding='utf-8') as f:
+        with open(self.corpus_file, "r", encoding="utf-8") as f:
             pos = 0
             for line_num, line in enumerate(f):
                 self.line_positions.append(pos)
-                pos += len(line.encode('utf-8'))
+                pos += len(line.encode("utf-8"))
 
         logger.info(f"Index erstellt: {len(self.line_positions)} Zeilen")
 
@@ -123,7 +129,7 @@ class MemoryMappedCorpus:
 
         if self.mmap_obj is None:
             try:
-                with open(self.corpus_file, 'r', encoding='utf-8') as f:
+                with open(self.corpus_file, "r", encoding="utf-8") as f:
                     self.mmap_obj = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
             except Exception as e:
                 logger.error(f"Memory-Mapping fehlgeschlagen: {e}")
@@ -133,11 +139,11 @@ class MemoryMappedCorpus:
             start_pos = self.line_positions[line_num]
             # Finde Ende der Zeile
             end_pos = start_pos
-            while end_pos < len(self.mmap_obj) and self.mmap_obj[end_pos] != ord('\n'):
+            while end_pos < len(self.mmap_obj) and self.mmap_obj[end_pos] != ord("\n"):
                 end_pos += 1
 
             line_bytes = self.mmap_obj[start_pos:end_pos]
-            return line_bytes.decode('utf-8').rstrip('\n\r')
+            return line_bytes.decode("utf-8").rstrip("\n\r")
         except Exception as e:
             logger.error(f"Fehler beim Lesen der Zeile {line_num}: {e}")
             return None
@@ -151,10 +157,13 @@ class MemoryMappedCorpus:
     def __len__(self):
         return len(self.line_positions)
 
+
 class ChunkedProcessor:
     """Chunked Processing für große Datenmengen"""
 
-    def __init__(self, chunk_size: int = 1000, memory_optimizer: Optional[MemoryOptimizer] = None):
+    def __init__(
+        self, chunk_size: int = 1000, memory_optimizer: Optional[MemoryOptimizer] = None
+    ):
         self.chunk_size = chunk_size
         self.memory_optimizer = memory_optimizer or MemoryOptimizer()
 
@@ -163,8 +172,10 @@ class ChunkedProcessor:
         results = []
 
         for i in range(0, len(data), self.chunk_size):
-            chunk = data[i:i + self.chunk_size]
-            logger.debug(f"Verarbeite Chunk {i//self.chunk_size + 1}/{(len(data) + self.chunk_size - 1)//self.chunk_size}")
+            chunk = data[i : i + self.chunk_size]
+            logger.debug(
+                f"Verarbeite Chunk {i//self.chunk_size + 1}/{(len(data) + self.chunk_size - 1)//self.chunk_size}"
+            )
 
             # Verarbeite Chunk
             chunk_results = processor_func(chunk, *args, **kwargs)
@@ -172,12 +183,16 @@ class ChunkedProcessor:
 
             # Memory-Optimierung nach jedem Chunk
             self.memory_optimizer.force_garbage_collection()
-            self.memory_optimizer.log_memory_usage(f"nach Chunk {i//self.chunk_size + 1}")
+            self.memory_optimizer.log_memory_usage(
+                f"nach Chunk {i//self.chunk_size + 1}"
+            )
 
         return results
 
+
 # Globale Memory-Optimierungsinstanz
 memory_optimizer = MemoryOptimizer()
+
 
 def optimize_tensorflow_memory():
     """Optimiert TensorFlow Memory-Einstellungen"""
@@ -185,22 +200,24 @@ def optimize_tensorflow_memory():
         import tensorflow as tf
 
         # Prüfe ob TensorFlow vollständig verfügbar ist (nicht nur Stub)
-        if not hasattr(tf, 'config') or not hasattr(tf.config, 'list_physical_devices'):
+        if not hasattr(tf, "config") or not hasattr(tf.config, "list_physical_devices"):
             logger.info("TensorFlow Stub erkannt - überspringe Memory-Optimierung")
             return
 
         # GPU Memory Growth aktivieren
-        gpus = tf.config.list_physical_devices('GPU')
+        gpus = tf.config.list_physical_devices("GPU")
         if gpus:
             for gpu in gpus:
                 try:
                     tf.config.experimental.set_memory_growth(gpu, True)
                     logger.info(f"✅ GPU Memory Growth aktiviert für {gpu}")
                 except RuntimeError as e:
-                    logger.warning(f"GPU Memory Growth konnte nicht aktiviert werden: {e}")
+                    logger.warning(
+                        f"GPU Memory Growth konnte nicht aktiviert werden: {e}"
+                    )
 
         # CPU Memory-Optimierung
-        if hasattr(tf.config, 'threading'):
+        if hasattr(tf.config, "threading"):
             tf.config.threading.set_intra_op_parallelism_threads(4)
             tf.config.threading.set_inter_op_parallelism_threads(2)
 
@@ -209,6 +226,7 @@ def optimize_tensorflow_memory():
     except Exception as e:
         logger.warning(f"TensorFlow Memory-Optimierung fehlgeschlagen: {e}")
         logger.info("Fortfahren ohne TensorFlow Memory-Optimierung")
+
 
 def setup_memory_optimization():
     """Richtet globale Memory-Optimierungen ein"""
