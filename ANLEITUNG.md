@@ -1,6 +1,6 @@
 # 🤖 Bundeskanzler KI - Multimodale Anleitung (RTX 2070 Edition)
 
-**Version 2.0.0** - Optimiert für NVIDIA RTX 2070 GPUs mit 8GB VRAM
+**Version 2.1.0** - Optimiert für NVIDIA RTX 2070 GPUs mit integriertem Debug-System
 
 ## 🚀 **Schnellstart (RTX 2070 optimiert)**
 
@@ -162,7 +162,67 @@ Das System lernt aus jeder Interaktion:
 - **Memory-Optimierung**: Automatische Speicherbereinigung
 - **Cache-Management**: Temporäre Dateien verwalten
 
-## 🔧 **Erweiterte Konfiguration**
+## � **Debug-System & Fehlerbehebung**
+
+### 🎯 **Integriertes Debug-System**
+
+Das System verfügt über ein umfassendes Debug-System für Fehlerbehebung und Monitoring:
+
+```python
+# Debug-System ist automatisch aktiv
+from webgui_ki import DebugSystem, DebugLevel
+
+debug = DebugSystem()
+debug.log(DebugLevel.INFO, "System gestartet")
+debug.log(DebugLevel.SUCCESS, "Modell geladen")
+```
+
+### 📊 **Debug-Features im Web-Interface**
+
+1. **Live Debug-Konsole**:
+   - Echtzeit-Anzeige aller Systemaktivitäten
+   - Farbkodierte Log-Levels (ℹ️✅⚠️❌🔍)
+   - Filterbare Nachrichten
+
+2. **API-Call-Tracking**:
+   - Automatische Erfassung aller API-Aufrufe
+   - Response-Zeiten und Status-Codes
+   - Fehlerdiagnose mit Stack-Traces
+
+3. **Performance-Monitoring**:
+   - GPU-Speicher-Nutzung
+   - API-Response-Zeiten
+   - System-Metriken
+
+### 🐛 **Fehlerbehebung**
+
+**Problem: Modell lädt nicht**
+```bash
+# Debug-Logs prüfen
+# 1. Web-Interface öffnen: http://localhost:8501
+# 2. Debug-Konsole aufklappen
+# 3. Nach ERROR-Meldungen suchen
+```
+
+**Problem: API nicht erreichbar**
+```bash
+# API-Status prüfen
+curl http://localhost:8001/health
+
+# Debug-Logs für API-Calls anzeigen
+# Web-Interface → Debug-Tab
+```
+
+**Problem: GPU-Speicher voll**
+```bash
+# GPU-Memory freigeben
+python -c "import torch; torch.cuda.empty_cache()"
+
+# Memory-Stats prüfen
+curl http://localhost:8001/admin/memory/stats
+```
+
+## �🔧 **Erweiterte Konfiguration**
 
 ### ⚙️ **Model-Tiers**
 

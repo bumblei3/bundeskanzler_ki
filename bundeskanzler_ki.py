@@ -11,6 +11,9 @@ import datetime
 import csv
 import yaml
 import logging
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime
+import time
 
 # Neue Advanced Transformer Modelle importieren
 from advanced_transformer_model import AdvancedTransformerModel, create_hybrid_model
@@ -32,6 +35,9 @@ from memory_optimizer import (
     setup_memory_optimization,
     memory_optimizer
 )
+
+# RAG-System importieren
+from rag_system import RAGSystem, rag_query
 
 # Konfiguriere Logging
 logging.basicConfig(
@@ -304,36 +310,121 @@ from multimodal_ki import MultimodalTransformerModel
 from continuous_learning import ContinuousLearningSystem
 from advanced_security import AdvancedSecuritySystem
 
+# Response Quality Optimizer importieren
+from response_quality_optimizer import ResponseQualityOptimizer
 
-def generate_transformer_response(seed_text: str, transformer_model: AdvancedTransformerModel, max_length: int = 100) -> str:
+# Advanced Monitoring System importieren
+from advanced_monitoring import AdvancedMonitoringSystem
+
+# Enhanced Security System importieren
+from enhanced_security import EnhancedSecuritySystem
+
+
+def generate_transformer_response(seed_text: str, transformer_model: AdvancedTransformerModel, quality_optimizer: ResponseQualityOptimizer = None, monitoring_system: AdvancedMonitoringSystem = None, user_id: str = "default", max_length: int = 100) -> Dict[str, Any]:
     """
-    Generiert eine Antwort mit dem AdvancedTransformerModel.
+    Generiert eine Antwort mit dem AdvancedTransformerModel und optimiert die Qualität.
 
     Args:
         seed_text: Die Eingabe des Nutzers
         transformer_model: Das AdvancedTransformerModel
+        quality_optimizer: Der Response Quality Optimizer
+        user_id: ID des Benutzers für Kontext-Management
         max_length: Maximale Länge der generierten Antwort
 
     Returns:
-        str: Die generierte Antwort
+        Dict mit response, quality_metrics, etc.
     """
     try:
-        # Bereite den Prompt vor
-        prompt = f"Frage: {seed_text}\nAntwort:"
+        start_time = time.time()
+
+        # Kontext für Prompt-Optimierung sammeln
+        context = {}
+        if quality_optimizer:
+            conversation_history = quality_optimizer.get_conversation_context(user_id)
+            if conversation_history:
+                context['conversation_history'] = conversation_history
+
+        # Prompt optimieren
+        if quality_optimizer:
+            optimized_prompt = quality_optimizer.optimize_prompt(seed_text, context)
+        else:
+            optimized_prompt = f"Frage: {seed_text}\nAntwort:"
 
         # Generiere Antwort mit dem Transformer-Modell
         response = transformer_model.generate_response(
-            prompt,
+            optimized_prompt,
             max_length=max_length,
             temperature=0.7,
             top_p=0.9
         )
 
-        return response.strip()
+        # Entferne Prompt aus Antwort
+        clean_response = response.strip()
+        if clean_response.startswith(optimized_prompt.replace(f"Frage: {seed_text}\nAntwort:", "")):
+            clean_response = clean_response[len(optimized_prompt.replace(f"Frage: {seed_text}\nAntwort:", "")):].strip()
+
+        # Qualitätsoptimierung anwenden
+        if quality_optimizer:
+            enhanced_result = quality_optimizer.enhance_response(clean_response, seed_text, context)
+            final_response = enhanced_result['enhanced_response']
+
+            # Kontext für nächste Konversation speichern
+            quality_optimizer.add_conversation_context(user_id, {
+                'role': 'user',
+                'content': seed_text,
+                'timestamp': datetime.now().isoformat()
+            })
+            quality_optimizer.add_conversation_context(user_id, {
+                'role': 'assistant',
+                'content': final_response,
+                'timestamp': datetime.now().isoformat()
+            })
+
+            # Monitoring: Response-Metrik loggen
+            if monitoring_system:
+                monitoring_system.log_response_metric(
+                    question=seed_text,
+                    response=final_response,
+                    response_time=time.time() - start_time,
+                    quality_score=enhanced_result['quality_metrics']['overall_score'],
+                    confidence_score=enhanced_result['quality_metrics']['overall_score'],
+                    model_type="transformer_optimized",
+                    user_id=user_id
+                )
+
+            return {
+                'response': final_response,
+                'original_response': clean_response,
+                'quality_metrics': enhanced_result['quality_metrics'],
+                'improvements_applied': enhanced_result['improvements_applied'],
+                'confidence_score': enhanced_result['quality_metrics']['overall_score']
+            }
+        else:
+            # Monitoring für nicht-optimierte Antworten
+            if monitoring_system:
+                monitoring_system.log_response_metric(
+                    question=seed_text,
+                    response=clean_response,
+                    response_time=time.time() - start_time,
+                    quality_score=0.5,
+                    confidence_score=0.5,
+                    model_type="transformer_basic",
+                    user_id=user_id
+                )
+
+            return {
+                'response': clean_response,
+                'quality_metrics': None,
+                'confidence_score': 0.5
+            }
 
     except Exception as e:
         logging.error(f"Fehler bei der Transformer-Generierung: {e}")
-        return f"Fehler bei der Generierung: {str(e)}"
+        return {
+            'response': f"Fehler bei der Generierung: {str(e)}",
+            'quality_metrics': None,
+            'confidence_score': 0.0
+        }
 
 
 def print_error_hint(e):
@@ -351,7 +442,7 @@ def print_error_hint(e):
         logging.error(f"Unbekannter Fehler: {type(e).__name__}: {str(e)}")
 
 
-def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
+def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace, fine_tuned_model=None, fine_tuned_tokenizer=None) -> None:
     """
     Startet den interaktiven Modus für Nutzereingaben und zeigt die Top-N Antworten an.
     Unterstützt klassische Korpus-basierte, generative Transformer- und multimodale Antworten.
@@ -393,8 +484,45 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
     except Exception as e:
         logging.warning(f"⚠️ Sicherheitssystem konnte nicht initialisiert werden: {e}")
 
+    # Initialisiere Response Quality Optimizer
+    quality_optimizer = None
+    try:
+        logging.info("🎯 Initialisiere Response Quality Optimizer...")
+        quality_optimizer = ResponseQualityOptimizer()
+        logging.info("✅ Response Quality Optimizer initialisiert")
+    except Exception as e:
+        logging.warning(f"⚠️ Response Quality Optimizer konnte nicht initialisiert werden: {e}")
+
+    # Initialisiere Advanced Monitoring System
+    monitoring_system = None
+    try:
+        logging.info("📊 Initialisiere Advanced Monitoring System...")
+        monitoring_system = AdvancedMonitoringSystem()
+        monitoring_system.start_monitoring()
+        logging.info("✅ Advanced Monitoring System initialisiert und gestartet")
+    except Exception as e:
+        logging.warning(f"⚠️ Advanced Monitoring System konnte nicht initialisiert werden: {e}")
+
+    # Initialisiere Enhanced Security System
+    security_system = None
+    try:
+        logging.info("🔒 Initialisiere Enhanced Security System...")
+        security_system = EnhancedSecuritySystem()
+        logging.info("✅ Enhanced Security System initialisiert")
+    except Exception as e:
+        logging.warning(f"⚠️ Enhanced Security System konnte nicht initialisiert werden: {e}")
+
+    # Initialisiere RAG-System
+    rag_system = None
+    try:
+        logging.info("🔍 Initialisiere RAG-System...")
+        rag_system = RAGSystem()
+        logging.info("✅ RAG-System initialisiert")
+    except Exception as e:
+        logging.warning(f"⚠️ RAG-System konnte nicht initialisiert werden: {e}")
+
     logging.info("[Interaktiv] Bundeskanzler-KI: Geben Sie eine Frage oder Aussage ein (Abbruch mit 'exit')")
-    logging.info("[Interaktiv] Modi: 'corpus <frage>' (Korpus), 'generate <frage>' (generativ)")
+    logging.info("[Interaktiv] Modi: 'corpus <frage>' (Korpus), 'generate <frage>' (generativ), 'finetuned <frage>' (fine-tuned Modell), 'rag <frage>' (RAG-System)")
     if multimodal_model:
         logging.info("[Interaktiv] Multimodal: 'multimodal <frage>', 'image <pfad>', 'audio <pfad>'")
 
@@ -424,10 +552,33 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
             response_mode = "image"
             image_path = seed_text[6:].strip()  # Extrahiere Bildpfad
             seed_text = "Analysiere dieses Bild"  # Standard-Prompt für Bildanalyse
-        elif seed_text.strip().lower().startswith("audio "):
-            response_mode = "audio"
-            audio_path = seed_text[6:].strip()  # Extrahiere Audiodatei
-            seed_text = "Transkribiere diese Audio-Datei"  # Standard-Prompt für Audio
+        elif seed_text.strip().lower().startswith("finetuned "):
+            response_mode = "finetuned"
+            seed_text = seed_text[10:].strip()  # Entferne "finetuned " vom Anfang
+        elif seed_text.strip().lower().startswith("rag "):
+            response_mode = "rag"
+            seed_text = seed_text[4:].strip()  # Entferne "rag " vom Anfang
+
+        # Sicherheitsvalidierung zuerst
+        if security_system:
+            validation_result = security_system.validate_input(
+                seed_text,
+                user_id="interactive_user",
+                ip_address="localhost"
+            )
+
+            if not validation_result["is_valid"]:
+                print(f"❌ Eingabe blockiert: {', '.join(validation_result['flags'])}")
+                if validation_result["recommendations"]:
+                    print(f"💡 Empfehlung: {validation_result['recommendations'][0]}")
+                print("\n" + "="*50)
+                continue
+
+            if validation_result["warnings"]:
+                print(f"⚠️ Warnung: {', '.join(validation_result['warnings'][:2])}")
+
+            # Verwende sanitisierten Input
+            seed_text = validation_result["sanitized_input"]
 
         try:
             if response_mode == "multimodal" and multimodal_model is not None:
@@ -453,32 +604,116 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
                     print(f"❌ Bilddatei nicht gefunden: {image_path}")
                 print("\n" + "="*50)
 
-            elif response_mode == "audio" and multimodal_model is not None:
-                # Audio-Transkription
-                print(f"\n🎵 Audio-Transkription: '{audio_path}'")
-                if os.path.exists(audio_path):
-                    transcription = multimodal_model.process_audio(audio_path)
-                    print(f"📝 Transkription: {transcription}")
-                else:
-                    print(f"❌ Audiodatei nicht gefunden: {audio_path}")
+            elif response_mode == "finetuned" and fine_tuned_model is not None and fine_tuned_tokenizer is not None:
+                # Fine-tuned Modell Antwort
+                print(f"\n� Fine-tuned Modell: '{seed_text}'")
+                try:
+                    # Tokenisiere die Eingabe mit dem fine-tuned Tokenizer
+                    input_sequence = fine_tuned_tokenizer.texts_to_sequences([seed_text])
+                    input_padded = tf.keras.preprocessing.sequence.pad_sequences(
+                        input_sequence, maxlen=maxlen, padding='post'
+                    )
+
+                    # Generiere Antwort mit dem fine-tuned Modell
+                    prediction = fine_tuned_model.predict(input_padded, verbose=0)
+                    predicted_sequence = tf.argmax(prediction, axis=-1)[0]
+
+                    # Konvertiere die vorhergesagte Sequenz zurück zu Text
+                    predicted_sequence = predicted_sequence.numpy()  # Tensor zu NumPy konvertieren
+                    reverse_word_index = {v: k for k, v in fine_tuned_tokenizer.word_index.items()}
+                    predicted_text = []
+                    for token in predicted_sequence:
+                        if token > 0 and token in reverse_word_index:
+                            word = reverse_word_index[token]
+                            if word != '<OOV>':  # Überspringe OOV tokens
+                                predicted_text.append(word)
+                        if len(predicted_text) >= 50:  # Begrenze die Länge
+                            break
+
+                    response_text = ' '.join(predicted_text).strip()
+                    if response_text:
+                        print(f"📝 Antwort: {response_text}")
+                    else:
+                        print("📝 Keine sinnvolle Antwort generiert")
+                except Exception as e:
+                    logging.error(f"❌ Fehler bei der Fine-tuned Modell Antwort: {e}")
+                    print(f"❌ Fehler bei der Verarbeitung: {e}")
+                print("\n" + "="*50)
+
+            elif response_mode == "rag" and rag_system is not None:
+                # RAG-System Antwort
+                print(f"\n🔍 RAG-System: '{seed_text}'")
+                try:
+                    # Verwende RAG-Abfrage mit dem fine-tuned Modell falls verfügbar
+                    result = rag_query(
+                        seed_text,
+                        rag_system,
+                        fine_tuned_model,
+                        fine_tuned_tokenizer
+                    )
+
+                    print(f"📝 Antwort: {result['answer']}")
+                    print(f"📊 Relevante Dokumente: {result['num_documents']}")
+                    print(f"🎯 Methode: {result['method']}")
+
+                    # Zeige Top-3 relevante Dokumente
+                    if result['relevant_documents']:
+                        print("\n📋 Top-relevante Dokumente:")
+                        for i, doc in enumerate(result['relevant_documents'][:3], 1):
+                            print(f"{i}. {doc['text'][:100]}... (Score: {doc['score']:.3f})")
+
+                except Exception as e:
+                    logging.error(f"❌ Fehler bei der RAG-Antwort: {e}")
+                    print(f"❌ Fehler bei der Verarbeitung: {e}")
                 print("\n" + "="*50)
 
             elif response_mode == "generate" and transformer_model is not None:
                 # Generative Antwort mit Transformer-Modell
                 print(f"\n🤖 Generative Antwort auf: '{seed_text}'")
-                response = generate_transformer_response(seed_text, transformer_model)
+                response_data = generate_transformer_response(seed_text, transformer_model, quality_optimizer, monitoring_system, "interactive_user")
+                response = response_data['response']
+                confidence = response_data.get('confidence_score', 0.5)
+
                 print(f"Antwort: {response}")
+                print(f"🎯 Confidence Score: {confidence:.2f}")
+
+                # Qualitätsmetriken anzeigen
+                if response_data.get('quality_metrics'):
+                    metrics = response_data['quality_metrics']
+                    print(f"📊 Qualitäts-Score: {metrics['overall_score']:.2f}")
+                    if metrics['strengths']:
+                        print(f"💪 Stärken: {', '.join(metrics['strengths'][:2])}")
+                    if response_data.get('improvements_applied'):
+                        print("✨ Antwort wurde automatisch verbessert")
+
+                # Session-Metriken aktualisieren (vereinfacht)
+                if monitoring_system:
+                    monitoring_system.update_session_metrics(
+                        "interactive_session",
+                        response_time=1.0,  # Vereinfacht
+                        quality_score=confidence
+                    )
 
                 # Feedback für kontinuierliches Lernen sammeln
                 try:
                     rating = input("Bewerten Sie die Antwort (1-5, Enter zum Überspringen): ").strip()
                     if rating and rating.isdigit() and 1 <= int(rating) <= 5:
-                        learning_system.add_user_feedback({
-                            "question": seed_text,
-                            "response": response,
-                            "rating": int(rating),
-                            "mode": "generative"
-                        })
+                        if learning_system:
+                            learning_system.add_user_feedback({
+                                "question": seed_text,
+                                "response": response,
+                                "rating": int(rating),
+                                "mode": "generative",
+                                "confidence": confidence
+                            })
+                        if monitoring_system:
+                            monitoring_system.log_user_feedback(
+                                user_id="interactive_user",
+                                question=seed_text,
+                                response=response,
+                                rating=int(rating),
+                                feedback_text="Interactive session feedback"
+                            )
                         print("✅ Feedback gespeichert für kontinuierliches Lernen")
                 except:
                     pass
@@ -502,15 +737,16 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
                 seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
                 output = model.predict(seed_sequence)[0]
                 top_indices = np.argsort(output)[::-1][:args.top_n]
-                print(f"\nTop-{args.top_n} Antworten für Ihre Eingabe:")
-                antworten = []
-                for i, idx in enumerate(top_indices):
-                    mark = "*" if i == 0 else " "
-                    print(f"{mark}{i+1}. {corpus[idx]} (Wahrscheinlichkeit: {output[idx]*100:.1f}%)")
-                    print(f"   Originalsatz: {corpus_original[idx]}")
-                    antworten.append((idx, output[idx]*100))
+
+                # Zeige nur die beste Antwort direkt an
+                best_idx = top_indices[0]
+                best_score = output[best_idx] * 100
+                print(f"\n💡 Antwort: {corpus_original[best_idx]}")
+                print(f"📊 Konfidenz: {best_score:.1f}%")
+
+                # Logge alle Top-N für interne Analyse, aber zeige sie nicht an
+                antworten = [(idx, output[idx]*100) for idx in top_indices]
                 log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
-                feedback_interaction(seed_text, antworten, corpus)
             else:
                 print("❌ Gewählter Modus nicht verfügbar. Verfügbare Modi:")
                 print("   - corpus <frage>    (Korpus-basierte Antworten)")
@@ -615,6 +851,11 @@ def main():
     num_words = config['model']['num_words']
     model_path = config['model']['model_path']
 
+    # Initialisiere Modelle
+    model = None
+    fine_tuned_model = None
+    fine_tuned_tokenizer = None
+
     # Korpus laden
     corpus_manager = CorpusManager(corpus_file)
     corpus_original_local = corpus_manager.get_all_sentences()
@@ -634,22 +875,46 @@ def main():
     X = pad_sequences(sequences, maxlen=maxlen, padding='post')
     Y = np.eye(len(corpus))[np.arange(len(corpus))]
 
-    # Modell laden/erstellen
+    # Modell laden/erstellen - Priorität: Fine-tuned Modell
     output_size = len(corpus)  # Die Ausgabegröße sollte der Anzahl der Sätze im Korpus entsprechen
     vocab_size = len(tokenizer.word_index) + 1
-    
-    # Modell laden/erstellen
-    if os.path.exists(model_path):
-        logging.info("Lade vorhandenes Modell...")
-        model = tf.keras.models.load_model(model_path)
-        # Überprüfe, ob das geladene Modell die richtige Ausgabegröße hat
-        if model.output_shape[-1] != output_size:
-            logging.warning(f"Modell hat falsche Ausgabegröße {model.output_shape[-1]}, benötigt {output_size}. Erstelle neues Modell...")
+
+    # Zuerst versuchen, das fine-tuned Modell zu laden
+    fine_tuned_model_path = 'fine_tuned_model.keras'
+    fine_tuned_tokenizer = None
+    fine_tuned_model = None
+
+    if os.path.exists(fine_tuned_model_path):
+        logging.info("🚀 Lade fine-tuned Modell...")
+        try:
+            fine_tuned_model = tf.keras.models.load_model(fine_tuned_model_path)
+            logging.info("✅ Fine-tuned Modell erfolgreich geladen")
+            # Lade auch den zugehörigen Tokenizer
+            import pickle
+            tokenizer_path = 'fine_tuned_model_tokenizer.pkl'
+            if os.path.exists(tokenizer_path):
+                with open(tokenizer_path, 'rb') as f:
+                    fine_tuned_tokenizer = pickle.load(f)
+                logging.info("✅ Fine-tuned Tokenizer geladen")
+        except Exception as e:
+            logging.warning(f"❌ Fehler beim Laden des fine-tuned Modells: {e}. Verwende Standard-Modell.")
+            fine_tuned_model = None
+    else:
+        logging.info("ℹ️ Kein fine-tuned Modell gefunden, verwende Standard-Modell")
+
+    # Fallback: Standard-Modell laden/erstellen
+    if model is None:
+        if os.path.exists(model_path):
+            logging.info("Lade vorhandenes Modell...")
+            model = tf.keras.models.load_model(model_path)
+            # Überprüfe, ob das geladene Modell die richtige Ausgabegröße hat
+            if model.output_shape[-1] != output_size:
+                logging.warning(f"Modell hat falsche Ausgabegröße {model.output_shape[-1]}, benötigt {output_size}. Erstelle neues Modell...")
+                model = init_model(tokenizer, maxlen, output_size, use_transformer=True)
+                model.compile(loss='categorical_crossentropy', optimizer='adam')
+        else:
             model = init_model(tokenizer, maxlen, output_size, use_transformer=True)
             model.compile(loss='categorical_crossentropy', optimizer='adam')
-    else:
-        model = init_model(tokenizer, maxlen, output_size, use_transformer=True)
-        model.compile(loss='categorical_crossentropy', optimizer='adam')
 
     # Subcommand-Logik
     if args.command == "train":
@@ -662,7 +927,7 @@ def main():
         batch_inference(tokenizer, model, maxlen, corpus_pp, corpus, run_args)
     elif args.command == "interactive":
         run_args = argparse.Namespace(batch_size=batch_size, epochs=epochs, top_n=top_n, input=input_file, corpus=corpus_file, log=log_file)
-        interactive_mode(tokenizer, model, maxlen, corpus_pp, corpus, run_args)
+        interactive_mode(tokenizer, model, maxlen, corpus_pp, corpus, run_args, fine_tuned_model, fine_tuned_tokenizer)
     elif args.command == "validate":
         validate_model(tokenizer, model, maxlen, preprocess, detect_language)
         analyze_feedback()

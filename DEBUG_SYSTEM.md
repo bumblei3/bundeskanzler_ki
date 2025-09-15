@@ -1,7 +1,7 @@
 # 🔍 Debug-System - Bundeskanzler KI
 ## Erweiterte Fehlerbehebung und Monitoring
 
-**Version 1.0.0** - Vollständig integriert in Web-GUI
+**Version 1.1.0** - Vollständig integriert in Web-GUI mit erweitertem API-Tracking
 
 ## 📋 Übersicht
 

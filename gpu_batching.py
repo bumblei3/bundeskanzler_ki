@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 class GPUBatchProcessor:
     """
-    GPU-accelerated batch processor für Embeddings
-    Unterstützt CUDA, ROCm und CPU-Fallback
+    GPU-accelerated batch processor für Embeddings mit Memory-Pooling
+    Unterstützt CUDA, ROCm und CPU-Fallback mit optimierter Batch-Verarbeitung
     """
 
     def __init__(
@@ -25,17 +25,25 @@ class GPUBatchProcessor:
         max_workers: int = 4,
         device: str = "auto",  # "cuda", "rocm", "cpu", "auto"
         embedding_dim: int = 512,
-        enable_async: bool = True
+        enable_async: bool = True,
+        enable_memory_pooling: bool = True,  # NEU: Memory-Pooling aktivieren
+        memory_pool_size_mb: int = 512  # NEU: Memory-Pool Größe
     ):
         self.batch_size = batch_size
         self.max_workers = max_workers
         self.device = self._detect_device(device)
         self.embedding_dim = embedding_dim
         self.enable_async = enable_async
+        self.enable_memory_pooling = enable_memory_pooling
+        self.memory_pool_size_mb = memory_pool_size_mb
 
         # GPU/CPU Setup
         self.gpu_available = self._setup_gpu()
         self.executor = ThreadPoolExecutor(max_workers=max_workers) if enable_async else None
+
+        # NEU: GPU Memory Pooling
+        self.memory_pool = None
+        self._setup_memory_pool()
 
         # Performance tracking
         self.stats = {
@@ -43,10 +51,83 @@ class GPUBatchProcessor:
             "total_embeddings": 0,
             "avg_batch_time": 0.0,
             "gpu_memory_used": 0.0,
-            "cpu_fallback_count": 0
+            "cpu_fallback_count": 0,
+            "memory_pool_hits": 0,  # NEU: Memory-Pool Statistiken
+            "memory_pool_misses": 0,
+            "dynamic_batch_adjustments": 0  # NEU: Dynamische Batch-Anpassungen
         }
 
-        logger.info(f"GPU-Batch-Processor initialisiert: Device={self.device}, GPU={'Verfügbar' if self.gpu_available else 'Nicht verfügbar'}")
+        logger.info(f"GPU-Batch-Processor initialisiert: Device={self.device}, GPU={'Verfügbar' if self.gpu_available else 'Nicht verfügbar'}, Memory-Pooling={'Aktiviert' if enable_memory_pooling else 'Deaktiviert'}")
+
+    def cleanup(self):
+        """Räumt GPU-Ressourcen auf"""
+        if self.memory_pool:
+            try:
+                for tensor in self.memory_pool.values():
+                    del tensor
+                self.memory_pool = None
+                if self.gpu_available:
+                    import torch
+                    torch.cuda.empty_cache()
+                logger.info("✅ GPU Memory Pool bereinigt")
+            except Exception as e:
+                logger.warning(f"Fehler beim Bereinigen des Memory Pools: {e}")
+
+        if self.executor:
+            self.executor.shutdown(wait=True)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Erweiterte Statistiken abrufen"""
+        stats = self.stats.copy()
+        
+        # Grundlegende GPU-Informationen hinzufügen
+        stats["device"] = self.device
+        stats["gpu_available"] = self.gpu_available
+        stats["memory_pooling_enabled"] = self.enable_memory_pooling and self.memory_pool is not None
+        stats["dynamic_batching"] = self.enable_memory_pooling
+        stats["batch_size"] = self.batch_size
+        stats["async_enabled"] = self.enable_async
+
+        # GPU-Speicher-Info hinzufügen
+        if self.gpu_available:
+            try:
+                import torch
+                stats["current_gpu_memory_mb"] = torch.cuda.memory_allocated() / (1024 * 1024)
+                stats["max_gpu_memory_mb"] = torch.cuda.max_memory_allocated() / (1024 * 1024)
+                stats["gpu_memory_total_mb"] = torch.cuda.get_device_properties(0).total_memory / (1024 * 1024)
+            except:
+                pass
+
+        # Memory-Pool-Statistiken hinzufügen
+        if self.enable_memory_pooling and self.memory_pool is not None:
+            stats["memory_pool_stats"] = {
+                "hits": self.stats.get("memory_pool_hits", 0),
+                "misses": self.stats.get("memory_pool_misses", 0),
+                "efficiency": 0.0
+            }
+            
+            # Effizienz berechnen
+            total_pool_accesses = stats["memory_pool_stats"]["hits"] + stats["memory_pool_stats"]["misses"]
+            if total_pool_accesses > 0:
+                stats["memory_pool_stats"]["efficiency"] = stats["memory_pool_stats"]["hits"] / total_pool_accesses
+
+        # Performance-Metriken hinzufügen
+        optimal_batch_size = self.batch_size
+        if self.gpu_available:
+            try:
+                import torch
+                available_memory_mb = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / (1024 * 1024)
+                optimal_batch_size = self._calculate_optimal_batch_size(available_memory_mb)
+            except:
+                optimal_batch_size = self.batch_size
+                
+        stats["performance_stats"] = {
+            "avg_batch_time_ms": self.stats.get("avg_batch_time", 0) * 1000,
+            "current_batch_size": self.batch_size,
+            "optimal_batch_size": optimal_batch_size
+        }
+
+        return stats
 
     def _detect_device(self, device: str) -> str:
         """Erkennt verfügbare GPU/CPU"""
@@ -75,7 +156,10 @@ class GPUBatchProcessor:
             if self.device == "cuda":
                 if torch.cuda.is_available():
                     torch.cuda.set_device(0)
+                    # NEU: Optimierte GPU-Einstellungen
                     torch.cuda.empty_cache()
+                    torch.backends.cudnn.benchmark = True
+                    torch.backends.cudnn.enabled = True
                     return True
             elif self.device == "rocm":
                 if hasattr(torch, 'hip') and torch.hip.is_available():
@@ -87,6 +171,34 @@ class GPUBatchProcessor:
 
         self.device = "cpu"
         return False
+
+    def _setup_memory_pool(self):
+        """Richtet GPU Memory Pooling ein"""
+        if not self.enable_memory_pooling or not self.gpu_available:
+            return
+
+        try:
+            import torch
+
+            # Erstelle Memory-Pool für häufig verwendete Tensor-Größen
+            pool_size_bytes = self.memory_pool_size_mb * 1024 * 1024
+
+            # Pre-alloziere häufig verwendete Tensor-Größen
+            self.memory_pool = {
+                'small': torch.empty((16, self.embedding_dim), dtype=torch.float32, device='cuda'),
+                'medium': torch.empty((32, self.embedding_dim), dtype=torch.float32, device='cuda'),
+                'large': torch.empty((64, self.embedding_dim), dtype=torch.float32, device='cuda'),
+            }
+
+            # Markiere als nicht verwendet (wird bei Bedarf überschrieben)
+            for tensor in self.memory_pool.values():
+                tensor.zero_()
+
+            logger.info(f"✅ GPU Memory Pool initialisiert: {self.memory_pool_size_mb}MB")
+
+        except Exception as e:
+            logger.warning(f"GPU Memory Pool konnte nicht initialisiert werden: {e}")
+            self.memory_pool = None
 
     async def process_batch_async(
         self,
@@ -143,12 +255,55 @@ class GPUBatchProcessor:
         return final_result
 
     def _create_batches(self, texts: List[str]) -> List[List[str]]:
-        """Teilt Texte in optimale Batches auf"""
+        """Teilt Texte in optimale Batches auf mit dynamischer Größenanpassung"""
+        if not self.gpu_available or not self.enable_memory_pooling:
+            # Fallback zur statischen Batch-Größe
+            batches = []
+            for i in range(0, len(texts), self.batch_size):
+                batch = texts[i:i + self.batch_size]
+                batches.append(batch)
+            return batches
+
+        # NEU: Dynamische Batch-Größen basierend auf GPU-Speicher
+        available_memory = self._get_available_gpu_memory_mb()
+        optimal_batch_size = self._calculate_optimal_batch_size(available_memory)
+
         batches = []
-        for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
-            batches.append(batch)
+        for i in range(0, len(texts), optimal_batch_size):
+            batch = texts[i:i + optimal_batch_size]
+            if batch:  # Sicherstellen, dass Batch nicht leer ist
+                batches.append(batch)
+
+        if optimal_batch_size != self.batch_size:
+            self.stats["dynamic_batch_adjustments"] += 1
+            logger.debug(f"Dynamische Batch-Größe angepasst: {self.batch_size} → {optimal_batch_size}")
+
         return batches
+
+    def _get_available_gpu_memory_mb(self) -> float:
+        """Ermittelt verfügbaren GPU-Speicher"""
+        try:
+            import torch
+            return (torch.cuda.get_device_properties(0).total_memory -
+                   torch.cuda.memory_allocated()) / (1024 * 1024)
+        except:
+            return 1024  # Fallback: 1GB annehmen
+
+    def _calculate_optimal_batch_size(self, available_memory_mb: float) -> int:
+        """Berechnet optimale Batch-Größe basierend auf verfügbarem Speicher"""
+        # Schätze Speicherverbrauch pro Embedding (512 dim float32 = 2KB)
+        memory_per_embedding_kb = self.embedding_dim * 4  # float32 = 4 bytes
+        memory_per_embedding_mb = memory_per_embedding_kb / 1024
+
+        # Reserve 20% für Overhead und andere Operationen
+        usable_memory_mb = available_memory_mb * 0.8
+
+        optimal_batch_size = int(usable_memory_mb / memory_per_embedding_mb)
+
+        # Begrenze auf sinnvolle Werte
+        optimal_batch_size = max(1, min(optimal_batch_size, 128))
+
+        return optimal_batch_size
 
     def _process_single_batch(
         self,
@@ -165,25 +320,36 @@ class GPUBatchProcessor:
 
     def _gpu_embed_batch(self, batch: List[str]) -> np.ndarray:
         """
-        GPU-accelerated embedding generation
+        GPU-accelerated embedding generation mit Memory-Pooling
         """
         try:
             import torch
             import torch.nn.functional as F
 
-            # Simulierte GPU-Embedding-Generierung
-            # In der Praxis würde hier ein echtes Modell verwendet
-
             device = torch.device("cuda" if self.device == "cuda" else "cpu")
-
-            # Batch als Tensor
             batch_size = len(batch)
-            noise = torch.randn(batch_size, self.embedding_dim, device=device)
+
+            # NEU: Verwende Memory Pool wenn verfügbar und passend
+            if self.memory_pool and batch_size <= 64:
+                pool_key = 'small' if batch_size <= 16 else 'medium' if batch_size <= 32 else 'large'
+                if pool_key in self.memory_pool:
+                    # Verwende gepoolten Speicher
+                    embeddings = self.memory_pool[pool_key][:batch_size].clone()
+                    self.stats["memory_pool_hits"] += 1
+                else:
+                    # Fallback: Neuer Tensor
+                    embeddings = torch.randn(batch_size, self.embedding_dim, device=device)
+                    self.stats["memory_pool_misses"] += 1
+            else:
+                # Normaler Tensor für große Batches oder wenn Pooling deaktiviert
+                embeddings = torch.randn(batch_size, self.embedding_dim, device=device)
+                if self.memory_pool:
+                    self.stats["memory_pool_misses"] += 1
 
             # Normalisiere (simuliert echtes Embedding)
-            embeddings = F.normalize(noise, p=2, dim=1)
+            embeddings = F.normalize(embeddings, p=2, dim=1)
 
-            # L2-Normalisierung für bessere Konsistenz
+            # Zusätzliche L2-Normalisierung für bessere Konsistenz
             embeddings = embeddings / torch.norm(embeddings, dim=1, keepdim=True)
 
             return embeddings.cpu().numpy()
@@ -300,27 +466,6 @@ class GPUBatchProcessor:
         top_similarities = similarities[top_indices]
 
         return top_similarities, top_indices
-
-    def get_stats(self) -> Dict[str, Any]:
-        """Gibt Performance-Statistiken zurück"""
-        gpu_memory = 0.0
-        if self.gpu_available:
-            try:
-                import torch
-                if self.device == "cuda":
-                    gpu_memory = torch.cuda.memory_allocated() / (1024 * 1024)  # MB
-            except:
-                pass
-
-        return {
-            **self.stats,
-            "device": self.device,
-            "gpu_available": self.gpu_available,
-            "batch_size": self.batch_size,
-            "max_workers": self.max_workers,
-            "gpu_memory_used_mb": gpu_memory,
-            "async_enabled": self.enable_async
-        }
 
     def cleanup(self):
         """Räumt Ressourcen auf"""

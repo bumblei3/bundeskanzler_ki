@@ -37,6 +37,9 @@ class _NPStub:
 
 # Lightweight stub of tensorflow for testing
 class _TFStub:
+    # Add __spec__ to satisfy importlib checks
+    __spec__ = type('ModuleSpec', (), {'name': 'tensorflow', 'origin': None, 'has_location': False})()
+    
     # minimal Tensor marker class for type annotations
     class Tensor:
         def __init__(self, value):

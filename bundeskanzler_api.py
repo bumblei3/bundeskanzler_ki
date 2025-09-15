@@ -296,6 +296,7 @@ class SystemStats(BaseModel):
     error_rate: float
     cache_stats: Dict[str, Any] = {}
     performance_stats: Dict[str, Any] = {}
+    gpu_stats: Optional[Dict[str, Any]] = None  # GPU-Statistiken hinzufügen
 
 
 class LogEntry(BaseModel):
@@ -521,11 +522,13 @@ def initialize_gpu_system():
         max_workers=4,
         device="auto",
         embedding_dim=512,
-        enable_async=True
+        enable_async=True,
+        enable_memory_pooling=True,  # NEU: Memory-Pooling aktivieren
+        memory_pool_size_mb=512  # NEU: 512MB Memory-Pool
     )
 
     async_batch_manager = AsyncBatchManager(gpu_processor)
-    print("✅ GPU-Batching-System initialisiert")
+    print("✅ GPU-Batching-System mit Memory-Pooling initialisiert")
 
 
 def run_auto_import():
@@ -793,6 +796,14 @@ def get_system_stats() -> SystemStats:
             
         error_rate = (error_count / total_requests) * 100 if total_requests > 0 else 0
         
+        # GPU-Stats hinzufügen falls verfügbar
+        gpu_stats = None
+        if gpu_processor:
+            try:
+                gpu_stats = gpu_processor.get_stats()
+            except Exception as e:
+                api_logger.warning(f"Failed to get GPU stats: {e}")
+        
         return SystemStats(
             cpu_usage=0.0,  # Placeholder - wird mit psutil erweitert
             memory_usage=0.0,  # Placeholder
@@ -802,7 +813,8 @@ def get_system_stats() -> SystemStats:
             memory_entries=memory_info.get("total_memories", 0),
             error_rate=min(error_rate, 100.0),
             cache_stats=get_cache_stats(),
-            performance_stats=performance_stats
+            performance_stats=performance_stats,
+            gpu_stats=gpu_stats  # GPU-Stats hinzufügen
         )
     except Exception as e:
         api_logger.error(f"Error getting system stats: {e}")

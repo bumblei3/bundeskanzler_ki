@@ -266,13 +266,21 @@ curl -X POST "http://localhost:8000/api/multimodal" \
 ### 📦 **Abhängigkeiten**
 ```
 torch>=2.8.0
-transformers>=4.40.0
-bitsandbytes>=0.47.0
-accelerate>=0.34.0
-fastapi>=0.104.0
-streamlit>=1.28.0
+transformers>=4.56.0
+fastapi>=0.116.0
+uvicorn>=0.35.0
+streamlit>=1.47.0
+numpy>=2.3.0
+pandas>=2.3.0
+scikit-learn>=1.7.0
+accelerate>=1.4.0
+datasets>=3.2.0
 anthropic>=0.30.0
 openai>=1.40.0
+psutil>=6.1.0
+SQLAlchemy>=2.0.0
+redis>=5.2.0
+pytest>=8.4.0
 ```
 
 ### 🏗️ **Projekt-Struktur**
@@ -316,8 +324,8 @@ Bei Fragen oder Problemen:
 
 ---
 
-**Letzte Aktualisierung**: September 2025
-**Version**: 2.0.0 (RTX 2070 Edition)
+**Letzte Aktualisierung**: 15. September 2025
+**Version**: 2.1.0 (RTX 2070 Edition mit Debug-System)
 **Python**: 3.12+
 **GPU**: NVIDIA RTX 2070 (8GB VRAM)
 
@@ -437,15 +445,23 @@ pytest tests/ -v
 
 ### Abhängigkeiten
 ```txt
-fastapi>=0.104.0
-uvicorn>=0.24.0
-pydantic>=2.0.0
-python-jose[cryptography]>=3.3.0
-numpy>=2.0.0
-pandas>=2.0.0
-scikit-learn>=1.3.0
-torch>=2.0.0  # Optional für GPU
-pytest>=7.0.0
+fastapi>=0.116.0
+uvicorn>=0.35.0
+pydantic>=2.11.0
+python-jose[cryptography]>=3.5.0
+numpy>=2.3.0
+pandas>=2.3.0
+scikit-learn>=1.7.0
+torch>=2.8.0
+transformers>=4.56.0
+accelerate>=1.4.0
+datasets>=3.2.0
+streamlit>=1.47.0
+SQLAlchemy>=2.0.0
+psycopg2-binary>=2.9.0
+redis>=5.2.0
+pytest>=8.4.0
+psutil>=6.1.0
 ```
 
 ### Systemanforderungen
@@ -534,6 +550,8 @@ python comprehensive_test.py
 - [x] Streamlit Web-Interface
 - [x] Log-Monitoring System
 - [x] Benutzer-Management
+- [x] **Debug-System Integration** (Live-Debugging in Web-GUI)
+- [x] **Erweiterte API-Call-Tracking**
 - [ ] Mehrsprachige Unterstützung
 - [ ] Faktenprüfung & Quellenvalidierung
 - [ ] Erweiterte Admin-Analytics
