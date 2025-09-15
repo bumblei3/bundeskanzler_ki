@@ -22,7 +22,7 @@ python -c "import fastapi, uvicorn, jose; print('✅ Alle Dependencies verfügba
 
 # Überprüfe Bundeskanzler KI Core
 echo "🧠 Überprüfe Bundeskanzler KI Core..."
-python -c "from bundeskanzler_ki import EnhancedContextProcessor; print('✅ Bundeskanzler KI Core verfügbar')" || {
+python -c "from hierarchical_memory import EnhancedContextProcessor; print('✅ Bundeskanzler KI Core verfügbar')" || {
     echo "❌ Bundeskanzler KI Core nicht gefunden!"
     exit 1
 }

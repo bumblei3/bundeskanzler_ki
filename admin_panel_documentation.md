@@ -18,6 +18,15 @@
 - **Login**: admin / admin123!
 - **Features**: Moderne Web-Oberfläche für alle Admin-Funktionen
 
+#### 🔍 **Neues Debug-System!**
+- **Status**: ✅ Vollständig implementiert und funktionsfähig
+- **Features**:
+  - Strukturiertes Logging mit 5 Levels (INFO, SUCCESS, WARNING, ERROR, DEBUG)
+  - API-Call-Tracking mit Timing und Fehlerbehebung
+  - Kollabierbare Debug-Konsole in der Web-GUI
+  - Live-Monitoring von Systemaktivitäten
+  - Detaillierte Fehlerdiagnose und Performance-Metriken
+
 #### 1. **Admin-Authentifizierung**
 - **Endpoint:** `POST /auth/admin-token`
 - **Credentials:** 
@@ -73,6 +82,15 @@
   - Memory Settings (Größen, Schwellwerte)
   - Logging Settings (Level, Rotation)
   - Security Settings (HTTPS, IPs, etc.)
+
+#### 8. **Debug-System & Monitoring**
+- **Status**: ✅ Vollständig integriert in Web-GUI
+- **Features:**
+  - **Strukturiertes Logging**: 5 Log-Levels (ℹ️ INFO, ✅ SUCCESS, ⚠️ WARNING, ❌ ERROR, 🔍 DEBUG)
+  - **API-Call-Tracking**: Automatische Erfassung aller API-Aufrufe mit Timing
+  - **Live Debug-Konsole**: Kollabierbare Debug-Anzeige in der Web-GUI
+  - **Performance-Monitoring**: Response-Zeiten und Fehlerdiagnose
+  - **System-Monitoring**: Live-Überwachung von CPU, Memory und API-Status
 
 #### 7. **Streamlit Admin-Interface**
 - **Login:** Sidebar mit Admin/User-Auswahl

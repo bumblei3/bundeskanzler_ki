@@ -37,6 +37,7 @@ Die Bundeskanzler KI ist ein hochmodernes multimodales KI-System für politische
 - 👥 **Benutzer-Management**: Rollenbasierte Zugriffskontrolle
 - 📊 **Admin-Panel**: Live-Monitoring und Systemstatistiken
 - 📋 **Log-Management**: Strukturierte Logging-Systeme
+- 🔍 **Debug-System**: Erweiterte Fehlerbehebung mit API-Call-Tracking und Live-Debugging
 
 ## 🏗️ **System-Architektur**
 
@@ -81,8 +82,7 @@ pip install -r requirements.txt
 python -c "from multimodal_ki import MultimodalTransformerModel; model = MultimodalTransformerModel(model_tier='rtx2070')"
 
 # 4. API-Server starten
-python bundeskanzler_api.py
-# Alternative: uvicorn bundeskanzler_api:app --host 0.0.0.0 --port 8000
+uvicorn bundeskanzler_api:app --host 0.0.0.0 --port 8001 --reload
 
 # 5. Web-Interface starten (neues Terminal)
 streamlit run webgui_ki.py --server.port 8501 --server.address 0.0.0.0
@@ -91,7 +91,7 @@ streamlit run webgui_ki.py --server.port 8501 --server.address 0.0.0.0
 ### � **Zugriff auf die Anwendung**
 
 - **Web-Interface**: http://localhost:8501
-- **API-Dokumentation**: http://localhost:8000/docs
+- **API-Dokumentation**: http://localhost:8001/docs
 - **Admin-Login**: `admin` / `admin123!`
 
 ## 🎮 **RTX 2070 Optimierung**

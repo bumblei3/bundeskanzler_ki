@@ -23,7 +23,7 @@ source bin/activate
 python -c "from multimodal_ki import MultimodalTransformerModel; model = MultimodalTransformerModel(model_tier='rtx2070')"
 
 # 4. API-Server starten
-python bundeskanzler_api.py
+uvicorn bundeskanzler_api:app --host 0.0.0.0 --port 8001 --reload
 
 # 5. Web-Interface starten (NEUES TERMINAL)
 streamlit run webgui_ki.py --server.port 8501 --server.address 0.0.0.0
@@ -31,7 +31,7 @@ streamlit run webgui_ki.py --server.port 8501 --server.address 0.0.0.0
 
 ### 🌐 **Zugriff**
 - **Web-Interface**: http://localhost:8501
-- **API-Dokumentation**: http://localhost:8000/docs
+- **API-Dokumentation**: http://localhost:8001/docs
 - **Admin-Login**: `admin` / `admin123!`
 
 ## 🎮 **RTX 2070 Optimierung verstehen**
