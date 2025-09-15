@@ -2,6 +2,14 @@ import os
 import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
+# Sicherstellen, dass echte numpy verwendet wird
+import sys
+if hasattr(np, 'exp') and not hasattr(np, 'linalg'):
+    # Wahrscheinlich ein Stub, lade echtes numpy
+    import numpy
+    sys.modules['numpy'] = numpy
+    np = numpy
+
 def validate_model(tokenizer, model, maxlen, preprocess, detect_lang, test_file="test.txt", csv_out=None, top_n=1, log_file=None, threshold=None, class_filter=None, return_df=False):
     """
     Validiert das Modell mit Testdaten. Optional: CSV-Ausgabe, Top-N-Genauigkeit, Logging.

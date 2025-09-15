@@ -1,0 +1,334 @@
+"""
+Enhanced Context Processor für die Bundeskanzler KI.
+Stellt erweiterte Kontextverarbeitung mit Memory-Integration bereit.
+"""
+
+from typing import Dict, List, Optional, Any
+import os
+import json
+import numpy as np
+from datetime import datetime
+import json
+import numpy as np
+from datetime import datetime
+
+
+class MemoryItem:
+    """Repräsentiert ein einzelnes Memory-Element"""
+
+    def __init__(self, content: str, embedding: Optional[np.ndarray] = None,
+                 timestamp: Optional[datetime] = None, importance: float = 1.0):
+        self.content = content
+        self.embedding = embedding
+        self.timestamp = timestamp or datetime.now()
+        self.importance = importance
+        self.access_count = 0
+        self.last_accessed = self.timestamp
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Konvertiert das MemoryItem zu einem Dictionary"""
+        return {
+            'content': self.content,
+            'embedding': self.embedding.tolist() if self.embedding is not None else None,
+            'timestamp': self.timestamp.isoformat(),
+            'importance': self.importance,
+            'access_count': self.access_count,
+            'last_accessed': self.last_accessed.isoformat()
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'MemoryItem':
+        """Erstellt ein MemoryItem aus einem Dictionary"""
+        embedding = np.array(data['embedding']) if data.get('embedding') else None
+        timestamp = datetime.fromisoformat(data['timestamp'])
+        last_accessed = datetime.fromisoformat(data['last_accessed'])
+
+        item = cls(
+            content=data['content'],
+            embedding=embedding,
+            timestamp=timestamp,
+            importance=data.get('importance', 1.0)
+        )
+        item.access_count = data.get('access_count', 0)
+        item.last_accessed = last_accessed
+        return item
+
+
+class HierarchicalMemory:
+    """Hierarchisches Memory-System mit mehreren Ebenen"""
+
+    def __init__(self, base_path: str = "./memory", levels: int = 3):
+        self.base_path = base_path
+        self.levels = levels
+        self.memory_levels = {}
+
+        # Erstelle Memory-Verzeichnisse für jede Ebene
+        for level in range(levels):
+            level_path = os.path.join(base_path, f"level_{level}")
+            os.makedirs(level_path, exist_ok=True)
+            self.memory_levels[level] = {
+                'path': level_path,
+                'items': [],
+                'max_items': 100 * (level + 1)  # Höhere Ebenen haben mehr Kapazität
+            }
+
+        self._load_memory()
+
+    def _load_memory(self):
+        """Lädt gespeicherte Memory-Daten"""
+        for level, level_data in self.memory_levels.items():
+            memory_file = os.path.join(level_data['path'], 'memory.json')
+            try:
+                if os.path.exists(memory_file):
+                    with open(memory_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        level_data['items'] = [
+                            MemoryItem.from_dict(item_data) for item_data in data.get('items', [])
+                        ]
+            except Exception as e:
+                print(f"Warnung: Konnte Memory Level {level} nicht laden: {e}")
+                level_data['items'] = []
+
+    def _save_memory(self, level: int):
+        """Speichert Memory-Daten für eine Ebene"""
+        level_data = self.memory_levels[level]
+        memory_file = os.path.join(level_data['path'], 'memory.json')
+
+        try:
+            data = {
+                'level': level,
+                'items': [item.to_dict() for item in level_data['items']],
+                'last_updated': datetime.now().isoformat()
+            }
+            with open(memory_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Warnung: Konnte Memory Level {level} nicht speichern: {e}")
+
+    def add_item(self, item: MemoryItem, level: int = 0):
+        """Fügt ein MemoryItem zu einer bestimmten Ebene hinzu"""
+        if level not in self.memory_levels:
+            raise ValueError(f"Ungültige Ebene: {level}")
+
+        level_data = self.memory_levels[level]
+        level_data['items'].append(item)
+
+        # Begrenze Anzahl der Items pro Ebene
+        if len(level_data['items']) > level_data['max_items']:
+            # Entferne älteste Items mit niedrigster Importance
+            level_data['items'].sort(key=lambda x: (x.importance, x.last_accessed), reverse=True)
+            level_data['items'] = level_data['items'][:level_data['max_items']]
+
+        self._save_memory(level)
+
+    def get_items(self, level: int, limit: Optional[int] = None) -> List[MemoryItem]:
+        """Ruft MemoryItems von einer Ebene ab"""
+        if level not in self.memory_levels:
+            return []
+
+        items = self.memory_levels[level]['items']
+        if limit:
+            items = items[:limit]
+
+        # Aktualisiere access_count und last_accessed
+        for item in items:
+            item.access_count += 1
+            item.last_accessed = datetime.now()
+
+        return items
+
+    def promote_item(self, item: MemoryItem, from_level: int, to_level: int):
+        """Befördert ein Item zu einer höheren Ebene"""
+        if from_level not in self.memory_levels or to_level not in self.memory_levels:
+            return
+
+        # Entferne von der niedrigeren Ebene
+        self.memory_levels[from_level]['items'] = [
+            i for i in self.memory_levels[from_level]['items'] if i != item
+        ]
+
+        # Füge zur höheren Ebene hinzu
+        self.add_item(item, to_level)
+
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """Gibt Statistiken über das hierarchische Memory zurück"""
+        stats = {
+            'total_levels': self.levels,
+            'base_path': self.base_path,
+            'level_stats': {}
+        }
+
+        for level, level_data in self.memory_levels.items():
+            stats['level_stats'][level] = {
+                'item_count': len(level_data['items']),
+                'max_items': level_data['max_items'],
+                'path': level_data['path']
+            }
+
+    def add_memory(self, content: str, embedding: Optional[np.ndarray] = None,
+                   importance: float = 1.0, tags: Optional[List[str]] = None):
+        """Fügt ein neues Memory-Element hinzu (Alias für add_item)"""
+        item = MemoryItem(content=content, embedding=embedding, importance=importance)
+        if tags:
+            item.tags = tags
+        else:
+            item.tags = []
+        self.add_item(item, level=0)
+
+
+class AdaptiveMemoryManager:
+        self.hierarchical_memory = hierarchical_memory
+        self.access_threshold = 10  # Mindestzugriffe für Beförderung
+        self.importance_threshold = 0.7  # Mindestimportance für Beförderung
+
+    def update_item_access(self, item: MemoryItem):
+        """Aktualisiert Zugriffsstatistiken eines Items"""
+        item.access_count += 1
+        item.last_accessed = datetime.now()
+
+    def should_promote(self, item: MemoryItem, current_level: int) -> bool:
+        """Entscheidet, ob ein Item befördert werden sollte"""
+        if current_level >= self.hierarchical_memory.levels - 1:
+            return False  # Maximale Ebene erreicht
+
+        return (item.access_count >= self.access_threshold and
+                item.importance >= self.importance_threshold)
+
+    def adapt_memory(self):
+        """Passe Memory-Struktur adaptiv an"""
+        for level in range(self.hierarchical_memory.levels - 1):  # Alle außer der höchsten Ebene
+            items_to_promote = []
+
+            for item in self.hierarchical_memory.memory_levels[level]['items']:
+                if self.should_promote(item, level):
+                    items_to_promote.append(item)
+
+            # Befördere Items zur nächsten Ebene
+            for item in items_to_promote:
+                self.hierarchical_memory.promote_item(item, level, level + 1)
+
+    def get_adaptation_stats(self) -> Dict[str, Any]:
+        """Gibt Statistiken über die Memory-Adaption zurück"""
+        return {
+            'access_threshold': self.access_threshold,
+            'importance_threshold': self.importance_threshold,
+            'memory_stats': self.hierarchical_memory.get_memory_stats()
+        }
+
+
+class EnhancedContextProcessor:
+    """
+    Erweiterter Kontextprozessor mit Memory-Integration.
+    """
+
+    def __init__(self, memory_path: str = "./api_memory", embedding_dim: int = 512):
+        """
+        Initialisiert den Enhanced Context Processor.
+
+        Args:
+            memory_path: Pfad zum Memory-Verzeichnis
+            embedding_dim: Dimensionalität der Embeddings
+        """
+        self.memory_path = memory_path
+        self.embedding_dim = embedding_dim
+        self.context_memory = []
+        self.memory_file = os.path.join(memory_path, "context_memory.json")
+
+        # Erstelle Memory-Verzeichnis falls es nicht existiert
+        os.makedirs(memory_path, exist_ok=True)
+
+        # Lade bestehende Memory-Daten
+        self._load_memory()
+
+    def _load_memory(self):
+        """Lädt gespeicherte Memory-Daten."""
+        try:
+            if os.path.exists(self.memory_file):
+                with open(self.memory_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.context_memory = data.get('contexts', [])
+        except Exception as e:
+            print(f"Warnung: Konnte Memory nicht laden: {e}")
+            self.context_memory = []
+
+    def _save_memory(self):
+        """Speichert Memory-Daten."""
+        try:
+            data = {
+                'contexts': self.context_memory,
+                'last_updated': datetime.now().isoformat()
+            }
+            with open(self.memory_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Warnung: Konnte Memory nicht speichern: {e}")
+
+    def add_context(self, text: str, embedding: Optional[np.ndarray] = None,
+                   metadata: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Fügt neuen Kontext zum Memory hinzu.
+
+        Args:
+            text: Kontext-Text
+            embedding: Optionale Embedding-Daten
+            metadata: Zusätzliche Metadaten
+        """
+        context_entry = {
+            'text': text,
+            'timestamp': datetime.now().isoformat(),
+            'metadata': metadata or {},
+            'embedding': embedding.tolist() if embedding is not None else None
+        }
+
+        self.context_memory.append(context_entry)
+
+        # Behalte nur die letzten 1000 Einträge
+        if len(self.context_memory) > 1000:
+            self.context_memory = self.context_memory[-1000:]
+
+        self._save_memory()
+
+    def get_relevant_context(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Findet relevanten Kontext basierend auf der Query.
+
+        Args:
+            query: Suchanfrage
+            max_results: Maximale Anzahl der Ergebnisse
+
+        Returns:
+            Liste der relevanten Kontext-Einträge
+        """
+        if not self.context_memory:
+            return []
+
+        # Einfache textbasierte Suche (kann später durch semantische Suche ersetzt werden)
+        query_lower = query.lower()
+        relevant_contexts = []
+
+        for context in reversed(self.context_memory):  # Neueste zuerst
+            if query_lower in context['text'].lower():
+                relevant_contexts.append(context)
+                if len(relevant_contexts) >= max_results:
+                    break
+
+        return relevant_contexts
+
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """
+        Gibt Statistiken über das Memory zurück.
+
+        Returns:
+            Dictionary mit Memory-Statistiken
+        """
+        return {
+            'total_contexts': len(self.context_memory),
+            'memory_path': self.memory_path,
+            'embedding_dim': self.embedding_dim,
+            'last_updated': datetime.now().isoformat()
+        }
+
+    def clear_memory(self) -> None:
+        """Löscht alle Memory-Daten."""
+        self.context_memory = []
+        self._save_memory()

@@ -17,7 +17,9 @@ Die Bundeskanzler KI ist ein vollständig integriertes KI-System für politische
 - 🔐 **JWT-Authentifizierung**: Sichere Admin-Zugangskontrolle
 - 📊 **Admin-Panel**: Live-Monitoring und Systemstatistiken
 - ⚡ **FastAPI-Backend**: Hochperformante REST-API
-- 🎨 **Web-Interface**: Moderne Admin-Oberfläche
+- 🎨 **Web-Interface**: Moderne Admin-Oberfläche mit Streamlit
+- 🔧 **Memory-Management**: Detaillierte Statistiken und Verwaltung
+- 📋 **Log-Monitoring**: Live-Log-Viewer mit strukturierter Ausgabe
 
 ## 🚀 Schnellstart
 
@@ -33,11 +35,25 @@ Die Bundeskanzler KI ist ein vollständig integriertes KI-System für politische
 source bin/activate
 
 # 2. API starten
-python -m uvicorn bundeskanzler_api:app --host 0.0.0.0 --port 8000
+python3 bundeskanzler_api.py
+# Oder: python -m uvicorn bundeskanzler_api:app --host 0.0.0.0 --port 8000
 
-# 3. Admin-Panel öffnen
-# Browser: http://localhost:8000/admin
+# 3. Admin-Panel öffnen (in neuem Terminal)
+streamlit run webgui_ki.py --server.port 8501 --server.address 0.0.0.0
+
+# 4. Admin-Panel im Browser öffnen
+# URL: http://localhost:8501
 # Login: admin / admin123!
+```
+
+### Alternative Admin-Zugänge
+
+```bash
+# HTML-Admin-Panel (einfach)
+# URL: http://localhost:8000/admin
+
+# CLI-Admin-Tool
+python3 admin_cli.py
 ```
 
 ### API-Endpunkte
@@ -56,14 +72,46 @@ Content-Type: application/json
 
 # Admin-Login
 POST /auth/admin-token
+Content-Type: application/x-www-form-urlencoded
 {
   "username": "admin",
   "password": "admin123!"
 }
 
-# Admin Memory-Stats
-GET /admin/memory-stats
-Authorization: Bearer <token>
+# Admin Memory-Stats (behoben!)
+GET /admin/memory/stats
+Authorization: Bearer <admin_token>
+Response: {
+  "kurzzeitgedaechtnis_entries": 0,
+  "langzeitgedaechtnis_entries": 0,
+  "total_entries": 0,
+  "memory_efficiency": 0.0,
+  "status": "success"
+}
+
+# Weitere Admin-Endpunkte
+GET /admin/system-stats          # System-Metriken
+GET /admin/health               # Health-Check
+GET /admin/logs/{type}          # Live-Logs
+GET /admin/users                # Benutzer-Management
+POST /admin/memory/clear        # Memory leeren
+GET /admin/config               # Konfiguration
+PUT /admin/config               # Konfiguration aktualisieren
+```
+
+### Web-Interface
+
+```bash
+# Streamlit Admin-Panel (Empfohlen)
+streamlit run webgui_ki.py
+URL: http://localhost:8501
+
+# HTML Admin-Panel (Einfach)
+URL: http://localhost:8000/admin
+
+# API Dokumentation
+Swagger UI: http://localhost:8000/docs
+ReDoc: http://localhost:8000/redoc
 ```
 
 ## 🧪 Testen
@@ -97,9 +145,20 @@ pytest tests/ -v
 
 ### Admin-Panel 📊
 - **Live-Monitoring**: Echtzeit-Systemstatistiken
-- **Memory-Insights**: Detaillierte Speichernutzung
+- **Memory-Insights**: Detaillierte Speichernutzung (neu behoben!)
 - **GPU-Monitoring**: Batch-Performance und Hardware-Status
+- **Log-Viewer**: Strukturierte Live-Logs mit Filterung
+- **Benutzer-Management**: Vollständige User-Verwaltung
+- **Konfiguration**: Runtime-Systemeinstellungen
 - **JWT-Sicherheit**: Geschützte Admin-Bereiche
+
+### Memory-System 🧠 (Neu optimiert!)
+- **Quantisierung**: int8/float16 für 75% Speicherersparnis
+- **LRU-Caching**: Automatische Cache-Verwaltung
+- **Memory Pooling**: Effiziente Wiederverwendung von Arrays
+- **Hierarchisches Design**: Kurz-/Langzeitgedächtnis
+- **Fallback-Initialisierung**: Automatische Reparatur bei Fehlern
+- **Live-Statistiken**: Detaillierte Memory-Metriken
 
 ## 📦 Technische Details
 
@@ -198,6 +257,10 @@ python comprehensive_test.py
 - [x] Memory-Optimierung (Quantisierung)
 - [x] Admin-Panel mit Live-Monitoring
 - [x] JWT-Authentifizierung
+- [x] **Memory-Stats-API behoben** (Fallback-Initialisierung)
+- [x] Streamlit Web-Interface
+- [x] Log-Monitoring System
+- [x] Benutzer-Management
 - [ ] Mehrsprachige Unterstützung
 - [ ] Faktenprüfung & Quellenvalidierung
 - [ ] Erweiterte Admin-Analytics

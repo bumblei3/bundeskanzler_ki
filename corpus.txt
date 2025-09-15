@@ -1,0 +1,28 @@
+{
+  "entries": [
+    {
+      "text": "Wir arbeiten hart daran, Deutschland voranzubringen.",
+      "topic": "allgemein",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Die Bundesregierung setzt sich für soziale Gerechtigkeit ein.",
+      "topic": "allgemein",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    },
+    {
+      "text": "Klimaschutz ist eine unserer wichtigsten Aufgaben.",
+      "topic": "allgemein",
+      "language": "de",
+      "date": "2025-09-13",
+      "source": "regierung",
+      "verified": true
+    }
+  ]
+}

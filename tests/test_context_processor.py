@@ -1,0 +1,184 @@
+import sys
+import pytest
+from unittest.mock import MagicMock
+import math
+import numpy as np
+
+# Sicherstellen, dass echte TensorFlow verwendet wird, wenn verfügbar
+if 'tensorflow' in sys.modules:
+    # Lade echtes tensorflow neu
+    import tensorflow
+    sys.modules['tensorflow'] = tensorflow
+
+# Minimal numpy stub for context_processor (only exp is used)
+class _NPStub:
+    def exp(self, x):
+        return math.exp(x)
+    def isscalar(self, x):
+        return isinstance(x, (int, float))
+    def argmax(self, a, axis=None):
+        # Simple argmax implementation for testing
+        if isinstance(a, list):
+            if axis is None:
+                return a.index(max(a))
+            else:
+                # For simplicity, ignore axis for now
+                return a.index(max(a))
+        return 0
+    # Add ndarray type alias
+    ndarray = list
+
+# Lightweight stub of tensorflow so tests can run without TF installed.
+class _TFStub:
+    # minimal Tensor marker class for type annotations
+    class Tensor:
+        def __init__(self, value):
+            self.value = value
+        def numpy(self):
+            return self.value
+        def __getitem__(self, key):
+            if isinstance(self.value, list) and isinstance(key, slice):
+                return _TFStub.Tensor(self.value[key])
+            elif isinstance(self.value, list):
+                return _TFStub.Tensor(self.value[key])
+            return _TFStub.Tensor(self.value)
+        def __len__(self):
+            if isinstance(self.value, list):
+                return len(self.value)
+            return 1
+    
+    # Add TensorShape stub
+    class TensorShape:
+        def __init__(self, dims):
+            self.dims = dims
+    
+    def constant(self, x):
+        # return a Tensor wrapper - can handle single values or lists
+        return _TFStub.Tensor(x)
+
+    def concat(self, arrays, axis=0):
+        # naive concat: flatten list of lists along axis=0
+        out = []
+        for a in arrays:
+            if hasattr(a, 'value'):
+                if isinstance(a.value, list):
+                    out.extend(a.value)
+                else:
+                    out.append(a.value)
+            else:
+                if isinstance(a, list):
+                    out.extend(a)
+                else:
+                    out.append(a)
+        return _TFStub.Tensor(out)
+
+    def timestamp(self):
+        import time
+        return time.time()
+    
+    # Add keras submodule stub
+    class keras:
+        class Model:
+            pass
+        class layers:
+            class Dense:
+                pass
+            class Embedding:
+                pass
+        class callbacks:
+            class EarlyStopping:
+                pass
+
+# Sicherstellen, dass echte TensorFlow und numpy verwendet werden
+if 'tensorflow' in sys.modules:
+    import tensorflow
+    sys.modules['tensorflow'] = tensorflow
+if 'numpy' in sys.modules:
+    import numpy
+    sys.modules['numpy'] = numpy
+
+# Ensure the project root is on sys.path so local modules can be imported
+sys.path.insert(0, '/home/tobber/bkki_venv')
+
+# Provide a minimal stub for memory_network expected by context_processor
+import types
+mem_mod = types.ModuleType('memory_network')
+class _MemoryNetworkStub:
+    def __init__(self, memory_size=1000, key_dim=512, num_heads=8, embedding_dim=None):
+        self.memory_size = memory_size
+        self.key_dim = key_dim
+        self.num_heads = num_heads
+        self.embedding_dim = embedding_dim
+    def update_memory(self, keys, values, importance):
+        # no-op
+        return None
+    def __call__(self, embeddings):
+        # return embeddings unchanged and None as second value
+        return embeddings, None
+mem_mod.MemoryNetwork = _MemoryNetworkStub
+sys.modules['memory_network'] = mem_mod
+
+import context_processor
+from context_processor import ContextProcessor
+
+
+def test_process_context_updates_memory(monkeypatch):
+    cp = ContextProcessor(memory_size=10, key_dim=4, num_heads=1, max_context_window=3)
+    # Simple memory stub: update_memory records calls, __call__ returns embeddings
+    class SimpleMemory:
+        def __init__(self):
+            self.update_calls = 0
+            self.last = None
+        def update_memory(self, keys, values, importance):
+            self.update_calls += 1
+            self.last = (keys, values, importance)
+        def __call__(self, embeddings):
+            return embeddings, None
+
+    mem = SimpleMemory()
+    cp.memory = mem
+
+    # Use plain Python nested lists as embedding tensors for the stubbed environment
+    emb1 = [[[0.1 * (i + j) for _ in range(4)] for j in range(3)] for i in range(1)]
+    emb2 = [[[0.2 * (i + j) for _ in range(4)] for j in range(3)] for i in range(1)]
+    out1 = cp.process_context("Text1", emb1, metadata=None)
+    out2 = cp.process_context("Text2", emb2, metadata={'date': None, 'source': 'rede', 'topics': ['klimaschutz']})
+
+    assert out1 is not None
+    assert out2 is not None
+    assert len(out1) == len(emb1)
+    assert len(out2) == len(emb2)
+    assert mem.update_calls == 2
+
+
+def test_calculate_importance_no_metadata():
+    cp = ContextProcessor()
+    imp = cp._calculate_importance("irrelevant", None)
+    # TensorFlow returns a tensor with a numpy array, not a list
+    assert hasattr(imp, 'numpy')  # It's a TF tensor
+    val = imp.numpy()
+    assert isinstance(val, np.ndarray) and len(val) == 1
+    assert abs(float(val[0]) - 1.0) < 1e-6
+
+
+def test_calculate_importance_with_metadata():
+    from datetime import datetime, timedelta
+    d = datetime.now() - timedelta(days=30)
+    metadata = {
+        'date': d,
+        'source': 'pressemitteilung',
+        'topics': ['wirtschaft', 'klimaschutz']
+    }
+    cp = ContextProcessor()
+    imp = cp._calculate_importance("text", metadata)
+    # TensorFlow returns a tensor with a list, not a list
+    assert hasattr(imp, 'numpy')  # It's a TF tensor
+    val = imp.numpy()
+    assert isinstance(val, np.ndarray) and len(val) == 1
+    actual_val = float(val[0])
+    # temporal factor = exp(-30/365)
+    expected_temp = math.exp(-30/365)
+    expected_source = 1.2
+    expected_topic = max(1.4, 1.3)  # wirtschaft 1.4, klimaschutz 1.3
+    expected = expected_temp * expected_source * expected_topic
+    assert math.isclose(expected, actual_val, rel_tol=1e-3)

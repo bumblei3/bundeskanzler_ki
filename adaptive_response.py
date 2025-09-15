@@ -2,7 +2,13 @@
 Adaptive Response Manager für die Bundeskanzler-KI.
 Steuert die Komplexität und Personalisierung von Antworten.
 """
-import tensorflow as tf
+try:
+    import tensorflow as tf
+    TENSORFLOW_AVAILABLE = True
+except ImportError:
+    TENSORFLOW_AVAILABLE = False
+    tf = None
+
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 

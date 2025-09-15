@@ -12,6 +12,15 @@ import csv
 import yaml
 import logging
 
+# Memory-Optimierung importieren
+from memory_optimizer import (
+    MemoryOptimizer,
+    LazyFileReader,
+    ChunkedProcessor,
+    setup_memory_optimization,
+    memory_optimizer
+)
+
 # Konfiguriere Logging
 logging.basicConfig(
     level=logging.INFO,
@@ -20,69 +29,114 @@ logging.basicConfig(
 )
 from tqdm import tqdm
 
+# Memory-Optimierung beim Start initialisieren
+setup_memory_optimization()
+
 def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
     """
-    Führt die Batch-Inferenz für eine Liste von Eingaben aus einer Datei durch und gibt die Ergebnisse aus.
-    Optimiert: Batch-Prediction, optionales Ausgabeformat (csv/json), Fehlerzusammenfassung.
+    Führt die Batch-Inferenz für eine Liste von Eingaben aus einer Datei durch.
+    Optimiert: Batch-Prediction, optionales Ausgabeformat, Fehlerzusammenfassung.
+    Memory-optimiert: Lazy Loading und Chunked Processing.
     """
     logging.info(f"[Batch-Inferenz] Verarbeite Datei: {args.input}")
     batch_results = []
     error_list = []
     total_lines = 0
     error_count = 0
+
     # Eingabedatei automatisch erstellen, falls sie fehlt
     if not os.path.exists(args.input):
         with open(args.input, "w", encoding="utf-8") as f:
             f.write("Testfrage\n")
         logging.warning(f"{args.input} nicht gefunden, Beispiel-Datei wurde erstellt.")
-    with open(args.input, "r", encoding="utf-8") as fin:
-        lines = fin.readlines()
-    # Preprocessing aller Zeilen in einem Schritt
-    seed_texts = [line.strip() for line in lines if line.strip()]
-    total_lines = len(lines)
-    preprocessed = []
-    for idx, seed_text in enumerate(tqdm(seed_texts, desc="Preprocessing", unit="Zeile")):
-        try:
-            lang = detect_language(seed_text)
-            seed_text_pp = preprocess(seed_text, lang=lang)
-            preprocessed.append(seed_text_pp)
-        except Exception as e:
-            error_count += 1
-            error_list.append({'line': idx+1, 'input': seed_text, 'error': str(e)})
-            print_error_hint(e)
-            preprocessed.append("")
-    # Nur nicht-leere für Prediction
-    valid_indices = [i for i, s in enumerate(preprocessed) if s]
-    valid_preprocessed = [preprocessed[i] for i in valid_indices]
-    valid_seed_texts = [seed_texts[i] for i in valid_indices]
-    seed_sequences = tokenizer.texts_to_sequences(valid_preprocessed)
-    seed_sequences = pad_sequences(seed_sequences, maxlen=maxlen, padding='post')
-    # Batch-Prediction
-    # Fortschrittsanzeige für Prediction
-    if len(valid_seed_texts) > 0:
-        print(f"Starte Batch-Prediction für {len(valid_seed_texts)} Zeilen...")
-    outputs = model.predict(seed_sequences, verbose=1)
-    for idx, (seed_text, output) in enumerate(zip(valid_seed_texts, outputs), 1):
-        top_indices = np.argsort(output)[::-1][:args.top_n]
-        logging.info(f"[Batch-Inferenz] ({idx}/{len(valid_seed_texts)}) Eingabe: {seed_text}")
-        logging.info(f"[Batch-Inferenz] Top-{args.top_n} Antworten für Eingabe: {seed_text}")
-        antworten = []
-        for i, idx_ans in enumerate(top_indices):
-            mark = "*" if i == 0 else " "
-            logging.info(f"[Batch-Inferenz] {mark}{i+1}. {corpus[idx_ans]} (Wahrscheinlichkeit: {output[idx_ans]*100:.1f}%)")
-            logging.info(f"[Batch-Inferenz]   Originalsatz: {corpus_original[idx_ans]}")
-            antworten.append((idx_ans, output[idx_ans]*100))
-        if hasattr(args, 'print_answers') and args.print_answers:
-            print(f"\nTop-{args.top_n} Antworten für Eingabe: {seed_text}")
-            for i, idx_ans in enumerate(top_indices):
-                mark = "*" if i == 0 else " "
-                print(f"{mark}{i+1}. {corpus[idx_ans]} (Wahrscheinlichkeit: {output[idx_ans]*100:.1f}%)")
-                print(f"   Originalsatz: {corpus_original[idx_ans]}")
-        log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
-        batch_results.append((seed_text, antworten))
+        return
+
+    # Memory-optimierte Dateiverarbeitung
+    file_reader = LazyFileReader(args.input)
+    chunked_processor = ChunkedProcessor(chunk_size=500, memory_optimizer=memory_optimizer)
+
+    # Sammle alle Zeilen für spätere Verarbeitung (aber nicht alles auf einmal laden)
+    all_lines = list(file_reader.read_lines_lazy())
+    total_lines = len(all_lines)
+
+    logging.info(f"[Batch-Inferenz] {total_lines} Zeilen gefunden, starte Chunked-Verarbeitung")
+
+    def process_chunk(chunk_lines):
+        """Verarbeitet einen Chunk von Zeilen"""
+        chunk_results = []
+        chunk_errors = []
+
+        for idx, seed_text in enumerate(chunk_lines):
+            try:
+                lang = detect_language(seed_text)
+                seed_text_pp = preprocess(seed_text, lang=lang)
+
+                if seed_text_pp:  # Nur nicht-leere verarbeiten
+                    # Tokenisierung und Padding
+                    sequence = tokenizer.texts_to_sequences([seed_text_pp])
+                    padded_sequence = pad_sequences(sequence, maxlen=maxlen, padding='post')
+
+                    # Prediction
+                    output = model.predict(padded_sequence, verbose=0)[0]
+
+                    # Top-N Antworten extrahieren
+                    top_indices = np.argsort(output)[::-1][:args.top_n]
+                    antworten = [(idx_ans, output[idx_ans]*100) for idx_ans in top_indices]
+
+                    chunk_results.append((seed_text, antworten))
+
+                    # Logging für diesen Eintrag
+                    logging.info(f"[Batch-Inferenz] ({len(chunk_results)}/{len(chunk_lines)}) Eingabe: {seed_text}")
+                    logging.info(f"[Batch-Inferenz] Top-{args.top_n} Antworten für Eingabe: {seed_text}")
+
+                    for i, (idx_ans, score) in enumerate(antworten):
+                        mark = "*" if i == 0 else " "
+                        logging.info(f"[Batch-Inferenz] {mark}{i+1}. {corpus[idx_ans]} (Wahrscheinlichkeit: {score:.1f}%)")
+                        logging.info(f"[Batch-Inferenz]   Originalsatz: {corpus_original[idx_ans]}")
+
+                    if hasattr(args, 'print_answers') and args.print_answers:
+                        print(f"\nTop-{args.top_n} Antworten für Eingabe: {seed_text}")
+                        for i, (idx_ans, score) in enumerate(antworten):
+                            mark = "*" if i == 0 else " "
+                            print(f"{mark}{i+1}. {corpus[idx_ans]} (Wahrscheinlichkeit: {score:.1f}%)")
+                            print(f"   Originalsatz: {corpus_original[idx_ans]}")
+
+                    # Interaktion loggen
+                    log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
+
+            except Exception as e:
+                chunk_errors.append({'line': idx+1, 'input': seed_text, 'error': str(e)})
+                print_error_hint(e)
+
+        return chunk_results, chunk_errors
+
+        # Chunked-Verarbeitung manuell implementieren für korrekte Fehlerbehandlung
+        for i in range(0, len(all_lines), 500):  # Chunk size 500
+            chunk_lines = all_lines[i:i+500]
+            logging.debug(f"Verarbeite Chunk {i//500 + 1}/{(len(all_lines) + 499)//500}")
+
+            # Verarbeite Chunk
+            chunk_results, chunk_errors = process_chunk(chunk_lines)
+
+            # Ergebnisse aggregieren
+            batch_results.extend(chunk_results)
+            error_list.extend(chunk_errors)
+            error_count += len(chunk_errors)
+
+            # Memory-Optimierung nach jedem Chunk
+            memory_optimizer.force_garbage_collection()
+            memory_optimizer.log_memory_usage(f"nach Chunk {i//500 + 1}")    # Finale Memory-Optimierung
+    memory_optimizer.force_garbage_collection()
+    memory_optimizer.log_memory_usage("nach Batch-Inferenz")
+
+    # Zusammenfassung
+    success_count = len(batch_results)
+    logging.info(f"[Batch-Inferenz] Verarbeitung abgeschlossen: {success_count} erfolgreich, {error_count} Fehler")
+
     # Flexible Output-Dateinamen
     result_file = f"{getattr(args, 'output_path', '')}batch_results.{args.output_format}" if hasattr(args, 'output_format') else "batch_results.csv"
     error_file = f"{getattr(args, 'output_path', '')}batch_errors.{args.output_format if args.output_format == 'json' else 'csv'}"
+
     # Export
     if hasattr(args, 'output_format') and args.output_format == 'json':
         import json
@@ -93,14 +147,18 @@ def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int
                     'antworten': [{'index': idx, 'score': score} for idx, score in antworten]
                 } for seed_text, antworten in batch_results
             ], fout, ensure_ascii=False, indent=2)
+        logging.info(f"[Batch-Inferenz] Ergebnisse als {result_file} exportiert.")
+
         # Fehlerzusammenfassung als JSON
         if error_list:
             with open(error_file, 'w', encoding='utf-8') as ferr:
                 json.dump(error_list, ferr, ensure_ascii=False, indent=2)
             logging.info(f"[Batch-Inferenz] Fehler wurden als {error_file} exportiert.")
-        logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als {result_file} exportiert.")
     else:
+        # CSV Export
         export_batch_results_csv(batch_results, corpus, corpus_original)
+        logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als {result_file} exportiert.")
+
         # Fehlerzusammenfassung als CSV
         if error_list:
             import csv
@@ -193,13 +251,17 @@ from validation import validate_model
 
 def print_error_hint(e):
     if isinstance(e, FileNotFoundError):
-        logging.error("Datei nicht gefunden. Prüfe den Dateinamen und Pfad.")
+        logging.error("Datei nicht gefunden: Überprüfen Sie den Pfad und die Berechtigungen.")
     elif isinstance(e, ValueError):
-        logging.error("Wertfehler: Prüfe die Eingabedaten und das Format.")
+        logging.error("Wertfehler: Überprüfen Sie die Eingabedaten und Parameter.")
     elif isinstance(e, ImportError):
-        logging.error("Importfehler: Prüfe, ob alle Pakete installiert sind (z.B. tensorflow, numpy, nltk, pandas, scikit-learn, streamlit, reportlab, pillow, matplotlib, langdetect).")
+        logging.error("Importfehler: Überprüfen Sie die Installation der erforderlichen Bibliotheken.")
+    elif isinstance(e, RuntimeError):
+        logging.error("Laufzeitfehler: Überprüfen Sie die Systemressourcen und Konfiguration.")
+    elif isinstance(e, OSError):
+        logging.error("Betriebssystemfehler: Überprüfen Sie Dateiberechtigungen und Systemressourcen.")
     else:
-        logging.error(f"Unerwarteter Fehler: {e}")
+        logging.error(f"Unbekannter Fehler: {type(e).__name__}: {str(e)}")
 
 
 def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
@@ -387,6 +449,7 @@ def main():
         validate_model(tokenizer, model, maxlen, preprocess, detect_language)
         analyze_feedback()
     
+
 # Standard-Skriptstart
 if __name__ == "__main__":
     main()

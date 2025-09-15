@@ -1,92 +1,52 @@
 """
-Einfaches, funktionierendes Logging-Setup für Bundeskanzler KI
+Einfaches Logging-System für die Bundeskanzler KI.
 """
+
 import logging
-import logging.handlers
-import json
-import os
+import sys
 from pathlib import Path
-from datetime import datetime
-
-
-class StructuredFormatter(logging.Formatter):
-    """Custom Formatter für strukturierte Logs im JSON-Format"""
-    
-    def format(self, record):
-        # Basis Log-Daten
-        log_data = {
-            'timestamp': self.formatTime(record, '%Y-%m-%d %H:%M:%S'),
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno
-        }
-        
-        # Extra-Daten hinzufügen falls vorhanden
-        for attr in ['component', 'action', 'user_id', 'error', 'response_time', 
-                     'message_length', 'query', 'top_k', 'content_length']:
-            if hasattr(record, attr):
-                log_data[attr] = getattr(record, attr)
-                
-        return json.dumps(log_data, ensure_ascii=False)
-
 
 def setup_simple_logging():
-    """Konfiguriert einfaches strukturiertes Logging"""
+    """
+    Richtet einfaches Logging für API und Memory ein.
+    
+    Returns:
+        Tuple von (api_logger, memory_logger)
+    """
+    # Erstelle logs Verzeichnis falls es nicht existiert
     logs_dir = Path("./logs")
     logs_dir.mkdir(exist_ok=True)
     
-    # Console Handler
-    console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter(
+    # Konfiguriere API Logger
+    api_logger = logging.getLogger('bundeskanzler_api')
+    api_logger.setLevel(logging.INFO)
+    
+    # Konfiguriere Memory Logger  
+    memory_logger = logging.getLogger('memory_system')
+    memory_logger.setLevel(logging.INFO)
+    
+    # Formatter
+    formatter = logging.Formatter(
         '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    console_handler.setFormatter(console_formatter)
-    console_handler.setLevel(logging.INFO)
     
-    # File Handlers mit strukturiertem Format
-    api_handler = logging.handlers.RotatingFileHandler(
-        logs_dir / "api.log", maxBytes=10*1024*1024, backupCount=5
-    )
-    api_handler.setFormatter(StructuredFormatter())
-    api_handler.setLevel(logging.DEBUG)
+    # Console Handler für beide Logger
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
     
-    memory_handler = logging.handlers.RotatingFileHandler(
-        logs_dir / "memory.log", maxBytes=10*1024*1024, backupCount=5
-    )
-    memory_handler.setFormatter(StructuredFormatter())
-    memory_handler.setLevel(logging.DEBUG)
+    # File Handler für API
+    api_file_handler = logging.FileHandler(logs_dir / 'api.log')
+    api_file_handler.setFormatter(formatter)
+    api_logger.addHandler(api_file_handler)
     
-    error_handler = logging.handlers.RotatingFileHandler(
-        logs_dir / "errors.log", maxBytes=10*1024*1024, backupCount=5
-    )
-    error_handler.setFormatter(StructuredFormatter())
-    error_handler.setLevel(logging.ERROR)
+    # File Handler für Memory
+    memory_file_handler = logging.FileHandler(logs_dir / 'memory.log')
+    memory_file_handler.setFormatter(formatter)
+    memory_logger.addHandler(memory_file_handler)
     
-    # API Logger
-    api_logger = logging.getLogger("bundeskanzler_api")
-    api_logger.setLevel(logging.DEBUG)
-    api_logger.handlers.clear()  # Alte Handler entfernen
+    # Füge Console Handler zu beiden Loggern hinzu
     api_logger.addHandler(console_handler)
-    api_logger.addHandler(api_handler)
-    api_logger.addHandler(error_handler)
-    api_logger.propagate = False
-    
-    # Memory Logger
-    memory_logger = logging.getLogger("memory")
-    memory_logger.setLevel(logging.DEBUG)
-    memory_logger.handlers.clear()  # Alte Handler entfernen
-    memory_logger.addHandler(memory_handler)
-    memory_logger.addHandler(error_handler)
-    memory_logger.propagate = False
-    
-    # Initialisierungs-Log
-    api_logger.info("Einfaches Logging-System initialisiert", extra={
-        "component": "logging",
-        "action": "setup"
-    })
+    memory_logger.addHandler(console_handler)
     
     return api_logger, memory_logger

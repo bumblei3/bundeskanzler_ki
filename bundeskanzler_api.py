@@ -5,6 +5,11 @@ Moderne FastAPI-basierte API mit Authentifizierung, Rate Limiting und OpenAPI-Do
 
 # Standard library imports
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import functools
+from collections import deque
+import threading
+from typing import Deque, Dict, List, Tuple, Optional
 import hashlib
 import json
 import logging
@@ -28,18 +33,46 @@ from fastapi import (
     Security,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# Security Headers Middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Middleware für Security-Headers"""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        # Security Headers hinzufügen
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+        # API-spezifische Headers
+        response.headers["X-API-Version"] = APIConfig.API_VERSION
+        response.headers["X-Rate-Limit"] = str(APIConfig.RATE_LIMITS["default"])
+
+        return response
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from logging.handlers import RotatingFileHandler
 from pydantic import BaseModel, Field, validator
 from typing import Any, Dict, List, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local imports
 from adaptive_response import AdaptiveResponseManager
 from corpus_manager import CorpusManager
+from database import get_db, Conversation, UserSession, SystemLog, create_conversation, get_conversation_history
+from memory_optimizer import MemoryOptimizer, setup_memory_optimization, memory_optimizer
+from advanced_cache import cache_manager, initialize_caches, get_cache_stats
 from fact_checker import FactChecker
 from gpu_batching import AsyncBatchManager, GPUBatchProcessor
 from hierarchical_memory import EnhancedContextProcessor
@@ -56,7 +89,23 @@ class APIConfig:
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
     API_VERSION = "v1"
-    MAX_REQUESTS_PER_MINUTE = 60
+
+    # Rate Limiting Limits für verschiedene Endpunkte
+    RATE_LIMITS = {
+        "default": 60,      # Standard: 60 pro Minute
+        "admin": 120,       # Admin: 120 pro Minute
+        "fact_check": 30,   # Fact-Check: 30 pro Minute (ressourcenintensiv)
+        "chat": 20,         # Chat: 20 pro Minute
+        "gpu": 10,          # GPU-Operationen: 10 pro Minute
+    }
+
+    # API Keys für verschiedene Zugriffslevel
+    API_KEYS = {
+        "admin": os.getenv("BUNDESKANZLER_ADMIN_API_KEY", "bk-admin-2025-key"),
+        "user": os.getenv("BUNDESKANZLER_USER_API_KEY", "bk-user-2025-key"),
+        "readonly": os.getenv("BUNDESKANZLER_READONLY_API_KEY", "bk-readonly-2025-key"),
+    }
+
     # Erlaube lokale Entwicklungs-Origins inkl. Admin-Panel auf Port 8080
     CORS_ORIGINS = [
         "http://localhost",
@@ -179,6 +228,34 @@ class MemorySearchRequest(BaseModel):
     min_similarity: float = Field(0.3, ge=0.0, le=1.0)
 
 
+class ConversationHistoryRequest(BaseModel):
+    """Konversationshistorie-Anfrage"""
+    session_id: Optional[str] = Field(None, description="Session-ID für Filterung")
+    limit: int = Field(50, ge=1, le=200, description="Maximale Anzahl der Ergebnisse")
+    offset: int = Field(0, ge=0, description="Offset für Pagination")
+
+
+class ConversationItem(BaseModel):
+    """Einzelnes Konversations-Element"""
+    id: int
+    session_id: str
+    user_id: Optional[str]
+    user_message: str
+    ai_response: str
+    confidence_score: Optional[float]
+    response_time: Optional[float]
+    created_at: datetime
+    metadata: Optional[Dict[str, Any]]
+
+
+class ConversationHistoryResponse(BaseModel):
+    """Konversationshistorie-Antwort"""
+    conversations: List[ConversationItem]
+    total_count: int
+    limit: int
+    offset: int
+
+
 class UserProfile(BaseModel):
     """Nutzerprofil"""
     user_id: str
@@ -217,6 +294,8 @@ class SystemStats(BaseModel):
     active_users: int
     memory_entries: int
     error_rate: float
+    cache_stats: Dict[str, Any] = {}
+    performance_stats: Dict[str, Any] = {}
 
 
 class LogEntry(BaseModel):
@@ -254,6 +333,22 @@ class FactCheckRequest(BaseModel):
     statement: str = Field(..., min_length=10, max_length=1000, description="Zu prüfende Aussage")
     context: Optional[Dict[str, Any]] = Field({}, description="Zusätzlicher Kontext")
 
+    @validator('statement')
+    def validate_statement_content(cls, v):
+        """Validiert Inhalt der Aussage auf schädliche Inhalte"""
+        if not v or not v.strip():
+            raise ValueError('Aussage darf nicht leer sein')
+
+        # Blockiere offensichtlich schädliche Inhalte
+        blocked_words = ['hack', 'exploit', 'malware', 'virus', 'trojan']
+        statement_lower = v.lower()
+
+        for word in blocked_words:
+            if word in statement_lower:
+                raise ValueError(f'Inhalt enthält blockierte Begriffe: {word}')
+
+        return v.strip()
+
 
 class FactCheckResponse(BaseModel):
     """Antwort der Faktenprüfung"""
@@ -263,7 +358,7 @@ class FactCheckResponse(BaseModel):
     bias_score: float
     verification_status: str
     explanation: str
-    timestamp: datetime
+    timestamp: str
 
 
 class ResponseValidationRequest(BaseModel):
@@ -304,6 +399,79 @@ gpu_processor: Optional[GPUBatchProcessor] = None
 async_batch_manager: Optional[AsyncBatchManager] = None
 start_time = time.time()
 request_counter = 0
+
+# Performance-Monitoring
+performance_stats = {
+    'requests_processed': 0,
+    'avg_response_time': 0.0,
+    'cache_hits': 0,
+    'cache_misses': 0,
+    'batch_requests': 0
+}
+
+class RequestBatcher:
+    """Batch-Verarbeitung für ähnliche Chat-Anfragen"""
+
+    def __init__(self, max_batch_size: int = 5, batch_timeout: float = 0.1):
+        self.max_batch_size = max_batch_size
+        self.batch_timeout = batch_timeout
+        self.pending_requests: Deque[Tuple[asyncio.Future, Dict]] = deque()
+        self.lock = threading.Lock()
+        self.processing_task: Optional[asyncio.Task] = None
+
+    async def add_request(self, request_data: Dict) -> asyncio.Future:
+        """Fügt eine Anfrage zur Batch-Queue hinzu"""
+        future = asyncio.Future()
+        with self.lock:
+            self.pending_requests.append((future, request_data))
+
+            # Starte Batch-Verarbeitung falls nötig
+            if len(self.pending_requests) >= self.max_batch_size:
+                if not self.processing_task or self.processing_task.done():
+                    self.processing_task = asyncio.create_task(self._process_batch())
+
+        # Timeout-basierte Verarbeitung
+        if not self.processing_task or self.processing_task.done():
+            self.processing_task = asyncio.create_task(self._delayed_process())
+
+        return future
+
+    async def _delayed_process(self):
+        """Verarbeitet Batch nach Timeout"""
+        await asyncio.sleep(self.batch_timeout)
+        await self._process_batch()
+
+    async def _process_batch(self):
+        """Verarbeitet einen Batch von Anfragen"""
+        with self.lock:
+            if not self.pending_requests:
+                return
+
+            batch = list(self.pending_requests)
+            self.pending_requests.clear()
+
+        if len(batch) > 1:
+            performance_stats['batch_requests'] += len(batch)
+            api_logger.info(f"Processing batch of {len(batch)} requests")
+
+        # Verarbeite jede Anfrage im Batch
+        for future, request_data in batch:
+            try:
+                # Hier würde die eigentliche Verarbeitung stattfinden
+                # Für jetzt verwenden wir eine Mock-Verarbeitung
+                result = await self._process_single_request(request_data)
+                future.set_result(result)
+            except Exception as e:
+                future.set_exception(e)
+
+    async def _process_single_request(self, request_data: Dict):
+        """Verarbeitet eine einzelne Anfrage (wird durch Chat-Logic ersetzt)"""
+        # Mock-Verarbeitung - würde durch echte Chat-Logic ersetzt werden
+        await asyncio.sleep(0.01)  # Simuliere Verarbeitungszeit
+        return {"response": f"Processed: {request_data.get('message', '')}", "batched": True}
+
+# Globale Request Batcher Instanz
+request_batcher = RequestBatcher(max_batch_size=3, batch_timeout=0.05)
 
 
 def initialize_ki_components():
@@ -373,10 +541,17 @@ def run_auto_import():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle Management für die FastAPI App"""
+    """Lifecycle Management für die FastAPI App mit Memory-Optimierung"""
 
     # Startup
     print("🚀 Bundeskanzler KI API startet...")
+
+    # Memory-Optimierung initialisieren
+    setup_memory_optimization()
+    memory_optimizer.log_memory_usage("API-Start")
+
+    # Caching-System initialisieren
+    initialize_caches()
 
     try:
         # Initialisiere alle Komponenten
@@ -385,11 +560,14 @@ async def lifespan(app: FastAPI):
         initialize_gpu_system()
         print("✅ Alle KI-Komponenten initialisiert")
 
+        memory_optimizer.log_memory_usage("nach Initialisierung")
+
     except Exception as e:
         print(f"❌ Fehler bei der Initialisierung: {e}")
         import traceback
         traceback.print_exc()
         # Setze auf None bei Fehler
+        global memory_system, context_processor, response_manager, corpus_manager, fact_checker, gpu_processor, async_batch_manager
         memory_system = None
         context_processor = None
         response_manager = None
@@ -397,9 +575,9 @@ async def lifespan(app: FastAPI):
         fact_checker = None
         gpu_processor = None
         async_batch_manager = None
-    
+
     yield
-    
+
     # Shutdown
     print("💾 Speichere KI-Zustand...")
     if memory_system:
@@ -408,6 +586,11 @@ async def lifespan(app: FastAPI):
             print("✅ Memory gespeichert")
         except Exception as e:
             print(f"⚠️ Fehler beim Speichern des Memory: {e}")
+
+    # Memory-Optimierung beim Shutdown
+    memory_optimizer.force_garbage_collection()
+    memory_optimizer.log_memory_usage("API-Shutdown")
+
     print("👋 Bundeskanzler KI API beendet")
 
 
@@ -425,8 +608,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=APIConfig.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    max_age=86400,  # 24 Stunden Cache für Preflight-Requests
+)
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Response Compression für bessere Performance
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000,  # Komprimiere Responses > 1KB
+    compresslevel=6     # Gute Balance zwischen Speed und Kompression
 )
 
 app.add_middleware(
@@ -439,6 +632,25 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 
 
 security = HTTPBearer()
+
+
+def verify_api_key(x_api_key: str = Security(APIKeyHeader(name="X-API-Key"))) -> str:
+    """Verifiziert API-Key und gibt Zugriffslevel zurück"""
+    if not x_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="API-Key erforderlich",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
+    for level, key in APIConfig.API_KEYS.items():
+        if x_api_key == key:
+            return level
+
+    raise HTTPException(
+        status_code=401,
+        detail="Ungültiger API-Key"
+    )
 
 
 def create_access_token(data: dict) -> str:
@@ -495,34 +707,70 @@ def create_admin_token(user_id: str) -> str:
     return encoded_jwt
 
 
-async def check_rate_limit(request: Request):
-    """Rate Limiting Middleware"""
+async def check_rate_limit(request: Request, endpoint_type: str = "default"):
+    """Rate Limiting Middleware mit verschiedenen Limits pro Endpunkt-Typ"""
     global request_counter
     request_counter += 1
-    
+
     client_ip = request.client.host
-    if not rate_limiter.is_allowed(client_ip, APIConfig.MAX_REQUESTS_PER_MINUTE):
+    limit = APIConfig.RATE_LIMITS.get(endpoint_type, APIConfig.RATE_LIMITS["default"])
+
+    if not rate_limiter.is_allowed(client_ip, limit):
         raise HTTPException(
-            status_code=429, 
-            detail="Rate limit exceeded. Max 60 requests per minute."
+            status_code=429,
+            detail=f"Rate limit exceeded. Max {limit} requests per minute for {endpoint_type} endpoints."
         )
 
 
 def generate_embedding(text: str) -> np.ndarray:
-    """Generiert Embedding für Text mit GPU-Batching"""
+    """Generiert Embedding für Text mit GPU-Batching und Caching"""
+
+    # Cache-Key für Embedding generieren
+    embedding_cache = cache_manager.get_cache('embeddings')
+    if embedding_cache:
+        cache_key = f"embedding:{hashlib.md5(text.encode()).hexdigest()}"
+        cached_embedding = embedding_cache.get(cache_key)
+        if cached_embedding is not None:
+            return cached_embedding
+
     if gpu_processor:
         try:
             # Verwende GPU-Batching für einzelnes Embedding
             result = gpu_processor.process_batch_sync([text], operation="embed")
-            return result[0]  # Erstes (und einziges) Embedding zurückgeben
+            embedding = result[0]  # Erstes (und einziges) Embedding zurückgeben
         except Exception as e:
             api_logger.warning(f"GPU-Batching fehlgeschlagen, verwende CPU-Fallback: {e}")
+            embedding = None
+    else:
+        embedding = None
 
-    # CPU-Fallback (original code)
-    hash_obj = hashlib.md5(text.encode())
-    seed = int(hash_obj.hexdigest()[:8], 16)
-    np.random.seed(seed)
-    return np.random.rand(512).astype(np.float32)
+    # CPU-Fallback falls GPU fehlgeschlagen
+    if embedding is None:
+        hash_obj = hashlib.md5(text.encode())
+        seed = int(hash_obj.hexdigest()[:8], 16)
+        np.random.seed(seed)
+        embedding = np.random.rand(512).astype(np.float32)
+
+    # Cache das Embedding (1 Stunde TTL)
+    if embedding_cache:
+        embedding_cache.set(cache_key, embedding, ttl=3600)
+
+    return embedding
+
+
+async def generate_embedding_async(text: str) -> np.ndarray:
+    """Async-Version von generate_embedding für bessere Performance"""
+    loop = asyncio.get_event_loop()
+
+    # Verwende ThreadPoolExecutor für CPU-bound Operation
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        embedding = await loop.run_in_executor(
+            executor,
+            generate_embedding,
+            text
+        )
+
+    return embedding
 
 
 def get_system_stats() -> SystemStats:
@@ -548,11 +796,13 @@ def get_system_stats() -> SystemStats:
         return SystemStats(
             cpu_usage=0.0,  # Placeholder - wird mit psutil erweitert
             memory_usage=0.0,  # Placeholder
-            disk_usage=0.0,  # Placeholder  
+            disk_usage=0.0,  # Placeholder
             api_requests_24h=total_requests,
             active_users=1,  # Vereinfacht
             memory_entries=memory_info.get("total_memories", 0),
-            error_rate=min(error_rate, 100.0)
+            error_rate=min(error_rate, 100.0),
+            cache_stats=get_cache_stats(),
+            performance_stats=performance_stats
         )
     except Exception as e:
         api_logger.error(f"Error getting system stats: {e}")
@@ -560,7 +810,7 @@ def get_system_stats() -> SystemStats:
         return SystemStats(
             cpu_usage=0.0, memory_usage=0.0, disk_usage=0.0,
             api_requests_24h=request_counter or 0, active_users=1,
-            memory_entries=0, error_rate=0.0
+            memory_entries=0, error_rate=0.0, cache_stats={}, performance_stats={}
         )
 
 
@@ -887,38 +1137,229 @@ async def get_memory_stats_admin(current_user: str = Depends(verify_admin_token)
     })
     
     if memory_system:
-        stats = memory_system.get_memory_stats()
-        
-        # Erweiterte Statistiken hinzufügen
-        kurz_entries = len(memory_system.kurzzeitgedaechtnis)
-        lang_entries = len(memory_system.langzeitgedaechtnis)
-        
-    if memory_system:
-        stats = memory_system.get_memory_stats()
+        try:
+            stats = memory_system.get_memory_stats()
+            
+            # Erweiterte Statistiken hinzufügen
+            kurz_entries = len(memory_system.kurzzeitgedaechtnis)
+            lang_entries = len(memory_system.langzeitgedaechtnis)
 
-        # Erweiterte Statistiken hinzufügen
-        kurz_entries = len(memory_system.kurzzeitgedaechtnis)
-        lang_entries = len(memory_system.langzeitgedaechtnis)
+            detailed_stats = {
+                **stats,
+                "kurzzeitgedaechtnis_entries": kurz_entries,
+                "langzeitgedaechtnis_entries": lang_entries,
+                "total_entries": kurz_entries + lang_entries,
+                "memory_efficiency": (kurz_entries + lang_entries) / max(stats.get("capacity", 1), 1) * 100
+            }
 
-        detailed_stats = {
-            **stats,
-            "kurzzeitgedaechtnis_entries": kurz_entries,
-            "langzeitgedaechtnis_entries": lang_entries,
-            "total_entries": kurz_entries + lang_entries,
-            "memory_efficiency": (kurz_entries + lang_entries) / max(stats.get("capacity", 1), 1) * 100
+            # GPU-Stats hinzufügen falls verfügbar
+            if gpu_processor:
+                gpu_stats = gpu_processor.get_stats()
+                detailed_stats["gpu"] = gpu_stats
+
+            if async_batch_manager:
+                detailed_stats["active_async_tasks"] = async_batch_manager.get_active_tasks()
+
+            return detailed_stats
+        except Exception as e:
+            api_logger.error(f"Error getting memory stats: {e}", extra={
+                "component": "admin",
+                "action": "memory_stats_error",
+                "user_id": current_user,
+                "error": str(e)
+            })
+            # Fallback: Einfache Statistiken zurückgeben
+            return {
+                "kurzzeitgedaechtnis_entries": len(memory_system.kurzzeitgedaechtnis) if hasattr(memory_system, 'kurzzeitgedaechtnis') else 0,
+                "langzeitgedaechtnis_entries": len(memory_system.langzeitgedaechtnis) if hasattr(memory_system, 'langzeitgedaechtnis') else 0,
+                "total_entries": 0,
+                "memory_efficiency": 0.0,
+                "error": str(e)
+            }
+
+    raise HTTPException(status_code=500, detail="Memory system not available")
+
+
+@app.get("/admin/memory/optimize")
+async def optimize_memory_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Memory-Optimierung durchführen"""
+    api_logger.info("Admin memory optimization requested", extra={
+        "component": "admin",
+        "action": "memory_optimize_request",
+        "user_id": current_user
+    })
+
+    try:
+        # Memory-Optimierung durchführen
+        memory_optimizer.force_garbage_collection()
+        numpy_size = memory_optimizer.optimize_numpy_arrays()
+
+        # Aktuelle Memory-Statistiken
+        current_memory = memory_optimizer.get_memory_usage()
+
+        result = {
+            "status": "success",
+            "message": "Memory-Optimierung erfolgreich durchgeführt",
+            "current_memory_mb": current_memory,
+            "numpy_arrays_optimized_mb": numpy_size,
+            "garbage_collected": True
         }
 
-        # GPU-Stats hinzufügen falls verfügbar
-        if gpu_processor:
-            gpu_stats = gpu_processor.get_stats()
-            detailed_stats["gpu"] = gpu_stats
+        memory_optimizer.log_memory_usage("nach Optimierung")
 
-        if async_batch_manager:
-            detailed_stats["active_async_tasks"] = async_batch_manager.get_active_tasks()
+        return result
+
+    except Exception as e:
+        api_logger.error(f"Memory optimization failed: {e}", extra={
+            "component": "admin",
+            "action": "memory_optimize_error",
+            "user_id": current_user,
+            "error": str(e)
+        })
+        raise HTTPException(status_code=500, detail=f"Memory-Optimierung fehlgeschlagen: {str(e)}")
+
+
+@app.post("/admin/cache/clear")
+async def clear_cache_admin(cache_name: Optional[str] = None, current_user: str = Depends(verify_admin_token)):
+    """Admin: Cache leeren"""
+    api_logger.info("Admin cache clear requested", extra={
+        "component": "admin",
+        "action": "cache_clear_request",
+        "user_id": current_user,
+        "cache_name": cache_name
+    })
+
+    try:
+        if cache_name:
+            # Spezifischen Cache leeren
+            cache = cache_manager.get_cache(cache_name)
+            if cache:
+                success = cache.clear()
+                message = f"Cache '{cache_name}' erfolgreich geleert"
+            else:
+                raise HTTPException(status_code=404, detail=f"Cache '{cache_name}' nicht gefunden")
+        else:
+            # Alle Caches leeren
+            success = True
+            for name, cache in cache_manager.caches.items():
+                if not cache.clear():
+                    success = False
+            message = "Alle Caches erfolgreich geleert" if success else "Einige Caches konnten nicht geleert werden"
+
+        return {
+            "status": "success" if success else "partial",
+            "message": message,
+            "cleared_cache": cache_name
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(f"Cache clear failed: {e}", extra={
+            "component": "admin",
+            "action": "cache_clear_error",
+            "user_id": current_user,
+            "error": str(e)
+        })
+        raise HTTPException(status_code=500, detail=f"Cache leeren fehlgeschlagen: {str(e)}")
+
+
+@app.get("/admin/cache/stats")
+async def get_cache_stats_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Detaillierte Cache-Statistiken"""
+    api_logger.info("Admin cache stats requested", extra={
+        "component": "admin",
+        "action": "cache_stats_request",
+        "user_id": current_user
+    })
+
+    try:
+        stats = get_cache_stats()
+
+        # Berechne aggregierte Statistiken
+        total_hits = sum(cache_stats.get('l1', {}).get('hits', 0) + cache_stats.get('l2', {}).get('hits', 0)
+                        for cache_stats in stats.values())
+        total_misses = sum(cache_stats.get('l1', {}).get('misses', 0) + cache_stats.get('l2', {}).get('misses', 0)
+                          for cache_stats in stats.values())
+        total_requests = total_hits + total_misses
+        overall_hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
+
+        detailed_stats = {
+            "caches": stats,
+            "summary": {
+                "total_caches": len(stats),
+                "total_requests": total_requests,
+                "total_hits": total_hits,
+                "total_misses": total_misses,
+                "overall_hit_rate": overall_hit_rate,
+                "overall_miss_rate": 100 - overall_hit_rate
+            }
+        }
 
         return detailed_stats
-    
-    raise HTTPException(status_code=500, detail="Memory system not available")
+
+    except Exception as e:
+        api_logger.error(f"Cache stats failed: {e}", extra={
+            "component": "admin",
+            "action": "cache_stats_error",
+            "user_id": current_user,
+            "error": str(e)
+        })
+        raise HTTPException(status_code=500, detail=f"Cache-Statistiken konnten nicht abgerufen werden: {str(e)}")
+
+
+@app.get("/admin/performance/stats")
+async def get_performance_stats_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Detaillierte Performance-Statistiken"""
+    api_logger.info("Admin performance stats requested", extra={
+        "component": "admin",
+        "action": "performance_stats_request",
+        "user_id": current_user
+    })
+
+    try:
+        # Erweiterte Performance-Metriken berechnen
+        uptime = time.time() - start_time
+        requests_per_second = performance_stats['requests_processed'] / max(uptime, 1)
+
+        cache_hit_rate = 0
+        if performance_stats['cache_hits'] + performance_stats['cache_misses'] > 0:
+            cache_hit_rate = (performance_stats['cache_hits'] /
+                            (performance_stats['cache_hits'] + performance_stats['cache_misses'])) * 100
+
+        detailed_stats = {
+            "uptime_seconds": uptime,
+            "uptime_hours": uptime / 3600,
+            "requests_per_second": requests_per_second,
+            "total_requests": performance_stats['requests_processed'],
+            "avg_response_time": performance_stats['avg_response_time'],
+            "cache_performance": {
+                "hits": performance_stats['cache_hits'],
+                "misses": performance_stats['cache_misses'],
+                "hit_rate": cache_hit_rate,
+                "total_cache_requests": performance_stats['cache_hits'] + performance_stats['cache_misses']
+            },
+            "batching": {
+                "batch_requests_processed": performance_stats['batch_requests'],
+                "avg_batch_size": performance_stats['batch_requests'] / max(performance_stats['requests_processed'], 1)
+            },
+            "system_load": {
+                "compression_enabled": True,
+                "async_processing": True,
+                "connection_pooling": True
+            }
+        }
+
+        return detailed_stats
+
+    except Exception as e:
+        api_logger.error(f"Performance stats failed: {e}", extra={
+            "component": "admin",
+            "action": "performance_stats_error",
+            "user_id": current_user,
+            "error": str(e)
+        })
+        raise HTTPException(status_code=500, detail=f"Performance-Statistiken konnten nicht abgerufen werden: {str(e)}")
 
 
 @app.get("/admin/users")
@@ -1132,13 +1573,32 @@ def ensure_components_initialized():
 
 
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(check_rate_limit)])
-async def chat(request: ChatRequest, user_id: str = Depends(verify_token)):
-    """Hauptendpoint für Chat-Interaktionen"""
+async def chat(request: ChatRequest, user_id: str = Depends(verify_token), db: AsyncSession = Depends(get_db)):
+    """Hauptendpoint für Chat-Interaktionen mit intelligentem Caching"""
     start_time_req = time.time()
-    
+
+    # Cache-Key für diese Anfrage generieren
+    cache_key = f"chat:{user_id}:{hash(request.message + str(request.context))}"
+
+    # Versuche Cache-Hit für identische Anfragen
+    api_cache = cache_manager.get_cache('api_responses')
+    if api_cache:
+        cached_response = api_cache.get(cache_key)
+        if cached_response:
+            performance_stats['cache_hits'] += 1
+            api_logger.info("Chat response from cache", extra={
+                "component": "chat",
+                "action": "cache_hit",
+                "user_id": user_id,
+                "response_time": time.time() - start_time_req
+            })
+            return cached_response
+
+    performance_stats['cache_misses'] += 1
+
     api_logger.info("Chat request started", extra={
         "component": "chat",
-        "action": "request_start", 
+        "action": "request_start",
         "user_id": request.user_id or user_id,
         "message_length": len(request.message),
         "include_sources": request.include_sources
@@ -1153,18 +1613,30 @@ async def chat(request: ChatRequest, user_id: str = Depends(verify_token)):
 
     try:
         ensure_components_initialized()
-        message_embedding = generate_embedding(request.message)
+        message_embedding = await generate_embedding_async(request.message)
         context = {
             'user_id': request.user_id or user_id,
             'timestamp': datetime.now(),
             'source': 'api',
             **request.context
         }
-        relevant_memories, importance = context_processor.process_input(
-            text=request.message,
-            embedding=message_embedding,
-            context=context
+        # Verwende get_relevant_context statt process_input
+        relevant_contexts = context_processor.get_relevant_context(
+            query=request.message,
+            max_results=10
         )
+        # Konvertiere zu Memory-Objekt Format für Kompatibilität
+        relevant_memories = []
+        for ctx in relevant_contexts:
+            # Erstelle ein einfaches Objekt mit content Attribut
+            class MemoryItem:
+                def __init__(self, content):
+                    self.content = content
+            relevant_memories.append(MemoryItem(ctx['text']))
+        
+        # Berechne importance basierend auf der Anzahl der relevanten Erinnerungen
+        importance = min(len(relevant_memories) / 10.0, 1.0)
+        
         complexity_params = response_manager.get_complexity_params(
             user_id=request.user_id or user_id,
             context=context
@@ -1243,7 +1715,32 @@ async def chat(request: ChatRequest, user_id: str = Depends(verify_token)):
             "relevant_memories_count": len(relevant_memories)
         })
         
-        return ChatResponse(
+        # Speichere Konversation in der Datenbank
+        try:
+            await create_conversation(
+                session=db,
+                session_id=request.session_id or f"session_{user_id}_{int(time.time())}",
+                user_id=request.user_id or user_id,
+                user_message=request.message,
+                ai_response=response_text,
+                confidence_score=0.85,
+                response_time=response_time,
+                metadata={
+                    "relevant_memories_count": len(relevant_memories),
+                    "importance": importance,
+                    "complexity": complexity_params.get("target_complexity", 0.5),
+                    "include_sources": request.include_sources
+                }
+            )
+        except Exception as db_error:
+            api_logger.warning("Failed to save conversation to database", extra={
+                "component": "chat",
+                "action": "db_save_error",
+                "error": str(db_error),
+                "user_id": request.user_id or user_id
+            })
+        
+        response_obj = ChatResponse(
             response=response_text,
             confidence=0.85,
             response_time=response_time,
@@ -1255,6 +1752,20 @@ async def chat(request: ChatRequest, user_id: str = Depends(verify_token)):
                 "complexity": complexity_params.get("target_complexity", 0.5)
             }
         )
+
+        # Cache die Antwort für zukünftige identische Anfragen (5 Minuten TTL)
+        if api_cache:
+            api_cache.set(cache_key, response_obj, ttl=300)
+
+        # Performance-Statistiken aktualisieren
+        response_time = time.time() - start_time_req
+        performance_stats['requests_processed'] += 1
+        performance_stats['avg_response_time'] = (
+            (performance_stats['avg_response_time'] * (performance_stats['requests_processed'] - 1)) +
+            response_time
+        ) / performance_stats['requests_processed']
+
+        return response_obj
     except Exception as e:
         api_logger.error("Chat endpoint error", extra={
             "component": "chat",
@@ -1265,6 +1776,51 @@ async def chat(request: ChatRequest, user_id: str = Depends(verify_token)):
             "timestamp": datetime.now().isoformat()
         })
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/chat/history", response_model=ConversationHistoryResponse, dependencies=[Depends(check_rate_limit)])
+async def get_conversation_history(
+    request: ConversationHistoryRequest = Depends(),
+    user_id: str = Depends(verify_token),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ruft Konversationshistorie ab"""
+    try:
+        conversations, total_count = await get_conversation_history(
+            session=db,
+            user_id=user_id,
+            session_id=request.session_id,
+            limit=request.limit,
+            offset=request.offset
+        )
+        
+        return ConversationHistoryResponse(
+            conversations=[
+                ConversationItem(
+                    id=conv.id,
+                    session_id=conv.session_id,
+                    user_id=conv.user_id,
+                    user_message=conv.user_message,
+                    ai_response=conv.ai_response,
+                    confidence_score=conv.confidence_score,
+                    response_time=conv.response_time,
+                    created_at=conv.created_at,
+                    metadata=conv.conversation_metadata
+                ) for conv in conversations
+            ],
+            total_count=total_count,
+            limit=request.limit,
+            offset=request.offset
+        )
+        
+    except Exception as e:
+        api_logger.error("Conversation history retrieval error", extra={
+            "component": "chat",
+            "action": "get_history_error",
+            "error": str(e),
+            "user_id": user_id
+        })
+        raise HTTPException(status_code=500, detail="Failed to retrieve conversation history")
 
 
 @app.post("/memory/add", dependencies=[Depends(check_rate_limit)])
@@ -1769,7 +2325,12 @@ async def get_gpu_stats(
 
 
 # Admin Endpoints
-@app.get("/admin/health", dependencies=[Depends(check_rate_limit)])
+async def check_admin_rate_limit(request: Request):
+    """Rate Limiting speziell für Admin-Endpunkte"""
+    return await check_rate_limit(request, "admin")
+
+
+@app.get("/admin/health", dependencies=[Depends(check_admin_rate_limit)])
 async def get_admin_health(
     user_id: str = Depends(verify_token)
 ):
@@ -1933,8 +2494,11 @@ async def get_admin_memory_stats(
 # === FAKTENPRÜFUNG ENDPOINTS ===
 
 @app.post("/fact-check", response_model=FactCheckResponse)
-async def check_fact_endpoint(request: FactCheckRequest):
+async def check_fact_endpoint(request: FactCheckRequest, req: Request):
     """Einzelne Aussage auf Fakten prüfen"""
+    # Spezielles Rate Limiting für Fact-Check (ressourcenintensiv)
+    await check_rate_limit(req, "fact_check")
+
     if not fact_checker:
         raise HTTPException(status_code=503, detail="Fact checker not available")
 
@@ -1957,7 +2521,7 @@ async def check_fact_endpoint(request: FactCheckRequest):
             bias_score=result.bias_score,
             verification_status=result.verification_status,
             explanation=result.explanation,
-            timestamp=result.timestamp
+            timestamp=result.timestamp.isoformat()
         )
 
     except Exception as e:

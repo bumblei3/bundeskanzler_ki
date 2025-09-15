@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # Haupt-API Service
+  bundeskanzler-ki:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api_memory:/app/api_memory
+      - ./corpus.json:/app/corpus.json
+      - ./source_credibility.json:/app/source_credibility.json
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    profiles:
+      - gpu
+    networks:
+      - bundeskanzler-network
+
+  # PostgreSQL Datenbank
+  postgres:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bundeskanzler -d bundeskanzler_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - with-db
+    networks:
+      - bundeskanzler-network
+
+  # pgAdmin für Datenbank-Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@bundeskanzler-ki.de
+      PGADMIN_DEFAULT_PASSWORD: admin123!
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+    profiles:
+      - with-db
+    networks:
+      - bundeskanzler-network
+
+  # Redis für Caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    profiles:
+      - with-redis
+    networks:
+      - bundeskanzler-network
+
+  # Prometheus für Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    profiles:
+      - with-monitoring
+    networks:
+      - bundeskanzler-network
+
+  # Grafana für Visualisierung
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123!
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    profiles:
+      - with-monitoring
+    networks:
+      - bundeskanzler-network
+
+  # Test-Service für isolierte Tests
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./tests:/app/tests
+      - ./api_memory:/app/api_memory
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql+asyncpg://bundeskanzler:secure_password@postgres:5432/bundeskanzler_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      bundeskanzler-ki:
+        condition: service_started
+    profiles:
+      - testing
+    networks:
+      - bundeskanzler-network
+    command: ["pytest", "tests/", "-v", "--tb=short", "--cov=.", "--cov-report=term"]
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  bundeskanzler-network:
+    driver: bridge

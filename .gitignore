@@ -6,11 +6,20 @@ __pycache__/
 *.h5
 *.keras
 *.pb
+*.tflite
 
-# Logfiles
+# Logfiles und Logs
 *.log
 log.txt
 mein_log.txt
+logs/
+
+# Coverage und Testberichte
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+benchmark_results.json
 
 # CSV/JSON/Testdaten
 *.csv
@@ -19,6 +28,7 @@ csv_url.txt
 entscheidungsdaten.csv
 feedback.txt
 validation_results.json
+confusion_matrix.png
 
 # Virtuelle Umgebung
 bin/
@@ -29,10 +39,32 @@ pyvenv.cfg
 share/
 etc/
 
-# Sonstiges
-.DS_Store
+# Sensible Dateien
 .env
+admin_token.txt
+.env.local
 
-# Tests
-*.test.py
-test_*.py
+# Temporäre Dateien
+*.tmp
+*.bak
+*~
+
+# IDE
+.DS_Store
+.vscode/settings.json
+.idea/
+
+# Node.js (falls verwendet)
+node_modules/
+package-lock.json
+
+# Build-Verzeichnisse
+dist/
+build/
+*.egg-info/
+
+# Modelle und Daten
+models/
+api_memory/
+corpus.txt
+dummy.txt
