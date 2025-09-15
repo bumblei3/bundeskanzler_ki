@@ -12,6 +12,18 @@ import csv
 import yaml
 import logging
 
+# Neue Advanced Transformer Modelle importieren
+from advanced_transformer_model import AdvancedTransformerModel, create_hybrid_model
+
+# Multimodale KI importieren
+from multimodal_ki import MultimodalTransformerModel, create_multimodal_model
+
+# Kontinuierliches Lernen importieren
+from continuous_learning import ContinuousLearningSystem, get_continuous_learning_system
+
+# Erweiterte Sicherheit importieren
+from advanced_security import AdvancedSecuritySystem, get_security_system
+
 # Memory-Optimierung importieren
 from memory_optimizer import (
     MemoryOptimizer,
@@ -31,6 +43,11 @@ from tqdm import tqdm
 
 # Memory-Optimierung beim Start initialisieren
 setup_memory_optimization()
+
+# Globale Instanzen für erweiterte Features
+multimodal_model = None
+learning_system = get_continuous_learning_system()
+security_system = get_security_system()
 
 def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
     """
@@ -170,31 +187,64 @@ def batch_inference(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int
         logging.info(f"[Batch-Inferenz] Batch-Ergebnisse wurden als {result_file} exportiert.")
     logging.info(f"[Batch-Inferenz] Gesamt: {total_lines} Zeilen verarbeitet, Fehler: {error_count}")
 
-def init_model(tokenizer: 'Tokenizer', maxlen: int, output_size: int) -> 'tf.keras.Model':
+def init_model(tokenizer: 'Tokenizer', maxlen: int, output_size: int, use_transformer: bool = True, use_multimodal: bool = False) -> 'tf.keras.Model':
     """
-    Initialisiert und gibt ein Transformer-basiertes Modell zurück.
-    
+    Initialisiert und gibt ein Modell zurück.
+    Verwendet AdvancedTransformerModel für Transformer-basierte Architekturen oder MultimodalTransformerModel.
+
     Args:
         tokenizer: Der Tokenizer für die Texttransformation
         maxlen: Die maximale Länge der Eingabesequenzen
         output_size: Die Größe der Ausgabeschicht (Anzahl der Klassen)
+        use_transformer: Ob Transformer-Modelle verwendet werden sollen
+        use_multimodal: Ob multimodale Modelle verwendet werden sollen
     """
-    from transformer_model import create_transformer_model
-    
     vocab_size = len(tokenizer.word_index) + 1
-    
-    return create_transformer_model(
-        maxlen=maxlen,
-        vocab_size=vocab_size,
-        output_size=output_size
-    )
+
+    if use_multimodal:
+        try:
+            # Verwende multimodales Modell
+            logging.info("🚀 Initialisiere multimodales Transformer Modell...")
+            global multimodal_model
+            multimodal_model = create_multimodal_model()
+            logging.info("✅ Multimodales Modell erfolgreich initialisiert")
+            # Für Kompatibilität geben wir ein Dummy-Keras-Modell zurück
+            # Die multimodale Verarbeitung erfolgt separat
+            return create_hybrid_model(maxlen, vocab_size, output_size, None)
+        except Exception as e:
+            logging.warning(f"⚠️ Multimodales Modell konnte nicht geladen werden: {e}")
+            logging.info("🔄 Fallback zu Transformer-Modell")
+            use_multimodal = False
+
+    if use_transformer:
+        try:
+            # Verwende hybrides Modell mit Transformer-Embeddings
+            logging.info("🚀 Initialisiere Advanced Transformer Modell...")
+            transformer_model = AdvancedTransformerModel(model_type="gpt2", model_name="gpt2")
+            model = create_hybrid_model(maxlen, vocab_size, output_size, transformer_model)
+            logging.info("✅ Advanced Transformer Modell erfolgreich initialisiert")
+            return model
+        except Exception as e:
+            logging.warning(f"⚠️ Transformer-Modell konnte nicht geladen werden: {e}")
+            logging.info("🔄 Fallback zu Standard-LSTM-Modell")
+            use_transformer = False
+
+    if not use_transformer:
+        # Fallback zu traditionellem LSTM-Modell
+        from transformer_model import create_transformer_model
+        return create_transformer_model(
+            maxlen=maxlen,
+            vocab_size=vocab_size,
+            output_size=output_size
+        )
 
 def train_model(model: 'tf.keras.Model', X: np.ndarray, Y: np.ndarray, args: argparse.Namespace) -> 'tf.keras.Model':
     """
     Trainiert das Modell mit den gegebenen Daten und Parametern.
+    Verwendet Standard-Keras-Training für das hybride Transformer-Modell.
     """
-    from transformer_model import train_transformer
-    
+    logging.info("🚀 Starte Modell-Training...")
+
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
@@ -212,17 +262,18 @@ def train_model(model: 'tf.keras.Model', X: np.ndarray, Y: np.ndarray, args: arg
             profile_batch='100,120'
         )
     ]
-    
-    history = train_transformer(
-        model=model,
-        X_train=X,
-        y_train=Y,
+
+    # Trainiere das Modell mit Standard-Keras-API
+    history = model.fit(
+        X, Y,
         batch_size=args.batch_size,
         epochs=args.epochs,
         validation_split=0.2,
-        callbacks=callbacks
+        callbacks=callbacks,
+        verbose=1
     )
-    
+
+    logging.info("✅ Modell-Training abgeschlossen")
     return model
 
 def preprocess_corpus(corpus: list[str]) -> list[str]:
@@ -248,6 +299,42 @@ from model import build_model, load_or_train_model
 # Validierungsfunktion auslagern
 from validation import validate_model
 
+# Multimodale und Lernsystem-Imports
+from multimodal_ki import MultimodalTransformerModel
+from continuous_learning import ContinuousLearningSystem
+from advanced_security import AdvancedSecuritySystem
+
+
+def generate_transformer_response(seed_text: str, transformer_model: AdvancedTransformerModel, max_length: int = 100) -> str:
+    """
+    Generiert eine Antwort mit dem AdvancedTransformerModel.
+
+    Args:
+        seed_text: Die Eingabe des Nutzers
+        transformer_model: Das AdvancedTransformerModel
+        max_length: Maximale Länge der generierten Antwort
+
+    Returns:
+        str: Die generierte Antwort
+    """
+    try:
+        # Bereite den Prompt vor
+        prompt = f"Frage: {seed_text}\nAntwort:"
+
+        # Generiere Antwort mit dem Transformer-Modell
+        response = transformer_model.generate_response(
+            prompt,
+            max_length=max_length,
+            temperature=0.7,
+            top_p=0.9
+        )
+
+        return response.strip()
+
+    except Exception as e:
+        logging.error(f"Fehler bei der Transformer-Generierung: {e}")
+        return f"Fehler bei der Generierung: {str(e)}"
+
 
 def print_error_hint(e):
     if isinstance(e, FileNotFoundError):
@@ -267,8 +354,50 @@ def print_error_hint(e):
 def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: int, corpus: list[str], corpus_original: list[str], args: argparse.Namespace) -> None:
     """
     Startet den interaktiven Modus für Nutzereingaben und zeigt die Top-N Antworten an.
+    Unterstützt klassische Korpus-basierte, generative Transformer- und multimodale Antworten.
     """
+    # Initialisiere Transformer-Modell für generative Antworten
+    transformer_model = None
+    try:
+        logging.info("🚀 Lade Transformer-Modell für generative Antworten...")
+        transformer_model = AdvancedTransformerModel(model_type="gpt2", model_name="gpt2")
+        logging.info("✅ Transformer-Modell für generative Antworten geladen")
+    except Exception as e:
+        logging.warning(f"⚠️ Transformer-Modell konnte nicht geladen werden: {e}")
+        logging.info("🔄 Fallback zu klassischen Korpus-basierten Antworten")
+
+    # Initialisiere multimodales Modell
+    multimodal_model = None
+    try:
+        logging.info("🎨 Initialisiere multimodales Modell (RTX 2070 optimiert)...")
+        multimodal_model = MultimodalTransformerModel(model_tier="rtx2070")
+        logging.info("✅ Multimodales Modell (RTX 2070) initialisiert")
+    except Exception as e:
+        logging.warning(f"⚠️ Multimodales Modell konnte nicht initialisiert werden: {e}")
+
+    # Initialisiere kontinuierliches Lernsystem
+    learning_system = None
+    try:
+        logging.info("🧠 Initialisiere kontinuierliches Lernsystem...")
+        learning_system = ContinuousLearningSystem()
+        logging.info("✅ Kontinuierliches Lernsystem initialisiert")
+    except Exception as e:
+        logging.warning(f"⚠️ Kontinuierliches Lernsystem konnte nicht initialisiert werden: {e}")
+
+    # Initialisiere Sicherheitsystem
+    security_system = None
+    try:
+        logging.info("🔒 Initialisiere erweitertes Sicherheitssystem...")
+        security_system = AdvancedSecuritySystem()
+        logging.info("✅ Sicherheitssystem initialisiert")
+    except Exception as e:
+        logging.warning(f"⚠️ Sicherheitssystem konnte nicht initialisiert werden: {e}")
+
     logging.info("[Interaktiv] Bundeskanzler-KI: Geben Sie eine Frage oder Aussage ein (Abbruch mit 'exit')")
+    logging.info("[Interaktiv] Modi: 'corpus <frage>' (Korpus), 'generate <frage>' (generativ)")
+    if multimodal_model:
+        logging.info("[Interaktiv] Multimodal: 'multimodal <frage>', 'image <pfad>', 'audio <pfad>'")
+
     while True:
         seed_text = input("Ihre Eingabe: ")
         if seed_text.strip().lower() == "exit":
@@ -277,31 +406,120 @@ def interactive_mode(tokenizer: 'Tokenizer', model: 'tf.keras.Model', maxlen: in
         if not seed_text.strip():
             logging.warning("[Interaktiv] Leere Eingabe übersprungen.")
             continue
-        # Validierung Modell und Tokenizer
-        if model is None:
-            print("Das Modell ist nicht geladen. Bitte prüfen Sie die Konfiguration und den Modellpfad.")
-            logging.error("Interaktiv: Modell nicht geladen.")
-            continue
-        if tokenizer is None:
-            print("Der Tokenizer ist nicht geladen. Bitte prüfen Sie die Konfiguration.")
-            logging.error("Interaktiv: Tokenizer nicht geladen.")
-            continue
+        # Bestimme den Antwortmodus
+        response_mode = "corpus"  # Standard: Korpus-basierte Antworten
+        image_path = None
+        audio_path = None
+
+        if seed_text.strip().lower().startswith("generate "):
+            response_mode = "generate"
+            seed_text = seed_text[9:].strip()  # Entferne "generate " vom Anfang
+        elif seed_text.strip().lower().startswith("corpus "):
+            response_mode = "corpus"
+            seed_text = seed_text[7:].strip()  # Entferne "corpus " vom Anfang
+        elif seed_text.strip().lower().startswith("multimodal "):
+            response_mode = "multimodal"
+            seed_text = seed_text[10:].strip()  # Entferne "multimodal " vom Anfang
+        elif seed_text.strip().lower().startswith("image "):
+            response_mode = "image"
+            image_path = seed_text[6:].strip()  # Extrahiere Bildpfad
+            seed_text = "Analysiere dieses Bild"  # Standard-Prompt für Bildanalyse
+        elif seed_text.strip().lower().startswith("audio "):
+            response_mode = "audio"
+            audio_path = seed_text[6:].strip()  # Extrahiere Audiodatei
+            seed_text = "Transkribiere diese Audio-Datei"  # Standard-Prompt für Audio
+
         try:
-            lang = detect_language(seed_text)
-            seed_text_pp = preprocess(seed_text, lang=lang)
-            seed_sequence = tokenizer.texts_to_sequences([seed_text_pp])
-            seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
-            output = model.predict(seed_sequence)[0]
-            top_indices = np.argsort(output)[::-1][:args.top_n]
-            print(f"\nTop-{args.top_n} Antworten für Ihre Eingabe:")
-            antworten = []
-            for i, idx in enumerate(top_indices):
-                mark = "*" if i == 0 else " "
-                print(f"{mark}{i+1}. {corpus[idx]} (Wahrscheinlichkeit: {output[idx]*100:.1f}%)")
-                print(f"   Originalsatz: {corpus_original[idx]}")
-                antworten.append((idx, output[idx]*100))
-            log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
-            feedback_interaction(seed_text, antworten, corpus)
+            if response_mode == "multimodal" and multimodal_model is not None:
+                # Multimodale Antwort
+                print(f"\n🎨 Multimodale Verarbeitung: '{seed_text}'")
+                response = multimodal_model.multimodal_response(text=seed_text)
+                print(f"📝 Text: {response.get('text_response', 'N/A')}")
+                if 'image_analysis' in response and response['image_analysis']:
+                    print(f"🖼️  Bild: {response['image_analysis']}")
+                if 'audio_transcription' in response and response['audio_transcription']:
+                    print(f"🎵 Audio: {response['audio_transcription']}")
+                print(f"🔗 Integriert: {response.get('integrated_response', 'N/A')}")
+                print("\n" + "="*50)
+
+            elif response_mode == "image" and multimodal_model is not None:
+                # Bildanalyse
+                print(f"\n🖼️  Bildanalyse: '{image_path}'")
+                if os.path.exists(image_path):
+                    response = multimodal_model.process_image(image_path)
+                    print(f"📊 Analyse: {response['description']}")
+                    print(f"🎯 Konfidenz: {response['confidence']:.2f}")
+                else:
+                    print(f"❌ Bilddatei nicht gefunden: {image_path}")
+                print("\n" + "="*50)
+
+            elif response_mode == "audio" and multimodal_model is not None:
+                # Audio-Transkription
+                print(f"\n🎵 Audio-Transkription: '{audio_path}'")
+                if os.path.exists(audio_path):
+                    transcription = multimodal_model.process_audio(audio_path)
+                    print(f"📝 Transkription: {transcription}")
+                else:
+                    print(f"❌ Audiodatei nicht gefunden: {audio_path}")
+                print("\n" + "="*50)
+
+            elif response_mode == "generate" and transformer_model is not None:
+                # Generative Antwort mit Transformer-Modell
+                print(f"\n🤖 Generative Antwort auf: '{seed_text}'")
+                response = generate_transformer_response(seed_text, transformer_model)
+                print(f"Antwort: {response}")
+
+                # Feedback für kontinuierliches Lernen sammeln
+                try:
+                    rating = input("Bewerten Sie die Antwort (1-5, Enter zum Überspringen): ").strip()
+                    if rating and rating.isdigit() and 1 <= int(rating) <= 5:
+                        learning_system.add_user_feedback({
+                            "question": seed_text,
+                            "response": response,
+                            "rating": int(rating),
+                            "mode": "generative"
+                        })
+                        print("✅ Feedback gespeichert für kontinuierliches Lernen")
+                except:
+                    pass
+
+                print("\n" + "="*50)
+
+            elif response_mode == "corpus" or (response_mode == "generate" and transformer_model is None):
+                # Klassische Korpus-basierte Antwort
+                if model is None:
+                    print("Das Modell ist nicht geladen. Bitte prüfen Sie die Konfiguration und den Modellpfad.")
+                    logging.error("Interaktiv: Modell nicht geladen.")
+                    continue
+                if tokenizer is None:
+                    print("Der Tokenizer ist nicht geladen. Bitte prüfen Sie die Konfiguration.")
+                    logging.error("Interaktiv: Tokenizer nicht geladen.")
+                    continue
+
+                lang = detect_language(seed_text)
+                seed_text_pp = preprocess(seed_text, lang=lang)
+                seed_sequence = tokenizer.texts_to_sequences([seed_text_pp])
+                seed_sequence = pad_sequences(seed_sequence, maxlen=maxlen, padding='post')
+                output = model.predict(seed_sequence)[0]
+                top_indices = np.argsort(output)[::-1][:args.top_n]
+                print(f"\nTop-{args.top_n} Antworten für Ihre Eingabe:")
+                antworten = []
+                for i, idx in enumerate(top_indices):
+                    mark = "*" if i == 0 else " "
+                    print(f"{mark}{i+1}. {corpus[idx]} (Wahrscheinlichkeit: {output[idx]*100:.1f}%)")
+                    print(f"   Originalsatz: {corpus_original[idx]}")
+                    antworten.append((idx, output[idx]*100))
+                log_interaction(seed_text, antworten, args.log, corpus, corpus_original)
+                feedback_interaction(seed_text, antworten, corpus)
+            else:
+                print("❌ Gewählter Modus nicht verfügbar. Verfügbare Modi:")
+                print("   - corpus <frage>    (Korpus-basierte Antworten)")
+                print("   - generate <frage>  (generative Transformer-Antworten)")
+                if multimodal_model:
+                    print("   - multimodal <frage> (multimodale Verarbeitung)")
+                    print("   - image <pfad>      (Bildanalyse)")
+                    print("   - audio <pfad>      (Audio-Transkription)")
+
         except Exception as e:
             print("Fehler bei der Verarbeitung Ihrer Eingabe. Details siehe Log.")
             print_error_hint(e)
@@ -427,10 +645,10 @@ def main():
         # Überprüfe, ob das geladene Modell die richtige Ausgabegröße hat
         if model.output_shape[-1] != output_size:
             logging.warning(f"Modell hat falsche Ausgabegröße {model.output_shape[-1]}, benötigt {output_size}. Erstelle neues Modell...")
-            model = init_model(tokenizer, maxlen, output_size)
+            model = init_model(tokenizer, maxlen, output_size, use_transformer=True)
             model.compile(loss='categorical_crossentropy', optimizer='adam')
     else:
-        model = init_model(tokenizer, maxlen, output_size)
+        model = init_model(tokenizer, maxlen, output_size, use_transformer=True)
         model.compile(loss='categorical_crossentropy', optimizer='adam')
 
     # Subcommand-Logik

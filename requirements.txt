@@ -1,3 +1,6 @@
+# System Monitoring
+psutil==6.1.0
+
 # Core Web Framework
 fastapi==0.116.1
 uvicorn==0.35.0
@@ -48,6 +51,13 @@ redis==5.2.0
 # Authentication & Security
 python-jose==3.5.0
 cryptography==45.0.7
+
+# Web Interface
+streamlit==1.47.1
+
+# Additional ML Libraries
+accelerate==1.4.0
+datasets==3.2.0
 python-multipart==0.0.20
 
 # HTTP & Async
@@ -128,9 +138,9 @@ pytz==2025.2
 tzdata==2025.2
 
 # Testing & Development
-pytest==8.3.4
-pytest-asyncio==0.25.1
-pytest-cov==6.0.0
+pytest==8.4.2
+pytest-asyncio==1.2.0
+pytest-cov==7.0.0
 pytest-mock==3.14.0
 pytest-benchmark==5.1.0
 pytest-html==4.1.1
