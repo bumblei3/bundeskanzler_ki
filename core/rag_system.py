@@ -334,27 +334,105 @@ class RAGSystem:
         self, context: str, relevant_docs: List[Dict[str, Any]]
     ) -> str:
         """
-        Extrahiert eine einfache Antwort aus dem Kontext
+        Extrahiert eine verbesserte, strukturierte Antwort aus dem Kontext
 
         Args:
             context: Kontext-String
             relevant_docs: Relevante Dokumente
 
         Returns:
-            Extrahierte Antwort
+            Strukturierte Antwort
         """
         if not relevant_docs:
-            return "Keine relevanten Informationen gefunden."
+            return "Ich konnte keine relevanten politischen Informationen zu Ihrer Frage finden."
 
-        # Verwende den Text des relevantesten Dokuments als Basis-Antwort
-        top_doc = max(relevant_docs, key=lambda x: x["score"])
-        answer = top_doc["text"]
+        # Sammle Informationen aus allen relevanten Dokumenten
+        topics = []
+        key_points = []
+        sources = []
 
-        # Begrenze Länge
-        if len(answer) > 200:
-            answer = answer[:200] + "..."
+        for doc in relevant_docs[:3]:  # Verwende Top 3 Dokumente
+            text = doc.get("text", "")
+            metadata = doc.get("metadata", {})
 
-        return answer
+            # Extrahiere Topic
+            topic = metadata.get("topic", "allgemein")
+            if topic not in topics:
+                topics.append(topic)
+
+            # Extrahiere Schlüsselinformationen
+            sentences = text.split('.')
+            for sentence in sentences[:2]:  # Erste 2 Sätze pro Dokument
+                sentence = sentence.strip()
+                if len(sentence) > 20 and len(sentence) < 150:
+                    key_points.append(sentence)
+
+            # Sammle Quellen
+            source = metadata.get("source", "unbekannt")
+            if source not in sources:
+                sources.append(source)
+
+        # Erstelle strukturierte Antwort basierend auf Topics
+        if "klima" in topics:
+            return self._generate_climate_answer(key_points, sources)
+        elif any(topic in ["politik", "regierung", "bundestag"] for topic in topics):
+            return self._generate_politics_answer(key_points, sources)
+        elif "energie" in topics or "wirtschaft" in topics:
+            return self._generate_economy_answer(key_points, sources)
+        else:
+            return self._generate_general_answer(key_points, sources)
+
+    def _generate_climate_answer(self, key_points: List[str], sources: List[str]) -> str:
+        """Generiert strukturierte Klimapolitik-Antwort"""
+        if not key_points:
+            return "📋 **Allgemeine Information:** Deutschland verfolgt ambitionierte Klimaziele bis 2045."
+
+        response = "🌍 **Klima-Analyse:**\n\n"
+        for i, point in enumerate(key_points[:4], 1):
+            response += f"{i}. {point}.\n"
+
+        if sources:
+            response += f"\n♻️ **Quelle:** Basiert auf {len(sources)} Klima-Dokumenten"
+        return response
+
+    def _generate_politics_answer(self, key_points: List[str], sources: List[str]) -> str:
+        """Generiert strukturierte Politik-Antwort"""
+        if not key_points:
+            return "📋 **Allgemeine Information:** Deutschland setzt sich für stabile politische Rahmenbedingungen ein."
+
+        response = "🏛️ **Politische Analyse:**\n\n"
+        for i, point in enumerate(key_points[:4], 1):
+            response += f"{i}. {point}.\n"
+
+        if sources:
+            response += f"\n📊 **Quelle:** Basiert auf {len(sources)} politischen Quellen"
+        return response
+
+    def _generate_economy_answer(self, key_points: List[str], sources: List[str]) -> str:
+        """Generiert strukturierte Wirtschafts-Antwort"""
+        if not key_points:
+            return "📋 **Allgemeine Information:** Deutschland fördert nachhaltiges Wirtschaftswachstum."
+
+        response = "💼 **Wirtschaftliche Analyse:**\n\n"
+        for i, point in enumerate(key_points[:4], 1):
+            response += f"{i}. {point}.\n"
+
+        if sources:
+            response += f"\n📈 **Quelle:** Basiert auf {len(sources)} wirtschaftlichen Dokumenten"
+        return response
+
+    def _generate_general_answer(self, key_points: List[str], sources: List[str]) -> str:
+        """Generiert allgemeine strukturierte Antwort"""
+        if not key_points:
+            return "📋 **Allgemeine Information:** Deutschland will bis 2045 klimaneutral werden. Alle Sektoren müssen ihren Beitrag leisten."
+
+        response = "📋 **Allgemeine Information:**\n\n"
+        for i, point in enumerate(key_points[:3], 1):
+            response += f"{i}. {point}.\n"
+
+        if sources:
+            response += f"\n📚 **Quelle:** Basiert auf {len(sources)} Dokumenten"
+        return response
 
     def update_corpus(self, new_entries: List[Dict[str, Any]]):
         """

@@ -116,3 +116,203 @@
   Konfidenz: 74.0%
   Thema: klima
 
+[2025-09-16 11:27:55] Eingabe: Was ist die aktuelle Klimapolitik der Bundesregierung?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz. Zusätzlich: Die Bundesregierung fördert Klimaneutralität Maßnahmen zum Klimaschutz. Ein wichtiger Schwerpunkt der Bundesregierung ist die Stärkung von Zukunftstechnologien, Klimaschutz und sozialer Gerechtigkeit.
+  Konfidenz: 75.4%
+  Thema: klima
+
+[2025-09-16 11:28:17] Eingabe: Welche neuen Investitionen plant die Bundesregierung in Wasserstofftechnologie?
+  Antwort: Die Bundesregierung fördert Wasserstofftechnologie durch Quantencomputing. Zusätzlich: Deutschland führt bei der Entwicklung von Wasserstofftechnologie KI-Entwicklung wird durch Wasserstofftechnologie vorangetrieben.
+  Konfidenz: 73.5%
+  Thema: wirtschaft
+
+[2025-09-16 11:33:06] Eingabe: Welche neuen Investitionen plant die Bundesregierung in Wasserstofftechnologie?
+  Antwort: Bundeskanzler Scholz kündigte neue Investitionen in die Wasserstofftechnologie in Höhe von 10 Milliarden Euro an.
+  Konfidenz: 1.6%
+  Thema: wirtschaft
+
+[2025-09-16 11:33:36] Eingabe: Was ist die aktuelle Klimapolitik der Bundesregierung?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1.6%
+  Thema: klima
+
+[2025-09-16 11:34:11] Eingabe: Was sind die Klimaziele Deutschlands?
+  Antwort: Die Bundesregierung fördert 2030 Maßnahmen zum Klimaschutz.
+  Konfidenz: 1.1%
+  Thema: klima
+
+[2025-09-16 11:34:11] Eingabe: Welche Investitionen plant die Regierung in Wasserstoff?
+  Antwort: Bundeskanzler Scholz kündigte neue Investitionen in die Wasserstofftechnologie in Höhe von 10 Milliarden Euro an.
+  Konfidenz: 1.6%
+  Thema: wirtschaft
+
+[2025-09-16 11:34:11] Eingabe: Wie steht es um die Digitalisierung der Verwaltung?
+  Antwort: Die digitale Transformation der Verwaltung wird durch das Online-Zugangsgesetz vorangetrieben.
+  Konfidenz: 1.5%
+  Thema: digital
+
+[2025-09-16 11:37:55] Eingabe: Was ist die aktuelle Klimapolitik der Bundesregierung?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1.6%
+  Thema: klima
+
+[2025-09-16 11:40:31] Eingabe: Was ist die aktuelle Klimapolitik der Bundesregierung?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 163.1%
+  Thema: klima
+
+[2025-09-16 11:40:54] Eingabe: Bis wann soll Klimaneutralität erreicht werden?
+  Antwort: Bis Klimaneutralität soll internationale erreicht werden.
+  Konfidenz: 163.1%
+  Thema: klima
+
+[2025-09-16 11:43:27] Eingabe: Bis wann soll Klimaneutralität erreicht werden?
+  Antwort: Bis Klimaneutralität soll internationale erreicht werden.
+  Konfidenz: 163.1%
+  Thema: klima
+
+[2025-09-16 11:43:59] Eingabe: Bis wann soll Klimaneutralität erreicht werden?
+  Antwort: Bis Klimaneutralität soll internationale erreicht werden.
+  Konfidenz: 163.1%
+  Thema: klima
+
+[2025-09-16 11:44:20] Eingabe: Deutschland setzt sich für ambitionierte Klimaschutzziele ein. Bis 2045 soll Klimaneutralität erreicht werden.
+  Antwort: Deutschland setzt sich für ambitionierte Klimaschutzziele ein. Bis 2045 soll Klimaneutralität erreicht werden.
+  Konfidenz: 163.9%
+  Thema: klima
+
+[2025-09-16 11:48:45] Eingabe: Was ist die aktuelle Klimapolitik der Bundesregierung?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1163.1%
+  Thema: klima
+
+[2025-09-16 11:51:21] Eingabe: Was sind die Ziele der Energiewende?
+  Antwort: Deutschland investiert in erneuerbare Energien
+  Konfidenz: 1127.7%
+  Thema: klima
+
+[2025-09-16 11:51:21] Eingabe: Bis wann soll der Kohleausstieg erfolgen?
+  Antwort: Der Kohleausstieg wird bis spätestens 2038 umgesetzt, mit dem Ziel einer früheren Realisierung bis 2030.
+  Konfidenz: 963.9%
+  Thema: klima
+
+[2025-09-16 11:52:13] Eingabe: Welche Maßnahmen gibt es zur Förderung erneuerbarer Energien?
+  Antwort: Deutschland investiert in erneuerbare Energien
+  Konfidenz: 1012.1%
+  Thema: klima
+
+[2025-09-16 11:52:42] Eingabe: Welche Maßnahmen gibt es zur Förderung erneuerbarer Energien?
+  Antwort: Deutschland investiert in erneuerbare Energien
+  Konfidenz: 912.1%
+  Thema: klima
+
+[2025-09-16 11:57:16] Eingabe: Was ist die aktuelle Klimapolitik?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1163.9%
+  Thema: klima
+
+[2025-09-16 11:57:17] Eingabe: What is the current Klima policy?
+  Antwort: The federal government promotes the expansion of renewable energies through the EEG and various funding programs.
+  Konfidenz: 1058.7%
+  Thema: klima
+
+[2025-09-16 11:57:17] Eingabe: Quelle est la politique climatique actuelle?
+  Antwort: The federal government promotes the expansion of renewable energies through the EEG and various funding programs.
+  Konfidenz: 1154.8%
+  Thema: allgemein
+
+[2025-09-16 11:57:17] Eingabe: Mevcut Klima politikası nedir?
+  Antwort: The federal government promotes the expansion of renewable energies through the EEG and various funding programs.
+  Konfidenz: 953.1%
+  Thema: klima
+
+[2025-09-16 11:57:20] Eingabe: Zeige mir die Entwicklung der Klimapolitik
+  Antwort: Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.
+  Konfidenz: 862.4%
+  Thema: klima
+
+[2025-09-16 11:57:21] Eingabe: Vergleiche die Wirtschaftslage in Deutschland und Europa
+  Antwort: Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.
+  Konfidenz: 1161.6%
+  Thema: wirtschaft
+
+[2025-09-16 11:57:22] Eingabe: Wie verteilt sich die Bildung in verschiedenen Regionen?
+  Antwort: Deutschland investiert in die Zukunft durch Bildung, Forschung und Innovation für die nächste Generation.
+  Konfidenz: 1158.7%
+  Thema: bildung
+
+[2025-09-16 11:57:23] Eingabe: Welche wichtigen Ereignisse gab es in der Digitalisierung?
+  Antwort: Das Gesundheitssystem wird durch Digitalisierung und bessere Vernetzung modernisiert.
+  Konfidenz: 1149.1%
+  Thema: digital
+
+[2025-09-16 11:57:26] Eingabe: Show me the Klima policy development
+  Antwort: The federal government promotes the expansion of renewable energies through the EEG and various funding programs.
+  Konfidenz: 758.7%
+  Thema: klima
+
+[2025-09-16 11:57:27] Eingabe: Montre-moi l'évolution de la politique économique
+  Antwort: The European Union is a community of values based on democracy, rule of law and human rights.
+  Konfidenz: 1157.6%
+  Thema: allgemein
+
+[2025-09-16 11:57:27] Eingabe: Wirtschaft alanında bölgesel dağılımı göster
+  Antwort: Bundeskanzler Scholz kündigte neue Investitionen in die Wasserstofftechnologie in Höhe von 10 Milliarden Euro an.
+  Konfidenz: 1014.8%
+  Thema: wirtschaft
+
+[2025-09-16 12:00:12] Eingabe: Was ist die aktuelle Klimapolitik?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 663.9%
+  Thema: klima
+
+[2025-09-16 12:00:13] Eingabe: Was ist die aktuelle Klimapolitik?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1063.9%
+  Thema: klima
+
+[2025-09-16 12:00:16] Eingabe: Was ist die aktuelle Klimapolitik?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1363.9%
+  Thema: klima
+
+[2025-09-16 12:00:18] Eingabe: Was ist die aktuelle Klimapolitik?
+  Antwort: Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.
+  Konfidenz: 1563.9%
+  Thema: klima
+
+[2025-09-16 12:00:23] Eingabe: Zeige mir die Entwicklung der Klimapolitik
+  Antwort: Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.
+  Konfidenz: 262.4%
+  Thema: klima
+
+[2025-09-16 12:00:24] Eingabe: Vergleiche die Wirtschaftslage in Deutschland und Europa
+  Antwort: Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.
+  Konfidenz: 961.6%
+  Thema: wirtschaft
+
+[2025-09-16 12:00:25] Eingabe: Wie verteilt sich die Bildung in verschiedenen Regionen?
+  Antwort: Deutschland investiert in die Zukunft durch Bildung, Forschung und Innovation für die nächste Generation.
+  Konfidenz: 1058.7%
+  Thema: bildung
+
+[2025-09-16 12:00:26] Eingabe: Welche wichtigen Ereignisse gab es in der Digitalisierung?
+  Antwort: Das Gesundheitssystem wird durch Digitalisierung und bessere Vernetzung modernisiert.
+  Konfidenz: 1049.1%
+  Thema: digital
+
+[2025-09-16 12:00:30] Eingabe: Zeigen Sie mir die Entwicklung der Klima -Politik
+  Antwort: Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.
+  Konfidenz: 156.3%
+  Thema: klima
+
+[2025-09-16 12:00:32] Eingabe: Zeigen Sie mir die Entwicklung der Wirtschaftspolitik
+  Antwort: Deutschland führt bei der Entwicklung von Wasserstofftechnologie und grüner Stahlproduktion.
+  Konfidenz: 851.4%
+  Thema: wirtschaft
+
+[2025-09-16 12:00:36] Eingabe: Zeigen Sie regionale Verteilung im Bereich der Ökonomie
+  Antwort: Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.
+  Konfidenz: 1148.3%
+  Thema: allgemein
+

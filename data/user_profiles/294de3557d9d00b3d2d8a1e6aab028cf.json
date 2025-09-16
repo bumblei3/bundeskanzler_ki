@@ -1,0 +1,73 @@
+{
+  "user_id": "anonymous",
+  "created_at": "2025-09-16T11:48:45.406357",
+  "last_active": "2025-09-16T11:52:42.838792",
+  "preferences": {
+    "language": "de",
+    "detail_level": "medium",
+    "response_style": "formal",
+    "notification_preferences": {
+      "email_updates": false,
+      "feedback_requests": true
+    }
+  },
+  "interests": {
+    "klima": 0.25000000000000006,
+    "wirtschaft": 0.5,
+    "soziales": 0.5,
+    "digital": 0.5,
+    "europa": 0.5,
+    "sicherheit": 0.5,
+    "bildung": 0.5,
+    "gesundheit": 0.5
+  },
+  "interaction_history": [
+    {
+      "timestamp": "2025-09-16T11:48:45.725697",
+      "question": "Was ist die aktuelle Klimapolitik der Bundesregierung?",
+      "answer": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "confidence": 0.11631411951348496,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:51:21.391943",
+      "question": "Was sind die Ziele der Energiewende?",
+      "answer": "Deutschland investiert in erneuerbare Energien",
+      "confidence": 0.11276573241671076,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:51:21.658224",
+      "question": "Bis wann soll der Kohleausstieg erfolgen?",
+      "answer": "Der Kohleausstieg wird bis spätestens 2038 umgesetzt, mit dem Ziel einer früheren Realisierung bis 2030.",
+      "confidence": 0.09639344262295083,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:52:13.793436",
+      "question": "Welche Maßnahmen gibt es zur Förderung erneuerbarer Energien?",
+      "answer": "Deutschland investiert in erneuerbare Energien",
+      "confidence": 0.10120945027195027,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:52:42.838778",
+      "question": "Welche Maßnahmen gibt es zur Förderung erneuerbarer Energien?",
+      "answer": "Deutschland investiert in erneuerbare Energien",
+      "confidence": 0.09120945027195028,
+      "theme": "klima",
+      "feedback": {}
+    }
+  ],
+  "feedback_scores": {
+    "overall_satisfaction": 0.0,
+    "relevance": 0.0,
+    "accuracy": 0.0,
+    "helpfulness": 0.0
+  },
+  "personalization_level": "basic"
+}

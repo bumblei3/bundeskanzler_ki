@@ -351,6 +351,29 @@ Antwort:
         if self.llm_manager:
             llm_info = self.llm_manager.get_model_info()
 
+        rag_info = {}
+        if self.rag_system:
+            rag_info = self.rag_system.get_system_info()
+        elif self.fallback_rag:
+            # Fallback RAG Info
+            rag_info = {
+                'corpus_loaded': len(self.fallback_rag.corpus_entries) > 0 if hasattr(self.fallback_rag, 'corpus_entries') else False,
+                'corpus_entries': len(self.fallback_rag.corpus_entries) if hasattr(self.fallback_rag, 'corpus_entries') else 0,
+                'embedding_model': 'paraphrase-multilingual-MiniLM-L12-v2',
+                'embedding_dimension': 384
+            }
+
+        multi_agent_info = {}
+        if hasattr(self.multi_agent_system, 'get_system_info'):
+            multi_agent_info = self.multi_agent_system.get_system_info()
+        else:
+            # Basis-Info für Multi-Agent-System
+            multi_agent_info = {
+                'agents_count': 0,
+                'agents_initialized': 0,
+                'system_active': True
+            }
+
         multilingual_info = {}
         if self.multilingual_manager:
             # Vereinfachte Info für SimpleMultilingualManager
@@ -364,6 +387,8 @@ Antwort:
             'config': self.config.__dict__,
             'gpu_info': gpu_info,
             'llm_info': llm_info,
+            'rag_info': rag_info,
+            'multi_agent_info': multi_agent_info,
             'multilingual_info': multilingual_info,
             'components_status': self._get_components_status(),
             'rtx2070_optimized': True

@@ -644,72 +644,8 @@
       "source": "bundesanzeiger",
       "verified": true,
       "url": "https://www.bundesanzeiger.de/"
-    },
-    {
-      "text": "Die Sozialdemokratie in Deutschland setzt sich für soziale Gerechtigkeit und Umverteilung ein. SPD fordert höhere Mindestlöhne und bessere Arbeitsbedingungen.",
-      "topic": "politik",
-      "language": "de",
-      "date": "2025-09-16",
-      "source": "spd",
-      "verified": true
-    },
-    {
-      "text": "Das deutsche Wahlsystem kombiniert Erst- und Zweitstimme. Die Erststimme wählt den Direktkandidaten, die Zweitstimme bestimmt die Sitzverteilung der Parteien.",
-      "topic": "politik",
-      "language": "de",
-      "date": "2025-09-16",
-      "source": "bundestag",
-      "verified": true
-    },
-    {
-      "text": "Die Energiewende umfasst den Ausbau erneuerbarer Energien, die Abschaltung von Kernkraftwerken und die Dekarbonisierung der Industrie bis 2045.",
-      "topic": "energie",
-      "language": "de",
-      "date": "2025-09-16",
-      "source": "bmwi",
-      "verified": true
-    },
-    {
-      "text": "Digitalisierung der Verwaltung ist ein Schwerpunkt der Bundesregierung. E-Government soll Bürgerservices vereinfachen und effizienter gestalten.",
-      "topic": "digitalisierung",
-      "language": "de",
-      "date": "2025-09-16",
-      "source": "bundesregierung",
-      "verified": true
-    },
-    {
-      "text": "Germany's energy transition includes expanding renewable energies, phasing out nuclear power, and decarbonizing industry by 2045.",
-      "topic": "energie",
-      "language": "en",
-      "date": "2025-09-16",
-      "source": "bmwi",
-      "verified": true
-    },
-    {
-      "text": "La transition énergétique allemande comprend l'expansion des énergies renouvelables, l'arrêt des centrales nucléaires et la décarbonisation de l'industrie d'ici 2045.",
-      "topic": "energie",
-      "language": "fr",
-      "date": "2025-09-16",
-      "source": "bmwi",
-      "verified": true
-    },
-    {
-      "text": "La transición energética alemana incluye la expansión de las energías renovables, el cierre de las centrales nucleares y la descarbonización de la industria para 2045.",
-      "topic": "energie",
-      "language": "es",
-      "date": "2025-09-16",
-      "source": "bmwi",
-      "verified": true
-    },
-    {
-      "text": "La transizione energetica tedesca comprende l'espansione delle energie rinnovabili, la chiusura delle centrali nucleari e la decarbonizzazione dell'industria entro il 2045.",
-      "topic": "energie",
-      "language": "it",
-      "date": "2025-09-16",
-      "source": "bmwi",
-      "verified": true
     }
   ],
-  "last_update": "2025-09-16T13:30:00.000000",
-  "version": "2.1"
+  "last_update": "2025-09-16T11:24:08.444901",
+  "version": "2.0"
 }

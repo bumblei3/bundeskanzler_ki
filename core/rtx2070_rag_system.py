@@ -222,10 +222,20 @@ class RTX2070OptimizedRAG:
 
             # RTX 2070 optimierter FAISS-Index
             if self.use_gpu:
-                # GPU-Index für RTX 2070
-                res = faiss.StandardGpuResources()
-                index_flat = faiss.IndexFlatIP(self.embedding_dim)  # Inner Product für normalisierte Embeddings
-                self.index = faiss.index_cpu_to_gpu(res, 0, index_flat)
+                try:
+                    # GPU-Index für RTX 2070 (FAISS 1.12.0 kompatibel)
+                    res = faiss.StandardGpuResources()
+                    index_flat = faiss.IndexFlatIP(self.embedding_dim)  # Inner Product für normalisierte Embeddings
+                    self.index = faiss.index_cpu_to_gpu(res, 0, index_flat)
+                except AttributeError:
+                    # Fallback für neuere FAISS-Versionen
+                    logger.warning("⚠️ StandardGpuResources nicht verfügbar, verwende GPU-Index direkt")
+                    try:
+                        self.index = faiss.GpuIndexFlatIP(faiss.get_num_gpus(), self.embedding_dim)
+                    except Exception as gpu_error:
+                        logger.warning(f"⚠️ GPU-Index fehlgeschlagen: {gpu_error}, verwende CPU-Fallback")
+                        self.use_gpu = False
+                        self.index = faiss.IndexFlatIP(self.embedding_dim)
             else:
                 # CPU-Fallback
                 self.index = faiss.IndexFlatIP(self.embedding_dim)
@@ -441,8 +451,10 @@ class RTX2070OptimizedRAG:
         """Gibt System-Informationen zurück"""
         return {
             'document_count': len(self.corpus),
+            'corpus_loaded': len(self.corpus) > 0,
+            'corpus_entries': len(self.corpus),
             'gpu_accelerated': self.use_gpu,
-            'embedding_model': self.embeddings.model_name,
+            'embedding_model': self.embeddings.model_name if hasattr(self.embeddings, 'model_name') else 'paraphrase-multilingual-MiniLM-L12-v2',
             'index_loaded': self.index is not None,
             'corpus_path': self.corpus_path,
             'index_path': self.index_path,

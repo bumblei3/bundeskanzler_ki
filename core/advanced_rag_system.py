@@ -170,6 +170,8 @@ class AdvancedRAGSystem:
                 self.corpus_entries = data
             elif isinstance(data, dict) and 'documents' in data:
                 self.corpus_entries = data['documents']
+            elif isinstance(data, dict) and 'entries' in data:
+                self.corpus_entries = data['entries']
             else:
                 raise ValueError("Unbekanntes Corpus-Format")
             
@@ -545,6 +547,10 @@ class AdvancedRAGSystem:
             "version": "2.0",
             "model": self.current_model,
             "corpus_size": len(self.corpus_entries),
+            "corpus_loaded": len(self.corpus_entries) > 0,
+            "corpus_entries": len(self.corpus_entries),
+            "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
+            "embedding_dimension": 384,
             "hybrid_search": self.use_hybrid_search,
             "indexes": {
                 "semantic": self.semantic_index is not None,

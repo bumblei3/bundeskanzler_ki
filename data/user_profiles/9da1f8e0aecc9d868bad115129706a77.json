@@ -1,0 +1,209 @@
+{
+  "user_id": "test_user",
+  "created_at": "2025-09-16T11:57:16.450271",
+  "last_active": "2025-09-16T12:00:36.232101",
+  "preferences": {
+    "language": "de",
+    "detail_level": "medium",
+    "response_style": "formal",
+    "notification_preferences": {
+      "email_updates": false,
+      "feedback_requests": true
+    }
+  },
+  "interests": {
+    "klima": 0.0,
+    "wirtschaft": 0.30000000000000004,
+    "soziales": 0.5,
+    "digital": 0.4,
+    "europa": 0.5,
+    "sicherheit": 0.5,
+    "bildung": 0.4,
+    "gesundheit": 0.5
+  },
+  "interaction_history": [
+    {
+      "timestamp": "2025-09-16T11:57:16.734200",
+      "question": "Was ist die aktuelle Klimapolitik?",
+      "answer": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "confidence": 0.11639344262295082,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:17.012884",
+      "question": "What is the current Klima policy?",
+      "answer": "The federal government promotes the expansion of renewable energies through the EEG and various funding programs.",
+      "confidence": 0.10587301587301588,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:17.289037",
+      "question": "Quelle est la politique climatique actuelle?",
+      "answer": "The federal government promotes the expansion of renewable energies through the EEG and various funding programs.",
+      "confidence": 0.11548295454545456,
+      "theme": "allgemein",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:17.570149",
+      "question": "Mevcut Klima politikası nedir?",
+      "answer": "The federal government promotes the expansion of renewable energies through the EEG and various funding programs.",
+      "confidence": 0.09531468531468533,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:20.047526",
+      "question": "Zeige mir die Entwicklung der Klimapolitik",
+      "answer": "Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.",
+      "confidence": 0.08623731459797035,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:21.316553",
+      "question": "Vergleiche die Wirtschaftslage in Deutschland und Europa",
+      "answer": "Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.",
+      "confidence": 0.11616290983606559,
+      "theme": "wirtschaft",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:22.043878",
+      "question": "Wie verteilt sich die Bildung in verschiedenen Regionen?",
+      "answer": "Deutschland investiert in die Zukunft durch Bildung, Forschung und Innovation für die nächste Generation.",
+      "confidence": 0.11587301587301586,
+      "theme": "bildung",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:23.073051",
+      "question": "Welche wichtigen Ereignisse gab es in der Digitalisierung?",
+      "answer": "Das Gesundheitssystem wird durch Digitalisierung und bessere Vernetzung modernisiert.",
+      "confidence": 0.11490683229813665,
+      "theme": "digital",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:26.238987",
+      "question": "Show me the Klima policy development",
+      "answer": "The federal government promotes the expansion of renewable energies through the EEG and various funding programs.",
+      "confidence": 0.07587301587301588,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:27.128490",
+      "question": "Montre-moi l'évolution de la politique économique",
+      "answer": "The European Union is a community of values based on democracy, rule of law and human rights.",
+      "confidence": 0.11576112412177986,
+      "theme": "allgemein",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T11:57:27.889520",
+      "question": "Wirtschaft alanında bölgesel dağılımı göster",
+      "answer": "Bundeskanzler Scholz kündigte neue Investitionen in die Wasserstofftechnologie in Höhe von 10 Milliarden Euro an.",
+      "confidence": 0.10147540983606557,
+      "theme": "wirtschaft",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:12.851308",
+      "question": "Was ist die aktuelle Klimapolitik?",
+      "answer": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "confidence": 0.06639344262295083,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:13.665255",
+      "question": "Was ist die aktuelle Klimapolitik?",
+      "answer": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "confidence": 0.10639344262295083,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:16.092545",
+      "question": "Was ist die aktuelle Klimapolitik?",
+      "answer": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "confidence": 0.13639344262295086,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:18.841059",
+      "question": "Was ist die aktuelle Klimapolitik?",
+      "answer": "Internationale Zusammenarbeit beim Klimaschutz ist ein zentraler Pfeiler deutscher Außenpolitik.",
+      "confidence": 0.15639344262295088,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:23.366664",
+      "question": "Zeige mir die Entwicklung der Klimapolitik",
+      "answer": "Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.",
+      "confidence": 0.026237314597970355,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:24.523632",
+      "question": "Vergleiche die Wirtschaftslage in Deutschland und Europa",
+      "answer": "Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.",
+      "confidence": 0.0961629098360656,
+      "theme": "wirtschaft",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:25.286926",
+      "question": "Wie verteilt sich die Bildung in verschiedenen Regionen?",
+      "answer": "Deutschland investiert in die Zukunft durch Bildung, Forschung und Innovation für die nächste Generation.",
+      "confidence": 0.10587301587301588,
+      "theme": "bildung",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:26.383379",
+      "question": "Welche wichtigen Ereignisse gab es in der Digitalisierung?",
+      "answer": "Das Gesundheitssystem wird durch Digitalisierung und bessere Vernetzung modernisiert.",
+      "confidence": 0.10490683229813666,
+      "theme": "digital",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:30.272897",
+      "question": "Zeigen Sie mir die Entwicklung der Klima -Politik",
+      "answer": "Der Green Deal der Europäischen Union zielt auf Klimaneutralität bis 2050 und nachhaltige Entwicklung ab.",
+      "confidence": 0.015625000000000014,
+      "theme": "klima",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:32.537959",
+      "question": "Zeigen Sie mir die Entwicklung der Wirtschaftspolitik",
+      "answer": "Deutschland führt bei der Entwicklung von Wasserstofftechnologie und grüner Stahlproduktion.",
+      "confidence": 0.08513526119402987,
+      "theme": "wirtschaft",
+      "feedback": {}
+    },
+    {
+      "timestamp": "2025-09-16T12:00:36.232095",
+      "question": "Zeigen Sie regionale Verteilung im Bereich der Ökonomie",
+      "answer": "Deutschland investiert in Förderprogramme zur Stärkung der Wirtschaft.",
+      "confidence": 0.11483242753623189,
+      "theme": "allgemein",
+      "feedback": {}
+    }
+  ],
+  "feedback_scores": {
+    "overall_satisfaction": 0.0,
+    "relevance": 0.0,
+    "accuracy": 0.0,
+    "helpfulness": 0.0
+  },
+  "personalization_level": "basic"
+}

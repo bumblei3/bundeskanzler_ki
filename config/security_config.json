@@ -1,0 +1,29 @@
+{
+  "input_validation": {
+    "max_length": 1000,
+    "min_length": 3,
+    "allowed_chars": "a-zA-ZäöüßÄÖÜ0-9 .,;:!?-()",
+    "block_keywords": [
+      "hack",
+      "exploit",
+      "attack",
+      "virus",
+      "malware"
+    ]
+  },
+  "content_filtering": {
+    "political_bias_threshold": 0.7,
+    "toxicity_threshold": 0.6,
+    "fact_check_required": true
+  },
+  "abuse_detection": {
+    "max_requests_per_minute": 10,
+    "max_requests_per_hour": 50,
+    "block_duration_minutes": 15
+  },
+  "ethics_reporting": {
+    "transparency_level": "high",
+    "bias_monitoring": true,
+    "source_verification": true
+  }
+}
