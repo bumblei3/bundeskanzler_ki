@@ -37,3 +37,33 @@ pyvenv.cfg
 
 # Temporäre Berichte
 docs/*_BERICHT.md
+
+# Model-Dateien (zu groß für Git - über 100MB)
+models/
+models/embeddings/
+*.keras
+*.tflite
+*.safetensors
+*.bin
+*.h5
+*.pkl
+*.faiss
+rag_index.faiss
+gpu_rag_embeddings.pkl
+
+# FAISS-Indizes (können neu generiert werden)
+*.faiss
+
+# Backups (werden automatisch erstellt)
+data/backups/
+
+# Test-Reports
+reports/
+*.xml
+
+# Lock-Dateien
+.locks/
+
+# Logs
+logs/
+*.log
