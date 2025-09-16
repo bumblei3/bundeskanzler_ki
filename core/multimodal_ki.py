@@ -5,20 +5,28 @@ Unterstützt Text, Bilder, Audio und Video für umfassende Interaktion
 MIT UPGRADE-OPTIONEN: GPT-4, Claude, LLaVA, SigLIP, Whisper Large
 """
 
+# Optionale API-Imports (nur wenn APIs verwendet werden)
+try:
+    import anthropic
+    from openai import OpenAI
+    API_IMPORTS_AVAILABLE = True
+except ImportError:
+    API_IMPORTS_AVAILABLE = False
+
+# Lokale Imports (immer verfügbar)
+import cv2
 import gc
 import io
 import logging
 import os
+from datetime import datetime
 from typing import Dict, List, Optional, Union
 
-import anthropic
-import cv2
 import librosa
 import numpy as np
 import requests
 import tensorflow as tf
 import torch
-from openai import OpenAI
 from PIL import Image
 from tensorflow.keras import layers
 from transformers import (
@@ -33,8 +41,60 @@ from transformers import (
     WhisperProcessor,
     pipeline,
 )
+                "answer": "Entschuldigung, ich konnte keine Antwort generieren.",
+                "confidence": 0.0,
+                "key_concepts": [],
+                "relevant_knowledge": {},
+                "reasoning_type": "error",
+            }
+
+    def get_monitoring_data(self) -> Dict[str, Any]:
+        """Gibt Monitoring-Daten für Dashboard zurück"""
+        if self.monitoring:
+            return self.monitoring.get_dashboard_data()
+        else:
+            return {
+                "error": "Monitoring-System nicht verfügbar",
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def get_system_health(self) -> Dict[str, Any]:
+        """Gibt System-Health-Status zurück"""
+        if self.monitoring:
+            return self.monitoring.get_health_status()
+        else:
+            return {
+                "overall_healthy": True,
+                "monitoring_available": False,
+                "timestamp": datetime.now().isoformat()
+            }ration,
+    WhisperProcessor,
+    pipeline,
+)
 
 logger = logging.getLogger(__name__)
+
+if not API_IMPORTS_AVAILABLE:
+    logger.warning("API-Imports nicht verfügbar - API-Features deaktiviert")
+
+# Import RTX 2070 LLM Manager für erweiterte lokale Modelle
+try:
+    from core.rtx2070_llm_manager import RTX2070LLMManager
+    RTX2070_MANAGER_AVAILABLE = True
+except ImportError:
+    RTX2070_MANAGER_AVAILABLE = False
+
+# Import Lokales Monitoring-System
+try:
+    from core.local_monitoring import get_monitoring_system
+    MONITORING_AVAILABLE = True
+except ImportError:
+    MONITORING_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
+if not RTX2070_MANAGER_AVAILABLE:
+    logger.warning("RTX2070 LLM Manager nicht verfügbar - verwende Fallback")
 
 
 class MultimodalTransformerModel:
@@ -57,6 +117,25 @@ class MultimodalTransformerModel:
             torch.cuda.is_available()
             and torch.cuda.get_device_properties(0).total_memory >= 7.5 * 1024**3
         )  # ~8GB
+
+        # RTX 2070 LLM Manager für erweiterte lokale Modelle
+        self.rtx2070_manager = None
+        if RTX2070_MANAGER_AVAILABLE and self.is_rtx2070:
+            try:
+                self.rtx2070_manager = RTX2070LLMManager()
+                logger.info("✅ RTX 2070 LLM Manager initialisiert")
+            except Exception as e:
+                logger.warning(f"⚠️ RTX 2070 Manager Initialisierung fehlgeschlagen: {e}")
+
+        # Lokales Monitoring-System
+        self.monitoring = None
+        if MONITORING_AVAILABLE:
+            try:
+                self.monitoring = get_monitoring_system()
+                self.monitoring.start_monitoring(interval_seconds=10.0)  # Alle 10 Sekunden
+                logger.info("✅ Lokales Monitoring-System gestartet")
+            except Exception as e:
+                logger.warning(f"⚠️ Monitoring-System Initialisierung fehlgeschlagen: {e}")
 
         # API-Clients für Premium-Modelle
         self.openai_client = None
@@ -131,6 +210,26 @@ class MultimodalTransformerModel:
         """Lädt RTX 2070 optimierte Modelle (8GB VRAM)"""
         logger.info("🎮 RTX 2070 Modus aktiviert - Optimiere für 8GB VRAM")
 
+        # Priorität 1: RTX 2070 LLM Manager für erweiterte lokale Modelle
+        if self.rtx2070_manager:
+            logger.info("🚀 Verwende RTX 2070 LLM Manager für erweiterte Modelle")
+
+            # Wähle optimales Modell basierend auf Komplexität (default: medium)
+            optimal_model = self.rtx2070_manager.select_optimal_model("medium")
+
+            if self.rtx2070_manager.load_model(optimal_model):
+                self.text_model_type = f"rtx2070_manager_{optimal_model}"
+                logger.info(f"✅ Erweiterte lokale Modelle geladen: {optimal_model}")
+
+                # Vision und Audio Modelle weiterhin laden
+                self._load_rtx2070_vision_audio()
+                return
+            else:
+                logger.warning("⚠️ RTX 2070 Manager fehlgeschlagen - verwende Fallback")
+
+        # Fallback: Ursprüngliche RTX 2070 Optimierung
+        logger.info("🔄 Fallback auf klassische RTX 2070 Modelle")
+
         # RTX 2070: 8-bit quantization für alle Modelle
         quantization_config = (
             BitsAndBytesConfig(
@@ -182,6 +281,24 @@ class MultimodalTransformerModel:
             self.text_model_type = "gpt2_base_rtx2070"
             logger.info("✅ GPT-2 Base (4-bit RTX 2070 Fallback)")
 
+        # Vision und Audio Modelle laden
+        self._load_rtx2070_vision_audio()
+
+    def _load_rtx2070_vision_audio(self):
+        """Lädt Vision- und Audio-Modelle für RTX 2070 (wird von RTX2070 Manager verwendet)"""
+        logger.info("🎨 Lade RTX 2070 Vision & Audio Modelle")
+
+        # RTX 2070: 8-bit quantization für alle Modelle
+        quantization_config = (
+            BitsAndBytesConfig(
+                load_in_8bit=True,
+                llm_int8_enable_fp32_cpu_offload=True,
+                llm_int8_skip_modules=["lm_head"],
+            )
+            if torch.cuda.is_available()
+            else None
+        )
+
         # Vision-Modell: SigLIP Base (optimiert für 8GB)
         try:
             self.vision_processor = SiglipProcessor.from_pretrained(
@@ -200,16 +317,19 @@ class MultimodalTransformerModel:
         except Exception as e:
             logger.warning(f"⚠️ SigLIP fehlgeschlagen: {e}")
             # CLIP Base Fallback
-            self.vision_model = CLIPModel.from_pretrained(
-                "openai/clip-vit-base-patch32",
-                quantization_config=quantization_config,
-                torch_dtype=torch.float16,
-                device_map="auto",
-                low_cpu_mem_usage=True,
-            )
-            self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-            self.vision_model_type = "clip_base_rtx2070"
-            logger.info("✅ CLIP Base (RTX 2070 Fallback)")
+            try:
+                self.vision_model = CLIPModel.from_pretrained(
+                    "openai/clip-vit-base-patch32",
+                    quantization_config=quantization_config,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    low_cpu_mem_usage=True,
+                )
+                self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+                self.vision_model_type = "clip_base_rtx2070"
+                logger.info("✅ CLIP Base (RTX 2070 Fallback)")
+            except Exception as e2:
+                logger.error(f"❌ Vision-Modell Laden fehlgeschlagen: {e2}")
 
         # Audio-Modell: Whisper Base (optimiert für 8GB)
         try:
@@ -226,15 +346,18 @@ class MultimodalTransformerModel:
         except Exception as e:
             logger.warning(f"⚠️ Whisper Base fehlgeschlagen: {e}")
             # Tiny Fallback ohne quantization
-            self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
-            self.audio_model = WhisperForConditionalGeneration.from_pretrained(
-                "openai/whisper-tiny",
-                torch_dtype=torch.float16,
-                device_map="auto",
-                low_cpu_mem_usage=True,
-            )
-            self.audio_model_type = "whisper_tiny_rtx2070"
-            logger.info("✅ Whisper Tiny (RTX 2070 Fallback)")
+            try:
+                self.audio_processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
+                self.audio_model = WhisperForConditionalGeneration.from_pretrained(
+                    "openai/whisper-tiny",
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    low_cpu_mem_usage=True,
+                )
+                self.audio_model_type = "whisper_tiny_rtx2070"
+                logger.info("✅ Whisper Tiny (RTX 2070 Fallback)")
+            except Exception as e2:
+                logger.error(f"❌ Audio-Modell Laden fehlgeschlagen: {e2}")
 
         # Speicher-Management für RTX 2070
         if torch.cuda.is_available():
@@ -522,8 +645,46 @@ class MultimodalTransformerModel:
             return self._process_text_local(text, max_length)  # Fallback
 
     def _process_text_local(self, text: str, max_length: int = 200) -> str:
-        """Verarbeitet Text mit lokalen Modellen (GPT-2)"""
+        """Verarbeitet Text mit lokalen Modellen (RTX2070 Manager oder GPT-2 Fallback)"""
+        import time
+
+        start_time = time.time()
+        memory_before = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+
         try:
+            # Priorität 1: RTX2070 Manager für erweiterte lokale Modelle
+            if self.rtx2070_manager and self.text_model_type.startswith("rtx2070_manager"):
+                logger.debug("Verwende RTX2070 Manager für Text-Generierung")
+
+                # Smart Model Selection: Automatische Modell-Auswahl basierend auf Query
+                optimal_model = self.rtx2070_manager.select_model_for_query(text)
+
+                # Wechsle Modell wenn nötig
+                if optimal_model != self.rtx2070_manager.current_model:
+                    logger.info(f"🔄 Wechsle zu optimalem Modell: {optimal_model}")
+                    if self.rtx2070_manager.load_model(optimal_model):
+                        logger.info(f"✅ Modell {optimal_model} erfolgreich geladen")
+                    else:
+                        logger.warning(f"⚠️ Modell-Wechsel zu {optimal_model} fehlgeschlagen")
+
+                response = self.rtx2070_manager.generate_response(text, max_length=max_length)
+
+                # Monitoring: Inference-Metriken aufzeichnen
+                if self.monitoring:
+                    inference_time_ms = (time.time() - start_time) * 1000
+                    tokens_generated = len(response.split())  # Vereinfachte Token-Zählung
+                    memory_peak = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+                    self.monitoring.record_model_inference(
+                        model_name=optimal_model,
+                        inference_time_ms=inference_time_ms,
+                        tokens_generated=tokens_generated,
+                        memory_peak_mb=memory_peak / 1024**2
+                    )
+
+                return response
+
+            # Fallback: Ursprüngliche lokale Modelle (GPT-2)
+            logger.debug("Verwende lokale GPT-2 Modelle")
             inputs = self.text_tokenizer(text, return_tensors="pt").to(self.device)
 
             with torch.no_grad():
@@ -540,6 +701,19 @@ class MultimodalTransformerModel:
             # Entferne die ursprüngliche Eingabe aus der Antwort
             if response.startswith(text):
                 response = response[len(text) :].strip()
+
+            # Monitoring: Inference-Metriken aufzeichnen
+            if self.monitoring:
+                inference_time_ms = (time.time() - start_time) * 1000
+                tokens_generated = len(response.split())
+                memory_peak = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+                self.monitoring.record_model_inference(
+                    model_name="gpt2_fallback",
+                    inference_time_ms=inference_time_ms,
+                    tokens_generated=tokens_generated,
+                    memory_peak_mb=memory_peak / 1024**2
+                )
+
             return response
 
         except Exception as e:

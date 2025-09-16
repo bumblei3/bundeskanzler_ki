@@ -119,6 +119,54 @@ class RTX2070LLMManager:
         # Notfall-Fallback: CPU-Modell
         return "cpu_fallback"
 
+    def analyze_query_complexity(self, query: str) -> str:
+        """
+        Analysiert die Komplexität einer Query und gibt 'simple', 'medium' oder 'complex' zurück
+
+        Simple: Kurze Fragen, Fakten, einfache Anfragen
+        Medium: Normale Fragen, Erklärungen, moderate Komplexität
+        Complex: Politische Analysen, tiefgehende Fragen, hohe Komplexität
+        """
+        query_lower = query.lower().strip()
+
+        # Länge-basierte Analyse
+        word_count = len(query.split())
+        char_count = len(query)
+
+        # Komplexitäts-Indikatoren
+        complex_keywords = [
+            'warum', 'wie', 'was bedeutet', 'erklären', 'analysieren',
+            'politik', 'regierung', 'gesetz', 'europa', 'welt',
+            'zukunft', 'entwicklung', 'strategie', 'konzept',
+            'philosophie', 'ethik', 'moral', 'gesellschaft'
+        ]
+
+        medium_keywords = [
+            'was ist', 'wer ist', 'wann', 'wo', 'welche',
+            'geschichte', 'entwicklung', 'änderung', 'neu'
+        ]
+
+        # Zähle komplexe und mittlere Keywords
+        complex_count = sum(1 for keyword in complex_keywords if keyword in query_lower)
+        medium_count = sum(1 for keyword in medium_keywords if keyword in query_lower)
+
+        # Entscheidungslogik
+        if word_count > 20 or char_count > 150 or complex_count >= 2:
+            return "complex"
+        elif word_count > 10 or char_count > 80 or complex_count >= 1 or medium_count >= 2:
+            return "medium"
+        else:
+            return "simple"
+
+    def select_model_for_query(self, query: str) -> str:
+        """
+        Intelligente Modell-Auswahl basierend auf Query-Analyse
+        """
+        complexity = self.analyze_query_complexity(query)
+        logger.info(f"Query-Komplexität: {complexity} für Query: '{query[:50]}...'")
+
+        return self.select_optimal_model(complexity)
+
     def load_model(self, model_key: str) -> bool:
         """
         Lädt Modell mit RTX 2070 Optimierungen

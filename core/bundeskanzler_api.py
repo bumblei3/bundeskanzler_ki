@@ -70,6 +70,7 @@ from typing import Any, Dict, List, Optional
 # Local imports
 from core.adaptive_response import AdaptiveResponseManager
 from core.advanced_cache import cache_manager, get_cache_stats, initialize_caches
+from core.local_auth_manager import get_auth_manager
 from corpus_manager import CorpusManager
 from database import (
     Conversation,
@@ -632,7 +633,7 @@ def initialize_ki_components():
     print("✅ Memory-System initialisiert")
 
     print("🧠 Initialisiere Context-Processor...")
-    context_processor = EnhancedContextProcessor(memory_path="./api_memory", embedding_dim=512)
+    context_processor = EnhancedContextProcessor()
     print("✅ Context-Processor initialisiert")
 
     print("💬 Initialisiere Response-Manager...")
@@ -640,7 +641,7 @@ def initialize_ki_components():
     print("✅ Response-Manager initialisiert")
 
     print("📖 Initialisiere Corpus-Manager...")
-    corpus_manager = CorpusManager("./corpus.json")
+    corpus_manager = CorpusManager("data/corpus.json")
     print("✅ Corpus-Manager initialisiert")
 
     print("🔍 Initialisiere Fact-Checker...")
@@ -657,28 +658,23 @@ def initialize_gpu_system():
     global gpu_processor, async_batch_manager
 
     print("🚀 Initialisiere GPU-Batching-System...")
-    gpu_processor = GPUBatchProcessor(
-        batch_size=16,  # Kleinere Batches für bessere Responsiveness
-        max_workers=4,
-        device="auto",
-        embedding_dim=512,
-        enable_async=True,
-        enable_memory_pooling=True,  # NEU: Memory-Pooling aktivieren
-        memory_pool_size_mb=512,  # NEU: 512MB Memory-Pool
-    )
+    gpu_processor = GPUBatchProcessor()
 
-    async_batch_manager = AsyncBatchManager(gpu_processor)
-    print("✅ GPU-Batching-System mit Memory-Pooling initialisiert")
+    async_batch_manager = AsyncBatchManager()
+    print("✅ GPU-Batching-System initialisiert")
 
 
 def run_auto_import():
-    """Führt automatischen Import von Quellen aus"""
+    """Führt automatischen Import von Quellen aus (optional)"""
     try:
         import subprocess
 
         script_path = os.path.join(os.path.dirname(__file__), "auto_import_on_start.sh")
-        print(f"⏳ Führe automatischen Import aus: {script_path}")
-        subprocess.Popen(["bash", script_path])
+        if os.path.exists(script_path):
+            print(f"⏳ Führe automatischen Import aus: {script_path}")
+            subprocess.Popen(["bash", script_path])
+        else:
+            print("ℹ️ Automatischer Import-Script nicht gefunden, überspringe...")
     except Exception as e:
         print(f"⚠️ Fehler beim automatischen Import: {e}")
 
@@ -812,10 +808,20 @@ def create_access_token(data: dict) -> str:
 
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> str:
-    """Verifiziert JWT Token"""
+    """Verifiziert Token (lokal oder JWT)"""
+    token = credentials.credentials
+
+    # Zuerst versuchen mit lokalem Auth-System
+    auth_manager = get_auth_manager()
+    user_info = auth_manager.verify_token(token)
+
+    if user_info:
+        return user_info.get("username") or user_info.get("sub", "unknown")
+
+    # Fallback auf altes JWT-System
     try:
         payload = jwt.decode(
-            credentials.credentials,
+            token,
             APIConfig.SECRET_KEY,
             algorithms=[APIConfig.ALGORITHM],
         )
@@ -830,10 +836,20 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security))
 def verify_admin_token(
     credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> str:
-    """Verifiziert Admin JWT Token"""
+    """Verifiziert Admin Token (lokal oder JWT)"""
+    token = credentials.credentials
+
+    # Zuerst versuchen mit lokalem Auth-System
+    auth_manager = get_auth_manager()
+    user_info = auth_manager.verify_token(token)
+
+    if user_info and auth_manager.has_permission(token, "admin"):
+        return user_info.get("username") or user_info.get("sub", "unknown")
+
+    # Fallback auf altes JWT-System
     try:
         payload = jwt.decode(
-            credentials.credentials,
+            token,
             APIConfig.SECRET_KEY,
             algorithms=[APIConfig.ALGORITHM],
         )
@@ -1167,32 +1183,59 @@ API Endpoints
 """
 
 
-@app.get("/", response_model=APIStatus)
+@app.get("/")
 async def root():
     """API Status und Gesundheitscheck"""
-    return APIStatus(
-        status="healthy",
-        version=APIConfig.API_VERSION,
-        uptime=time.time() - start_time,
-        memory_stats=memory_system.get_memory_stats() if memory_system else {},
-        request_count=request_counter,
-    )
+    return {"status": "healthy", "message": "Bundeskanzler KI API läuft"}
 
 
 @app.post("/auth/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Erstellt Authentifizierungstoken"""
-    # Vereinfachte Authentifizierung für Demo
-    if form_data.username == "bundeskanzler" and form_data.password == "ki2025":
-        access_token = create_access_token(data={"sub": form_data.username})
-        return {"access_token": access_token, "token_type": "bearer"}
+    """Erstellt Authentifizierungstoken mit lokalem Auth-System"""
+    auth_manager = get_auth_manager()
+
+    try:
+        access_token = auth_manager.authenticate_user(form_data.username, form_data.password)
+        if access_token:
+            # Session erstellen
+            user_info = auth_manager.verify_token(access_token)
+            if user_info:
+                auth_manager.create_session(
+                    user_id=user_info["user_id"],
+                    token=access_token,
+                    ip_address=getattr(form_data, 'client_ip', None),
+                    user_agent=getattr(form_data, 'user_agent', None)
+                )
+
+            api_logger.info(
+                "User login successful",
+                extra={
+                    "component": "auth",
+                    "action": "user_login_success",
+                    "username": form_data.username,
+                },
+            )
+            return {"access_token": access_token, "token_type": "bearer"}
+
+    except ValueError as e:
+        api_logger.warning(
+            f"Login failed: {e}",
+            extra={
+                "component": "auth",
+                "action": "login_failed",
+                "username": form_data.username,
+            },
+        )
+        raise HTTPException(status_code=401, detail=str(e))
 
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 @app.post("/auth/admin-token")
 async def admin_login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Erstellt Admin-Authentifizierungstoken"""
+    """Erstellt Admin-Authentifizierungstoken mit lokalem Auth-System"""
+    auth_manager = get_auth_manager()
+
     api_logger.info(
         "Admin login attempt",
         extra={
@@ -1202,21 +1245,42 @@ async def admin_login(form_data: OAuth2PasswordRequestForm = Depends()):
         },
     )
 
-    # Admin-Authentifizierung (in Produktion: sichere Datenbank)
-    if form_data.username == "admin" and form_data.password == "admin123!":
-        access_token = create_admin_token(form_data.username)
-        api_logger.info(
-            "Admin login successful",
+    try:
+        access_token = auth_manager.authenticate_user(form_data.username, form_data.password)
+        if access_token and auth_manager.has_permission(access_token, "admin"):
+            # Session erstellen
+            user_info = auth_manager.verify_token(access_token)
+            if user_info:
+                auth_manager.create_session(
+                    user_id=user_info["user_id"],
+                    token=access_token,
+                    ip_address=getattr(form_data, 'client_ip', None),
+                    user_agent=getattr(form_data, 'user_agent', None)
+                )
+
+            api_logger.info(
+                "Admin login successful",
+                extra={
+                    "component": "auth",
+                    "action": "admin_login_success",
+                    "username": form_data.username,
+                },
+            )
+            return {"access_token": access_token, "token_type": "bearer", "admin": True}
+
+    except ValueError as e:
+        api_logger.warning(
+            f"Admin login failed: {e}",
             extra={
                 "component": "auth",
-                "action": "admin_login_success",
+                "action": "admin_login_failed",
                 "username": form_data.username,
             },
         )
-        return {"access_token": access_token, "token_type": "bearer", "admin": True}
+        raise HTTPException(status_code=401, detail=str(e))
 
     api_logger.warning(
-        "Admin login failed",
+        "Admin login failed - insufficient permissions",
         extra={
             "component": "auth",
             "action": "admin_login_failed",
@@ -1224,6 +1288,142 @@ async def admin_login(form_data: OAuth2PasswordRequestForm = Depends()):
         },
     )
     raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+
+# === USER MANAGEMENT ENDPOINTS ===
+
+class UserRegistration(BaseModel):
+    username: str
+    password: str
+    email: Optional[str] = None
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+class APIKeyCreate(BaseModel):
+    name: str
+    permissions: List[str] = ["read"]
+
+
+@app.post("/auth/register")
+async def register_user(user_data: UserRegistration):
+    """Registriert einen neuen Benutzer"""
+    auth_manager = get_auth_manager()
+
+    try:
+        success = auth_manager.register_user(
+            username=user_data.username,
+            password=user_data.password,
+            email=user_data.email
+        )
+
+        if success:
+            api_logger.info(
+                "User registration successful",
+                extra={
+                    "component": "auth",
+                    "action": "user_registration",
+                    "username": user_data.username,
+                },
+            )
+            return {"message": "Benutzer erfolgreich registriert"}
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    raise HTTPException(status_code=500, detail="Registrierung fehlgeschlagen")
+
+
+@app.post("/auth/change-password")
+async def change_password(
+    password_data: PasswordChange,
+    current_user: str = Depends(verify_token)
+):
+    """Ändert das Passwort des aktuellen Benutzers"""
+    auth_manager = get_auth_manager()
+
+    try:
+        success = auth_manager.change_password(
+            username=current_user,
+            old_password=password_data.old_password,
+            new_password=password_data.new_password
+        )
+
+        if success:
+            api_logger.info(
+                "Password change successful",
+                extra={
+                    "component": "auth",
+                    "action": "password_change",
+                    "username": current_user,
+                },
+            )
+            return {"message": "Passwort erfolgreich geändert"}
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    raise HTTPException(status_code=400, detail="Passwort-Änderung fehlgeschlagen")
+
+
+@app.get("/auth/profile")
+async def get_user_profile(current_user: str = Depends(verify_token)):
+    """Ruft das Benutzerprofil ab"""
+    auth_manager = get_auth_manager()
+
+    profile = auth_manager.get_user_info(current_user)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+
+    # Sensible Daten entfernen
+    profile.pop("password_hash", None)
+
+    return profile
+
+
+@app.post("/auth/api-key")
+async def create_api_key(
+    key_data: APIKeyCreate,
+    current_user: str = Depends(verify_token)
+):
+    """Erstellt einen neuen API-Key für den aktuellen Benutzer"""
+    auth_manager = get_auth_manager()
+
+    api_key = auth_manager.create_api_key(
+        username=current_user,
+        name=key_data.name,
+        permissions=key_data.permissions
+    )
+
+    if api_key:
+        api_logger.info(
+            "API key created",
+            extra={
+                "component": "auth",
+                "action": "api_key_created",
+                "username": current_user,
+                "key_name": key_data.name,
+            },
+        )
+        return {"api_key": api_key, "name": key_data.name, "permissions": key_data.permissions}
+
+    raise HTTPException(status_code=500, detail="API-Key-Erstellung fehlgeschlagen")
+
+
+@app.post("/auth/logout")
+async def logout(current_user: str = Depends(verify_token)):
+    """Meldet den aktuellen Benutzer ab"""
+    api_logger.info(
+        "User logout",
+        extra={
+            "component": "auth",
+            "action": "user_logout",
+            "username": current_user,
+        },
+    )
+
+    return {"message": "Erfolgreich abgemeldet"}
 
 
 # === ADMIN ENDPOINTS ===
@@ -1838,7 +2038,7 @@ def ensure_components_initialized():
         response_manager = AdaptiveResponseManager()
 
     if corpus_manager is None:
-        corpus_manager = CorpusManager("./corpus.json")
+        corpus_manager = CorpusManager("data/corpus.json")
 
 
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(check_rate_limit)])

@@ -1,0 +1,83 @@
+# Bundeskanzler-KI - Open-Source-Lizenz
+
+## Lizenz-Übersicht
+
+Die Bundeskanzler-KI ist eine vollständig Open-Source-Anwendung, die unter der **Apache License 2.0** veröffentlicht wird.
+
+## Apache License 2.0
+
+```
+Copyright 2025 Bundeskanzler-KI Development Team
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+## Abhängigkeiten & Lizenzen
+
+Alle verwendeten Bibliotheken und Frameworks sind ebenfalls Open-Source:
+
+### Apache License 2.0
+- PyTorch
+- TensorFlow
+- Transformers (Hugging Face)
+- NLTK
+- Cryptography
+- BeautifulSoup4
+
+### MIT License
+- FastAPI
+- SQLAlchemy
+- PyJWT
+- Pytest
+- Black
+- MyPy
+
+### BSD License
+- NumPy
+- Pandas
+- Scikit-learn
+- Matplotlib
+- Uvicorn
+- HTTPX
+
+### Public Domain
+- SQLite
+
+## Verwendung
+
+1. **Kommerzielle Nutzung**: Erlaubt
+2. **Modifikation**: Erlaubt
+3. **Weiterverbreitung**: Erlaubt
+4. **Patentnutzung**: Erlaubt (mit Bedingungen)
+
+## Bedingungen
+
+- Quellcode muss bei Weiterverbreitung verfügbar bleiben
+- Copyright-Hinweise müssen erhalten bleiben
+- Änderungen müssen dokumentiert werden
+- Keine Markenrechte-Verletzung
+
+## Haftungsausschluss
+
+Diese Software wird "wie sie ist" bereitgestellt, ohne jegliche Garantie oder Gewährleistung. Die Entwickler übernehmen keine Haftung für Schäden oder Probleme, die durch die Nutzung dieser Software entstehen.
+
+## Kontakt
+
+Für Fragen zur Lizenz oder zur Nutzung:
+- GitHub: https://github.com/bumblei3/bundeskanzler_ki
+- E-Mail: info@bundeskanzler-ki.local
+
+---
+
+**Die Bundeskanzler-KI bleibt frei, offen und transparent für alle Nutzer.**</content>
+<parameter name="filePath">/home/tobber/bkki_venv/LICENSE
