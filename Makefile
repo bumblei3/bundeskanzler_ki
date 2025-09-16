@@ -129,3 +129,32 @@ freeze:
 
 # docker-run:
 # 	docker run -p 8000:8000 bundeskanzler-ki
+
+# Web-GUI Tests
+test-web-gui:
+	$(PYTHON) automated_web_gui_tests.py
+
+test-web-gui-ci:
+	$(PYTHON) ci_test_runner.py
+
+test-dashboard:
+	streamlit run test_dashboard.py --server.port 8503 --server.headless true
+
+# CI/CD Pipeline
+ci-test:
+	$(PYTHON) ci_test_runner.py --test-type all
+
+ci-deploy:
+	@echo "Deployment würde hier implementiert werden"
+
+# Monitoring und Dashboard
+dashboard:
+	streamlit run test_dashboard.py --server.port 8503
+
+# Vollständige Test-Suite
+test-all: test test-web-gui test-memory test-security
+	@echo "Alle Tests erfolgreich ausgeführt!"
+
+# Schnelltest für Entwicklung
+test-dev: test-unit test-integration
+	@echo "Entwicklungs-Tests erfolgreich ausgeführt!"

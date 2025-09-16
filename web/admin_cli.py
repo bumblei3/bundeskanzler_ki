@@ -53,14 +53,10 @@ class AdminCLI:
                 print(
                     f"🔧 Components: {'✅ OK' if health['system']['components_initialized'] else '❌ Error'}"
                 )
-                print(
-                    f"📁 Files: {'✅ OK' if health['files']['logs_accessible'] else '❌ Error'}"
-                )
+                print(f"📁 Files: {'✅ OK' if health['files']['logs_accessible'] else '❌ Error'}")
 
             # System Stats
-            resp = requests.get(
-                f"{self.api_url}/admin/system-stats", headers=self.headers
-            )
+            resp = requests.get(f"{self.api_url}/admin/system-stats", headers=self.headers)
             if resp.status_code == 200:
                 stats = resp.json()
                 print(f"📊 API Requests (24h): {stats.get('api_requests_24h', 0)}")
@@ -89,9 +85,7 @@ class AdminCLI:
                     print(f"   📧 Email: {user['email']}")
                     print(f"   📊 Status: {status_badge}")
                     print(f"   🔢 Login Count: {user['login_count']}")
-                    print(
-                        f"   ⚙️  API Limits: {user['api_limits']['requests_per_minute']}/min"
-                    )
+                    print(f"   ⚙️  API Limits: {user['api_limits']['requests_per_minute']}/min")
                     print()
             else:
                 print(f"❌ Fehler: {resp.status_code}")
@@ -121,9 +115,7 @@ class AdminCLI:
                         "DEBUG": "⚪",
                     }.get(entry["level"], "⚪")
 
-                    print(
-                        f"{level_icon} {entry['timestamp']} [{entry['level']}] {entry['logger']}"
-                    )
+                    print(f"{level_icon} {entry['timestamp']} [{entry['level']}] {entry['logger']}")
                     print(f"   {entry['message']}")
                     print()
             else:
@@ -138,9 +130,7 @@ class AdminCLI:
         print("=" * 30)
 
         try:
-            resp = requests.get(
-                f"{self.api_url}/admin/memory/stats", headers=self.headers
-            )
+            resp = requests.get(f"{self.api_url}/admin/memory/stats", headers=self.headers)
             if resp.status_code == 200:
                 stats = resp.json()
                 print(

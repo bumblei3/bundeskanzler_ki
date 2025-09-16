@@ -63,9 +63,7 @@ class TestPerformance:
             processor = EnhancedContextProcessor(memory_path=temp_dir)
 
             def process_context():
-                return processor.get_relevant_context(
-                    "Wie geht es Deutschland?", max_results=5
-                )
+                return processor.get_relevant_context("Wie geht es Deutschland?", max_results=5)
 
             result = benchmark(process_context)
             assert isinstance(result, list)

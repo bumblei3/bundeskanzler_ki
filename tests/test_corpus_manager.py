@@ -28,11 +28,7 @@ def test_add_sentence_and_get_all(tmp_path):
     # get_all_sentences gibt in vereinfachter Version die Liste zurück
     all_sentences = manager.get_all_sentences()
     assert isinstance(all_sentences, list)
-    assert any(
-        "Test-Satz" in s
-        for s in all_sentences
-        if isinstance(s, str) or isinstance(s, dict)
-    )
+    assert any("Test-Satz" in s for s in all_sentences if isinstance(s, str) or isinstance(s, dict))
 
 
 def test_save_and_reload(tmp_path):

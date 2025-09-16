@@ -13,20 +13,22 @@ Autor: Claude-3.5-Sonnet
 Datum: 16. September 2025
 """
 
-import json
-import os
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
-from collections import defaultdict
 import hashlib
+import json
+import logging
+import os
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class UserProfile:
     """Repräsentiert ein Nutzerprofil"""
+
     user_id: str
     created_at: str
     last_active: str
@@ -41,9 +43,10 @@ class UserProfile:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'UserProfile':
+    def from_dict(cls, data: Dict[str, Any]) -> "UserProfile":
         """Erstellt ein Profil aus einem Dictionary"""
         return cls(**data)
+
 
 class UserProfileManager:
     """
@@ -93,7 +96,7 @@ class UserProfileManager:
         profile_path = self._get_profile_path(user_id)
         if os.path.exists(profile_path):
             try:
-                with open(profile_path, 'r', encoding='utf-8') as f:
+                with open(profile_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 profile = UserProfile.from_dict(data)
                 self.profiles_cache[user_id] = profile
@@ -112,10 +115,7 @@ class UserProfileManager:
                 "language": "de",
                 "detail_level": "medium",  # "low", "medium", "high"
                 "response_style": "formal",  # "formal", "casual", "technical"
-                "notification_preferences": {
-                    "email_updates": False,
-                    "feedback_requests": True
-                }
+                "notification_preferences": {"email_updates": False, "feedback_requests": True},
             },
             interests={
                 "klima": 0.5,
@@ -125,16 +125,16 @@ class UserProfileManager:
                 "europa": 0.5,
                 "sicherheit": 0.5,
                 "bildung": 0.5,
-                "gesundheit": 0.5
+                "gesundheit": 0.5,
             },
             interaction_history=[],
             feedback_scores={
                 "overall_satisfaction": 0.0,
                 "relevance": 0.0,
                 "accuracy": 0.0,
-                "helpfulness": 0.0
+                "helpfulness": 0.0,
             },
-            personalization_level="basic"
+            personalization_level="basic",
         )
 
         self.profiles_cache[user_id] = profile
@@ -147,15 +147,22 @@ class UserProfileManager:
         """Speichert ein Profil auf der Festplatte"""
         try:
             profile_path = self._get_profile_path(profile.user_id)
-            with open(profile_path, 'w', encoding='utf-8') as f:
+            with open(profile_path, "w", encoding="utf-8") as f:
                 json.dump(profile.to_dict(), f, indent=2, ensure_ascii=False)
 
             logger.debug(f"💾 Profil gespeichert: {profile.user_id}")
         except Exception as e:
             logger.error(f"❌ Fehler beim Speichern des Profils {profile.user_id}: {e}")
 
-    def update_interaction(self, user_id: str, question: str, answer: str,
-                          confidence: float, theme: str, feedback: Optional[Dict[str, Any]] = None):
+    def update_interaction(
+        self,
+        user_id: str,
+        question: str,
+        answer: str,
+        confidence: float,
+        theme: str,
+        feedback: Optional[Dict[str, Any]] = None,
+    ):
         """
         Aktualisiert das Nutzerprofil basierend auf einer Interaktion
 
@@ -176,7 +183,7 @@ class UserProfileManager:
             "answer": answer,
             "confidence": confidence,
             "theme": theme,
-            "feedback": feedback or {}
+            "feedback": feedback or {},
         }
 
         profile.interaction_history.append(interaction)
@@ -276,7 +283,7 @@ class UserProfileManager:
             "response_style": profile.preferences.get("response_style", "formal"),
             "personalization_level": profile.personalization_level,
             "interaction_count": len(profile.interaction_history),
-            "avg_feedback": sum(profile.feedback_scores.values()) / len(profile.feedback_scores)
+            "avg_feedback": sum(profile.feedback_scores.values()) / len(profile.feedback_scores),
         }
 
         return recommendations
@@ -299,16 +306,22 @@ class UserProfileManager:
             theme_counts[interaction.get("theme", "unbekannt")] += 1
 
         # Zeitliche Analyse
-        recent_interactions = [i for i in profile.interaction_history
-                              if datetime.fromisoformat(i["timestamp"]) > datetime.now() - timedelta(days=7)]
+        recent_interactions = [
+            i
+            for i in profile.interaction_history
+            if datetime.fromisoformat(i["timestamp"]) > datetime.now() - timedelta(days=7)
+        ]
 
         insights = {
             "total_interactions": len(profile.interaction_history),
             "recent_interactions": len(recent_interactions),
-            "favorite_themes": dict(sorted(theme_counts.items(), key=lambda x: x[1], reverse=True)[:5]),
-            "avg_confidence": sum(i.get("confidence", 0) for i in profile.interaction_history) / max(1, len(profile.interaction_history)),
+            "favorite_themes": dict(
+                sorted(theme_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            ),
+            "avg_confidence": sum(i.get("confidence", 0) for i in profile.interaction_history)
+            / max(1, len(profile.interaction_history)),
             "feedback_trends": profile.feedback_scores,
-            "personalization_level": profile.personalization_level
+            "personalization_level": profile.personalization_level,
         }
 
         return insights
@@ -357,6 +370,7 @@ class UserProfileManager:
             logger.error(f"❌ Fehler beim Löschen des Profils {user_id}: {e}")
             return False
 
+
 # Convenience Functions
 def get_user_profile_manager(profiles_dir: str = "data/user_profiles") -> UserProfileManager:
     """
@@ -369,6 +383,7 @@ def get_user_profile_manager(profiles_dir: str = "data/user_profiles") -> UserPr
         UserProfileManager-Instanz
     """
     return UserProfileManager(profiles_dir)
+
 
 if __name__ == "__main__":
     # Test des UserProfileManagers
@@ -390,7 +405,7 @@ if __name__ == "__main__":
         answer="Deutschland setzt sich für Klimaneutralität bis 2045 ein.",
         confidence=0.85,
         theme="klima",
-        feedback={"relevance": 0.9, "helpfulness": 0.8}
+        feedback={"relevance": 0.9, "helpfulness": 0.8},
     )
 
     # Empfehlungen abrufen

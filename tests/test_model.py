@@ -31,9 +31,7 @@ import os
 import model
 
 
-@pytest.mark.xfail(
-    reason="Stub interference from other tests - works when run individually"
-)
+@pytest.mark.xfail(reason="Stub interference from other tests - works when run individually")
 def test_build_model():
     tokenizer = MagicMock()
     tokenizer.word_index = {"a": 1, "b": 2}
@@ -60,9 +58,7 @@ def test_load_or_train_model_load(monkeypatch, tmp_path):
     assert m is dummy_model
 
 
-@pytest.mark.xfail(
-    reason="Stub interference from other tests - works when run individually"
-)
+@pytest.mark.xfail(reason="Stub interference from other tests - works when run individually")
 def test_load_or_train_model_train(monkeypatch, tmp_path):
     # Simuliere kein vorhandenes Modell
     monkeypatch.setattr(model.os.path, "exists", lambda p: False)

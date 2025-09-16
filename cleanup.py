@@ -13,11 +13,12 @@ Autor: Claude-3.5-Sonnet
 Datum: 16. September 2025
 """
 
+import glob
 import os
 import shutil
-import glob
 from datetime import datetime
 from typing import List, Tuple
+
 
 class EnvironmentCleaner:
     """
@@ -60,7 +61,7 @@ class EnvironmentCleaner:
         Returns:
             Formatierte Größe (KB, MB, GB)
         """
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        for unit in ["B", "KB", "MB", "GB"]:
             if size_bytes < 1024.0:
                 return ".1f"
             size_bytes /= 1024.0
@@ -85,9 +86,11 @@ class EnvironmentCleaner:
                 print(f"   🗑️  Gelöscht: {file_path} ({self.format_size(size)})")
                 return True
             elif os.path.isdir(file_path):
-                size = sum(self.get_file_size(os.path.join(dirpath, filename))
-                          for dirpath, _, filenames in os.walk(file_path)
-                          for filename in filenames)
+                size = sum(
+                    self.get_file_size(os.path.join(dirpath, filename))
+                    for dirpath, _, filenames in os.walk(file_path)
+                    for filename in filenames
+                )
                 shutil.rmtree(file_path)
                 self.cleaned_files.append(file_path)
                 self.total_size_cleaned += size
@@ -112,7 +115,7 @@ class EnvironmentCleaner:
             "**/*.pyc",
             "**/.pytest_cache",
             "**/.coverage",
-            "**/*.pyo"
+            "**/*.pyo",
         ]
 
         removed_count = 0
@@ -137,7 +140,7 @@ class EnvironmentCleaner:
             "/tmp/*_comparison_*.png",
             "/tmp/*_distribution_*.png",
             "/tmp/*_timeline_*.png",
-            "/tmp/error_visualization_*.png"
+            "/tmp/error_visualization_*.png",
         ]
 
         removed_count = 0
@@ -163,7 +166,7 @@ class EnvironmentCleaner:
             ".coverage",
             "coverage.xml",
             "htmlcov/",
-            ".benchmarks/"
+            ".benchmarks/",
         ]
 
         removed_count = 0
@@ -191,11 +194,7 @@ class EnvironmentCleaner:
 
         print("💾 Entferne Embeddings-Cache...")
 
-        embedding_files = [
-            "gpu_rag_embeddings.pkl",
-            "rag_embeddings.pkl",
-            "rag_index.faiss"
-        ]
+        embedding_files = ["gpu_rag_embeddings.pkl", "rag_embeddings.pkl", "rag_index.faiss"]
 
         removed_count = 0
         for file_path in embedding_files:
@@ -215,10 +214,7 @@ class EnvironmentCleaner:
         """
         print("📝 Entferne alte Log-Dateien...")
 
-        log_patterns = [
-            "logs/*.log",
-            "*.log"
-        ]
+        log_patterns = ["logs/*.log", "*.log"]
 
         removed_count = 0
         for pattern in log_patterns:
@@ -274,7 +270,7 @@ class EnvironmentCleaner:
             "temp_charts_removed": self.cleanup_temp_charts(),
             "log_files_removed": self.cleanup_log_files(),
             "test_artifacts_removed": 0,
-            "embeddings_removed": 0
+            "embeddings_removed": 0,
         }
 
         if clean_tests:
@@ -310,6 +306,7 @@ class EnvironmentCleaner:
 
         return stats
 
+
 def main():
     """
     Hauptfunktion für den Cleanup
@@ -317,12 +314,21 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Bundeskanzler-KI Arbeitsumgebung Cleanup")
-    parser.add_argument("--clean-embeddings", action="store_true",
-                       help="Entferne auch Embeddings-Cache (gpu_rag_embeddings.pkl, etc.)")
-    parser.add_argument("--clean-tests", action="store_true",
-                       help="Entferne Testdateien (test_*.py, coverage, etc.)")
-    parser.add_argument("--dry-run", action="store_true",
-                       help="Zeige nur was gelöscht würde, ohne tatsächlich zu löschen")
+    parser.add_argument(
+        "--clean-embeddings",
+        action="store_true",
+        help="Entferne auch Embeddings-Cache (gpu_rag_embeddings.pkl, etc.)",
+    )
+    parser.add_argument(
+        "--clean-tests",
+        action="store_true",
+        help="Entferne Testdateien (test_*.py, coverage, etc.)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Zeige nur was gelöscht würde, ohne tatsächlich zu löschen",
+    )
 
     args = parser.parse_args()
 
@@ -339,8 +345,7 @@ def main():
     # Cleanup durchführen
     cleaner = EnvironmentCleaner(project_root)
     stats = cleaner.run_cleanup(
-        clean_embeddings=args.clean_embeddings,
-        clean_tests=args.clean_tests
+        clean_embeddings=args.clean_embeddings, clean_tests=args.clean_tests
     )
 
     # Empfehlungen ausgeben
@@ -351,6 +356,7 @@ def main():
     if not args.clean_tests:
         print("   🧪 Verwende --clean-tests um Testdateien zu entfernen")
     print("   🔄 Embeddings werden bei Bedarf automatisch neu erstellt")
+
 
 if __name__ == "__main__":
     main()

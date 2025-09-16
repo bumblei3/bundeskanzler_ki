@@ -153,9 +153,7 @@ import transfer_learning
 
 def test_transfer_learner_init():
     """Test TransferLearner initialization."""
-    learner = transfer_learning.TransferLearner(
-        num_classes=3, embedding_dim=128, hidden_dim=64
-    )
+    learner = transfer_learning.TransferLearner(num_classes=3, embedding_dim=128, hidden_dim=64)
     assert learner.num_classes == 3
     assert learner.embedding_dim == 128
     assert learner.classifier is not None

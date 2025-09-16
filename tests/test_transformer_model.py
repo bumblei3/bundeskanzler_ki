@@ -184,9 +184,7 @@ import transformer_model
 def test_create_transformer_model_returns_model_object():
     # create_transformer_model should return an object (stubbed keras.Model not present,
     # but function returns something; check type and attributes)
-    model = transformer_model.create_transformer_model(
-        maxlen=10, vocab_size=100, output_size=2
-    )
+    model = transformer_model.create_transformer_model(maxlen=10, vocab_size=100, output_size=2)
     assert model is not None
 
 

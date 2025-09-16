@@ -14,23 +14,24 @@ Autor: Claude-3.5-Sonnet
 Datum: 16. September 2025
 """
 
+import hashlib
 import json
 import logging
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from pathlib import Path
-import hashlib
 import time
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 # Konfiguriere Security-Logging
-security_logger = logging.getLogger('security')
+security_logger = logging.getLogger("security")
 security_logger.setLevel(logging.INFO)
-security_handler = logging.FileHandler('logs/security.log')
-security_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - SECURITY - %(levelname)s - %(message)s'
-))
+security_handler = logging.FileHandler("logs/security.log")
+security_handler.setFormatter(
+    logging.Formatter("%(asctime)s - SECURITY - %(levelname)s - %(message)s")
+)
 security_logger.addHandler(security_handler)
+
 
 class SecurityManager:
     """
@@ -56,11 +57,11 @@ class SecurityManager:
 
         # Security-Stats
         self.security_stats = {
-            'inputs_filtered': 0,
-            'bias_detected': 0,
-            'abuse_attempts': 0,
-            'ethics_violations': 0,
-            'last_incident': None
+            "inputs_filtered": 0,
+            "bias_detected": 0,
+            "abuse_attempts": 0,
+            "ethics_violations": 0,
+            "last_incident": None,
         }
 
         security_logger.info("🛡️ Security Manager initialisiert")
@@ -76,31 +77,31 @@ class SecurityManager:
                     "max_length": 1000,
                     "min_length": 3,
                     "allowed_chars": "a-zA-ZäöüßÄÖÜ0-9 .,;:!?-()[]{}'\"",
-                    "block_keywords": ["hack", "exploit", "attack", "virus", "malware"]
+                    "block_keywords": ["hack", "exploit", "attack", "virus", "malware"],
                 },
                 "content_filtering": {
                     "political_bias_threshold": 0.7,
                     "toxicity_threshold": 0.6,
-                    "fact_check_required": True
+                    "fact_check_required": True,
                 },
                 "abuse_detection": {
                     "max_requests_per_minute": 10,
                     "max_requests_per_hour": 50,
-                    "block_duration_minutes": 15
+                    "block_duration_minutes": 15,
                 },
                 "ethics_reporting": {
                     "transparency_level": "high",
                     "bias_monitoring": True,
-                    "source_verification": True
-                }
+                    "source_verification": True,
+                },
             }
 
-            with open(config_file, 'w', encoding='utf-8') as f:
+            with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(default_config, f, indent=2, ensure_ascii=False)
 
             return default_config
 
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def _load_bias_patterns(self) -> List[Dict[str, Any]]:
@@ -110,20 +111,20 @@ class SecurityManager:
                 "pattern": r"\b(immer|nur|alle|keiner|niemand)\b.*\b(Deutsch|Migranten|Politiker)\b",
                 "bias_type": "generalization",
                 "severity": "medium",
-                "description": "Verallgemeinernde Aussagen über Gruppen"
+                "description": "Verallgemeinernde Aussagen über Gruppen",
             },
             {
                 "pattern": r"\b(links|rechts|liberal|konservativ)\b.*\b(immer|nie|nur)\b",
                 "bias_type": "political_stereotyping",
                 "severity": "high",
-                "description": "Politische Stereotypisierung"
+                "description": "Politische Stereotypisierung",
             },
             {
                 "pattern": r"\b(richtig|falsch|gut|schlecht)\b.*\b(Partei|Politiker)\b",
                 "bias_type": "value_judgment",
                 "severity": "low",
-                "description": "Werturteile über politische Akteure"
-            }
+                "description": "Werturteile über politische Akteure",
+            },
         ]
 
     def _load_abuse_patterns(self) -> List[Dict[str, Any]]:
@@ -133,29 +134,31 @@ class SecurityManager:
                 "pattern": r"(?i)(hack|exploit|attack|virus|malware|trojan)",
                 "abuse_type": "malicious_intent",
                 "severity": "high",
-                "description": "Versuch schädlicher Aktivitäten"
+                "description": "Versuch schädlicher Aktivitäten",
             },
             {
                 "pattern": r"(?i)(bomb|weapon|violence|terror)",
                 "abuse_type": "violent_content",
                 "severity": "critical",
-                "description": "Gewaltbezogene Inhalte"
+                "description": "Gewaltbezogene Inhalte",
             },
             {
                 "pattern": r"(?i)(password|credential|secret|key)",
                 "abuse_type": "credential_theft",
                 "severity": "high",
-                "description": "Versuch von Credential-Diebstahl"
+                "description": "Versuch von Credential-Diebstahl",
             },
             {
                 "pattern": r"(?i)(spam|advertisement|marketing)",
                 "abuse_type": "spam",
                 "severity": "low",
-                "description": "Spam oder unerwünschte Werbung"
-            }
+                "description": "Spam oder unerwünschte Werbung",
+            },
         ]
 
-    def validate_input(self, input_text: str, user_id: Optional[str] = None) -> Tuple[bool, str, Dict[str, Any]]:
+    def validate_input(
+        self, input_text: str, user_id: Optional[str] = None
+    ) -> Tuple[bool, str, Dict[str, Any]]:
         """
         Validiert Eingabe auf Sicherheit und Angemessenheit
 
@@ -169,7 +172,7 @@ class SecurityManager:
         metadata = {
             "validation_time": datetime.now().isoformat(),
             "input_length": len(input_text),
-            "user_id": user_id or "anonymous"
+            "user_id": user_id or "anonymous",
         }
 
         # Längen-Validierung
@@ -189,15 +192,15 @@ class SecurityManager:
         for keyword in config["block_keywords"]:
             if keyword.lower() in input_text.lower():
                 security_logger.warning(f"🚫 Blocked keyword '{keyword}' in input from {user_id}")
-                self.security_stats['inputs_filtered'] += 1
+                self.security_stats["inputs_filtered"] += 1
                 return False, f"Inhalt blockiert: {keyword}", metadata
 
         # Abuse-Detection
         abuse_result = self._detect_abuse(input_text)
         if abuse_result["detected"]:
             security_logger.warning(f"🚨 Abuse detected: {abuse_result['type']} from {user_id}")
-            self.security_stats['abuse_attempts'] += 1
-            self.security_stats['last_incident'] = datetime.now().isoformat()
+            self.security_stats["abuse_attempts"] += 1
+            self.security_stats["last_incident"] = datetime.now().isoformat()
             return False, f"Missbrauch erkannt: {abuse_result['type']}", metadata
 
         return True, "Eingabe validiert", metadata
@@ -210,7 +213,7 @@ class SecurityManager:
                     "detected": True,
                     "type": pattern_info["abuse_type"],
                     "severity": pattern_info["severity"],
-                    "description": pattern_info["description"]
+                    "description": pattern_info["description"],
                 }
 
         return {"detected": False}
@@ -232,12 +235,14 @@ class SecurityManager:
         for pattern_info in self.bias_patterns:
             matches = re.findall(pattern_info["pattern"], text, re.IGNORECASE)
             if matches:
-                bias_detected.append({
-                    "type": pattern_info["bias_type"],
-                    "severity": pattern_info["severity"],
-                    "matches": matches,
-                    "description": pattern_info["description"]
-                })
+                bias_detected.append(
+                    {
+                        "type": pattern_info["bias_type"],
+                        "severity": pattern_info["severity"],
+                        "matches": matches,
+                        "description": pattern_info["description"],
+                    }
+                )
 
                 # Severity zu Score konvertieren
                 severity_scores = {"low": 0.3, "medium": 0.6, "high": 0.8, "critical": 1.0}
@@ -247,22 +252,28 @@ class SecurityManager:
             "bias_detected": len(bias_detected) > 0,
             "bias_score": bias_score,
             "bias_types": bias_detected,
-            "recommendations": []
+            "recommendations": [],
         }
 
         if result["bias_detected"]:
-            self.security_stats['bias_detected'] += 1
+            self.security_stats["bias_detected"] += 1
             security_logger.info(f"⚠️ Bias detected: score {bias_score:.2f}")
 
             # Empfehlungen generieren
             if bias_score >= 0.8:
-                result["recommendations"].append("Hohe Bias-Wahrscheinlichkeit - Antwort überprüfen")
+                result["recommendations"].append(
+                    "Hohe Bias-Wahrscheinlichkeit - Antwort überprüfen"
+                )
             elif bias_score >= 0.6:
-                result["recommendations"].append("Mittlere Bias-Wahrscheinlichkeit - Quelle verifizieren")
+                result["recommendations"].append(
+                    "Mittlere Bias-Wahrscheinlichkeit - Quelle verifizieren"
+                )
 
         return result
 
-    def filter_content(self, content: str, metadata: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+    def filter_content(
+        self, content: str, metadata: Dict[str, Any]
+    ) -> Tuple[bool, str, Dict[str, Any]]:
         """
         Filtert Inhalt auf Grundlage von Sicherheitsrichtlinien
 
@@ -280,21 +291,21 @@ class SecurityManager:
         config = self.security_config["content_filtering"]
 
         if bias_analysis["bias_score"] >= config["political_bias_threshold"]:
-            return False, f"Bias-Score zu hoch: {bias_analysis['bias_score']:.2f}", {
-                "bias_analysis": bias_analysis,
-                "filter_reason": "political_bias"
-            }
+            return (
+                False,
+                f"Bias-Score zu hoch: {bias_analysis['bias_score']:.2f}",
+                {"bias_analysis": bias_analysis, "filter_reason": "political_bias"},
+            )
 
         # Source-Verification (falls erforderlich)
         if config["fact_check_required"] and not metadata.get("verified", False):
-            return False, "Quelle nicht verifiziert", {
-                "filter_reason": "unverified_source"
-            }
+            return False, "Quelle nicht verifiziert", {"filter_reason": "unverified_source"}
 
-        return True, "Inhalt freigegeben", {
-            "bias_analysis": bias_analysis,
-            "content_score": 1.0 - bias_analysis["bias_score"]
-        }
+        return (
+            True,
+            "Inhalt freigegeben",
+            {"bias_analysis": bias_analysis, "content_score": 1.0 - bias_analysis["bias_score"]},
+        )
 
     def generate_ethics_report(self, interaction: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -315,7 +326,7 @@ class SecurityManager:
             "fairness_score": self._calculate_fairness_score(interaction),
             "accountability_score": self._calculate_accountability_score(interaction),
             "issues": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Ethik-Prüfungen
@@ -378,7 +389,7 @@ class SecurityManager:
         return {
             **self.security_stats,
             "ethics_reports_generated": len(self.ethics_log),
-            "active_config": self.security_config
+            "active_config": self.security_config,
         }
 
     def log_security_event(self, event_type: str, details: Dict[str, Any], severity: str = "info"):
@@ -387,7 +398,7 @@ class SecurityManager:
             "timestamp": datetime.now().isoformat(),
             "type": event_type,
             "severity": severity,
-            "details": details
+            "details": details,
         }
 
         if severity == "warning":
@@ -399,16 +410,18 @@ class SecurityManager:
 
         # Stats aktualisieren
         if event_type == "abuse_attempt":
-            self.security_stats['abuse_attempts'] += 1
+            self.security_stats["abuse_attempts"] += 1
         elif event_type == "bias_detected":
-            self.security_stats['bias_detected'] += 1
+            self.security_stats["bias_detected"] += 1
         elif event_type == "input_filtered":
-            self.security_stats['inputs_filtered'] += 1
+            self.security_stats["inputs_filtered"] += 1
 
-        self.security_stats['last_incident'] = datetime.now().isoformat()
+        self.security_stats["last_incident"] = datetime.now().isoformat()
+
 
 # Singleton-Instanz
 _security_manager = None
+
 
 def get_security_manager() -> SecurityManager:
     """Gibt Singleton-Instanz des Security Managers zurück"""
@@ -416,6 +429,7 @@ def get_security_manager() -> SecurityManager:
     if _security_manager is None:
         _security_manager = SecurityManager()
     return _security_manager
+
 
 # Test-Funktion
 def test_security_features():
@@ -441,6 +455,7 @@ def test_security_features():
         print(f"   Input: {test_input[:50]}...")
         print(f"   Valid: {is_valid}, Reason: {reason}")
         print()
+
 
 if __name__ == "__main__":
     test_security_features()

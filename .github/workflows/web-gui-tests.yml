@@ -1,0 +1,196 @@
+name: Web-GUI Automated Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Täglich um 2:00 Uhr ausführen
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test-Typ (all, gui, api, performance)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - gui
+          - api
+          - performance
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov requests streamlit fastapi uvicorn
+
+    - name: Create test results directory
+      run: mkdir -p test_results
+
+    - name: Start API service
+      run: |
+        python simple_api.py &
+        echo $! > api_pid.txt
+        sleep 5
+
+    - name: Wait for API to be ready
+      run: |
+        timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 1; done'
+
+    - name: Start GUI service
+      run: |
+        streamlit run modern_gui.py --server.port 8502 --server.headless true &
+        echo $! > gui_pid.txt
+        sleep 10
+
+    - name: Wait for GUI to be ready
+      run: |
+        timeout 30 bash -c 'until curl -f http://localhost:8502/health; do sleep 1; done'
+
+    - name: Run automated tests
+      env:
+        TEST_TYPE: ${{ github.event.inputs.test_type || 'all' }}
+      run: |
+        if [ "$TEST_TYPE" = "all" ]; then
+          python automated_web_gui_tests.py
+        elif [ "$TEST_TYPE" = "gui" ]; then
+          python -c "
+          from automated_web_gui_tests import WebGUITestFramework
+          framework = WebGUITestFramework()
+          results = framework.run_all_tests()
+          print('GUI Tests completed')
+          "
+        elif [ "$TEST_TYPE" = "api" ]; then
+          python -c "
+          from automated_web_gui_tests import WebGUITestFramework
+          framework = WebGUITestFramework()
+          results = framework.test_api_connectivity()
+          print('API Tests completed')
+          "
+        elif [ "$TEST_TYPE" = "performance" ]; then
+          python -c "
+          from automated_web_gui_tests import WebGUITestFramework
+          framework = WebGUITestFramework()
+          results = framework.test_performance()
+          print('Performance Tests completed')
+          "
+        fi
+
+    - name: Generate test report
+      run: |
+        python -c "
+        import json
+        import glob
+        from pathlib import Path
+
+        results_dir = Path('test_results')
+        latest_result = None
+        latest_time = 0
+
+        for file_path in results_dir.glob('web_gui_test_results_*.json'):
+            timestamp = int(file_path.stem.split('_')[-1])
+            if timestamp > latest_time:
+                latest_time = timestamp
+                latest_result = file_path
+
+        if latest_result:
+            with open(latest_result) as f:
+                data = json.load(f)
+
+            print('=== Test Report ===')
+            for suite, result in data.items():
+                if isinstance(result, dict) and 'total_tests' in result:
+                    print(f'{suite}: {result[\"passed\"]}/{result[\"total_tests\"]} passed')
+        "
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ github.run_number }}
+        path: test_results/
+
+    - name: Stop services
+      if: always()
+      run: |
+        if [ -f api_pid.txt ]; then
+          kill $(cat api_pid.txt) || true
+        fi
+        if [ -f gui_pid.txt ]; then
+          kill $(cat gui_pid.txt) || true
+        fi
+
+    - name: Test Summary
+      if: always()
+      run: |
+        echo '### Test Summary' >> $GITHUB_STEP_SUMMARY
+        echo '' >> $GITHUB_STEP_SUMMARY
+        echo '| Test Suite | Passed | Failed | Errors | Success Rate |' >> $GITHUB_STEP_SUMMARY
+        echo '|------------|--------|--------|--------|--------------|' >> $GITHUB_STEP_SUMMARY
+
+        python -c "
+        import json
+        import glob
+        from pathlib import Path
+
+        results_dir = Path('test_results')
+        latest_result = None
+        latest_time = 0
+
+        for file_path in results_dir.glob('web_gui_test_results_*.json'):
+            timestamp = int(file_path.stem.split('_')[-1])
+            if timestamp > latest_time:
+                latest_time = timestamp
+                latest_result = file_path
+
+        if latest_result:
+            with open(latest_result) as f:
+                data = json.load(f)
+
+            for suite, result in data.items():
+                if isinstance(result, dict) and 'total_tests' in result:
+                    total = result['total_tests']
+                    passed = result['passed']
+                    failed = result['failed']
+                    errors = result['errors']
+                    success_rate = (passed / total * 100) if total > 0 else 0
+                    print(f'| {suite} | {passed} | {failed} | {errors} | {success_rate:.1f}% |')
+        else:
+            print('| No results | - | - | - | - |')
+        " >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: test
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Send notification on failure
+      run: |
+        echo "Tests failed on main branch. Please check the test results."
+        # Hier könnte eine Slack/Discord/Webhook-Notification hinzugefügt werden

@@ -122,8 +122,9 @@ while true; do
             python core/bundeskanzler_ki.py interactive
             ;;
         5)
-            echo -e "${GREEN}🧪 Starte einfache KI...${NC}"
-            python ki_versions/einfache_ki.py
+            echo -e "${YELLOW}🧪 Einfache KI (ARCHIVIERT)${NC}"
+            echo -e "${BLUE}Die einfache KI wurde archiviert: archive/unused_code/ki_versions/${NC}"
+            echo -e "${BLUE}Verwenden Sie stattdessen Option 1 (Verbesserte KI)${NC}"
             ;;
         6)
             check_status

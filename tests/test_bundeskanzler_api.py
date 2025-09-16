@@ -70,9 +70,7 @@ def test_root_endpoint(client):
 # Authentication Tests
 def test_login_valid_credentials(client):
     """Test Login mit gültigen Credentials"""
-    response = client.post(
-        "/auth/token", data={"username": "bundeskanzler", "password": "ki2025"}
-    )
+    response = client.post("/auth/token", data={"username": "bundeskanzler", "password": "ki2025"})
     assert response.status_code == 200
 
     data = response.json()
@@ -82,9 +80,7 @@ def test_login_valid_credentials(client):
 
 def test_login_invalid_credentials(client):
     """Test Login mit ungültigen Credentials"""
-    response = client.post(
-        "/auth/token", data={"username": "wrong", "password": "wrong"}
-    )
+    response = client.post("/auth/token", data={"username": "wrong", "password": "wrong"})
     assert response.status_code == 401  # HTTP 401 Unauthorized for invalid credentials
     # Note: The API might not return a detail field, so we just check the status
 
@@ -281,9 +277,7 @@ def test_webhook_news_update(client, auth_headers):
         "timestamp": datetime.now().isoformat(),
     }
 
-    response = client.post(
-        "/webhook/news_update", json=webhook_payload, headers=auth_headers
-    )
+    response = client.post("/webhook/news_update", json=webhook_payload, headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -299,9 +293,7 @@ def test_webhook_policy_change(client, auth_headers):
         "department": "Umweltministerium",
     }
 
-    response = client.post(
-        "/webhook/policy_change", json=webhook_payload, headers=auth_headers
-    )
+    response = client.post("/webhook/policy_change", json=webhook_payload, headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -415,9 +407,7 @@ def test_chat_with_mocked_memory(mock_memory, client, auth_headers):
         "total_memories": 110,
     }
 
-    response = client.post(
-        "/chat", json={"message": "Test mit Mock"}, headers=auth_headers
-    )
+    response = client.post("/chat", json={"message": "Test mit Mock"}, headers=auth_headers)
 
     assert response.status_code == 200
     # Note: Memory stats might not be called in every chat request

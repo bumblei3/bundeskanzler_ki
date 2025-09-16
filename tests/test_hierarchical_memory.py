@@ -111,9 +111,7 @@ def test_memory_consolidation(memory_system):
     )
 
     # Prüfe initiale Anzahl
-    initial_total = len(memory_system.short_term_memory) + len(
-        memory_system.long_term_memory
-    )
+    initial_total = len(memory_system.short_term_memory) + len(memory_system.long_term_memory)
 
     # Simuliere Zugriffe für Konsolidierung
     if len(memory_system.short_term_memory) > 0:
@@ -124,9 +122,7 @@ def test_memory_consolidation(memory_system):
         memory_system._consolidate_memories()
 
     # Prüfe dass Gedächtnisse noch vorhanden sind
-    final_total = len(memory_system.short_term_memory) + len(
-        memory_system.long_term_memory
-    )
+    final_total = len(memory_system.short_term_memory) + len(memory_system.long_term_memory)
     assert final_total >= initial_total
 
 
@@ -222,9 +218,7 @@ def test_memory_persistence(temp_memory_path):
     assert items[0].content == "Persistent memory"
 
     # Prüfe dass Gedächtnis geladen wurde
-    total_memories = sum(
-        len(level_data["items"]) for level_data in memory2.memory_levels.values()
-    )
+    total_memories = sum(len(level_data["items"]) for level_data in memory2.memory_levels.values())
     assert total_memories == 1
 
 
@@ -254,9 +248,7 @@ def test_adaptive_memory_manager(memory_system):
 
 def test_enhanced_context_processor(temp_memory_path):
     """Test Enhanced Context Processor"""
-    processor = EnhancedContextProcessor(
-        memory_path=temp_memory_path, embedding_dim=512
-    )
+    processor = EnhancedContextProcessor(memory_path=temp_memory_path, embedding_dim=512)
 
     # Füge Kontext hinzu
     embedding = np.random.rand(512).astype(np.float32)

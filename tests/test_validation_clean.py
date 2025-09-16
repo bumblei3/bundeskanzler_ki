@@ -45,16 +45,12 @@ def test_validate_model_clean_no_file(tmp_path):
     assert result is None
 
 
-@pytest.mark.xfail(
-    reason="Stub interference from other tests - works when run individually"
-)
+@pytest.mark.xfail(reason="Stub interference from other tests - works when run individually")
 def test_validate_model_clean_basic(tmp_path):
     """Test basic validation functionality with real numpy."""
 
     # Create test data file
-    test_file = make_test_file(
-        tmp_path, ["Dies ist ein Test\t0", "Another test sentence\t1"]
-    )
+    test_file = make_test_file(tmp_path, ["Dies ist ein Test\t0", "Another test sentence\t1"])
 
     # Simple mock tokenizer
     class MockTokenizer:
@@ -93,9 +89,7 @@ def test_validate_model_clean_basic(tmp_path):
     assert result["num_samples"] == 2
 
 
-@pytest.mark.xfail(
-    reason="Stub interference from other tests - works when run individually"
-)
+@pytest.mark.xfail(reason="Stub interference from other tests - works when run individually")
 def test_validate_model_clean_empty_file(tmp_path):
     """Test validation with empty test file."""
 

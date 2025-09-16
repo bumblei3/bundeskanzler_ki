@@ -43,9 +43,7 @@ def patch_dependencies(monkeypatch):
 
 
 def test_batch_inference_runs(monkeypatch):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     # Importiere nach Patchen, damit alle Abhängigkeiten gemockt sind
     import bundeskanzler_ki
 
@@ -74,19 +72,13 @@ def test_batch_inference_runs(monkeypatch):
     monkeypatch.setattr(bundeskanzler_ki, "detect_language", lambda x: "de")
     monkeypatch.setattr(bundeskanzler_ki, "preprocess", lambda x, lang=None: x.lower())
     monkeypatch.setattr(bundeskanzler_ki, "log_interaction", lambda *a, **kw: None)
-    monkeypatch.setattr(
-        bundeskanzler_ki, "export_batch_results_csv", lambda *a, **kw: None
-    )
+    monkeypatch.setattr(bundeskanzler_ki, "export_batch_results_csv", lambda *a, **kw: None)
     # Test: Funktion läuft ohne Fehler durch
-    bundeskanzler_ki.batch_inference(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.batch_inference(tokenizer, model, maxlen, corpus, corpus_original, args)
 
 
 def test_interactive_mode_exit(monkeypatch):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = MagicMock()
@@ -104,16 +96,12 @@ def test_interactive_mode_exit(monkeypatch):
     monkeypatch.setattr(bundeskanzler_ki, "feedback_interaction", lambda *a, **kw: None)
 
     # Should not raise any exceptions
-    bundeskanzler_ki.interactive_mode(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)
 
 
 def test_init_model(monkeypatch):
     """Test init_model function"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     from unittest.mock import MagicMock
 
     import bundeskanzler_ki
@@ -123,9 +111,7 @@ def test_init_model(monkeypatch):
     mock_model = MagicMock()
     mock_create_transformer_model.return_value = mock_model
 
-    monkeypatch.setattr(
-        "transformer_model.create_transformer_model", mock_create_transformer_model
-    )
+    monkeypatch.setattr("transformer_model.create_transformer_model", mock_create_transformer_model)
 
     tokenizer = MagicMock()
     tokenizer.word_index = {"word1": 1, "word2": 2, "word3": 3}
@@ -140,9 +126,7 @@ def test_init_model(monkeypatch):
 
 def test_train_model(monkeypatch):
     """Test train_model function"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     from unittest.mock import MagicMock
 
     import bundeskanzler_ki
@@ -169,25 +153,19 @@ def test_train_model(monkeypatch):
     assert call_args[1]["batch_size"] == 32
     assert call_args[1]["epochs"] == 10
     assert call_args[1]["validation_split"] == 0.2
-    assert (
-        len(call_args[1]["callbacks"]) == 3
-    )  # EarlyStopping, ReduceLROnPlateau, TensorBoard
+    assert len(call_args[1]["callbacks"]) == 3  # EarlyStopping, ReduceLROnPlateau, TensorBoard
 
     assert result == model
 
 
 def test_preprocess_corpus(monkeypatch):
     """Test preprocess_corpus function"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     # Mock language detection and preprocessing
     monkeypatch.setattr(bundeskanzler_ki, "detect_language", lambda x: "de")
-    monkeypatch.setattr(
-        bundeskanzler_ki, "preprocess", lambda x, lang=None: f"processed_{x}"
-    )
+    monkeypatch.setattr(bundeskanzler_ki, "preprocess", lambda x, lang=None: f"processed_{x}")
 
     corpus = ["Satz 1", "Satz 2", "Satz 3"]
     result = bundeskanzler_ki.preprocess_corpus(corpus)
@@ -198,9 +176,7 @@ def test_preprocess_corpus(monkeypatch):
 
 def test_print_error_hint(monkeypatch):
     """Test print_error_hint function"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import logging
     from io import StringIO
 
@@ -258,9 +234,7 @@ def test_print_error_hint(monkeypatch):
 
 def test_interactive_mode_with_input(monkeypatch, capsys):
     """Test interactive_mode with actual input processing"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = MagicMock()
@@ -286,9 +260,7 @@ def test_interactive_mode_with_input(monkeypatch, capsys):
     mock_pad_sequences = MagicMock(return_value=[[1, 2, 3, 0, 0]])
     monkeypatch.setattr("bundeskanzler_ki.pad_sequences", mock_pad_sequences)
 
-    bundeskanzler_ki.interactive_mode(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)
 
     # Check that model.predict was called
     model.predict.assert_called_once()
@@ -301,9 +273,7 @@ def test_interactive_mode_with_input(monkeypatch, capsys):
 
 def test_interactive_mode_empty_input(monkeypatch):
     """Test interactive_mode with empty input"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import logging
     from io import StringIO
 
@@ -337,13 +307,9 @@ def test_interactive_mode_empty_input(monkeypatch):
         monkeypatch.setattr(bundeskanzler_ki, "detect_language", lambda x: "de")
         monkeypatch.setattr(bundeskanzler_ki, "preprocess", lambda x, lang=None: x)
         monkeypatch.setattr(bundeskanzler_ki, "log_interaction", lambda *a, **kw: None)
-        monkeypatch.setattr(
-            bundeskanzler_ki, "feedback_interaction", lambda *a, **kw: None
-        )
+        monkeypatch.setattr(bundeskanzler_ki, "feedback_interaction", lambda *a, **kw: None)
 
-        bundeskanzler_ki.interactive_mode(
-            tokenizer, model, maxlen, corpus, corpus_original, args
-        )
+        bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)
 
         # Check that model.predict was not called (empty input skipped)
         model.predict.assert_not_called()
@@ -359,9 +325,7 @@ def test_interactive_mode_empty_input(monkeypatch):
 
 def test_interactive_mode_model_none(monkeypatch, capsys):
     """Test interactive_mode with None model"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = MagicMock()
@@ -375,9 +339,7 @@ def test_interactive_mode_model_none(monkeypatch, capsys):
     inputs = iter(["Testfrage", "exit"])
     monkeypatch.setattr("builtins.input", lambda x: next(inputs))
 
-    bundeskanzler_ki.interactive_mode(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)
 
     # Check error output
     captured = capsys.readouterr()
@@ -386,9 +348,7 @@ def test_interactive_mode_model_none(monkeypatch, capsys):
 
 def test_interactive_mode_tokenizer_none(monkeypatch, capsys):
     """Test interactive_mode with None tokenizer"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = None  # Tokenizer is None
@@ -402,9 +362,7 @@ def test_interactive_mode_tokenizer_none(monkeypatch, capsys):
     inputs = iter(["Testfrage", "exit"])
     monkeypatch.setattr("builtins.input", lambda x: next(inputs))
 
-    bundeskanzler_ki.interactive_mode(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)
 
     # Check error output
     captured = capsys.readouterr()
@@ -413,9 +371,7 @@ def test_interactive_mode_tokenizer_none(monkeypatch, capsys):
 
 def test_interactive_mode_processing_error(monkeypatch, capsys):
     """Test interactive_mode with processing error"""
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = MagicMock()
@@ -440,9 +396,7 @@ def test_interactive_mode_processing_error(monkeypatch, capsys):
     mock_pad_sequences = MagicMock(return_value=[[1, 2, 3]])
     monkeypatch.setattr("bundeskanzler_ki.pad_sequences", mock_pad_sequences)
 
-    bundeskanzler_ki.interactive_mode(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)
 
     # Check error output
     captured = capsys.readouterr()
@@ -450,9 +404,7 @@ def test_interactive_mode_processing_error(monkeypatch, capsys):
 
 
 def test_batch_inference_runs(monkeypatch):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     # Importiere nach Patchen, damit alle Abhängigkeiten gemockt sind
     import bundeskanzler_ki
 
@@ -481,19 +433,13 @@ def test_batch_inference_runs(monkeypatch):
     monkeypatch.setattr(bundeskanzler_ki, "detect_language", lambda x: "de")
     monkeypatch.setattr(bundeskanzler_ki, "preprocess", lambda x, lang=None: x.lower())
     monkeypatch.setattr(bundeskanzler_ki, "log_interaction", lambda *a, **kw: None)
-    monkeypatch.setattr(
-        bundeskanzler_ki, "export_batch_results_csv", lambda *a, **kw: None
-    )
+    monkeypatch.setattr(bundeskanzler_ki, "export_batch_results_csv", lambda *a, **kw: None)
     # Test: Funktion läuft ohne Fehler durch
-    bundeskanzler_ki.batch_inference(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.batch_inference(tokenizer, model, maxlen, corpus, corpus_original, args)
 
 
 def test_interactive_mode_exit(monkeypatch):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = MagicMock()
@@ -511,6 +457,4 @@ def test_interactive_mode_exit(monkeypatch):
     # Simuliere Nutzereingabe: 'exit' direkt
     monkeypatch.setattr("builtins.input", lambda _: "exit")
     # Test: Funktion läuft ohne Fehler durch und beendet sich
-    bundeskanzler_ki.interactive_mode(
-        tokenizer, model, maxlen, corpus, corpus_original, args
-    )
+    bundeskanzler_ki.interactive_mode(tokenizer, model, maxlen, corpus, corpus_original, args)

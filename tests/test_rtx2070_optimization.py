@@ -9,17 +9,24 @@ Autor: Claude-3.5-Sonnet
 Datum: 16. September 2025
 """
 
-import pytest
 import os
 import tempfile
-import torch
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+import torch
+
+from core.rtx2070_bundeskanzler_ki import (
+    RTX2070BundeskanzlerKI,
+    RTX2070Config,
+    get_rtx2070_bundeskanzler_ki,
+)
 
 # RTX 2070 Komponenten
 from core.rtx2070_llm_manager import RTX2070LLMManager, get_rtx2070_llm_manager
 from core.rtx2070_rag_system import RTX2070OptimizedRAG, create_rtx2070_rag_system
-from core.rtx2070_bundeskanzler_ki import RTX2070BundeskanzlerKI, get_rtx2070_bundeskanzler_ki, RTX2070Config
+
 
 class TestRTX2070LLMManager:
     """Tests für RTX 2070 LLM Manager"""
@@ -56,7 +63,7 @@ class TestRTX2070LLMManager:
         model = manager.select_optimal_model("complex")
         assert model in ["mistral_7b", "llama2_7b", "cpu_fallback"]
 
-    @patch('rtx2070_llm_manager.torch.cuda.is_available', return_value=False)
+    @patch("rtx2070_llm_manager.torch.cuda.is_available", return_value=False)
     def test_cpu_fallback(self, mock_cuda, mock_gpu_manager):
         """Test CPU-Fallback bei fehlender GPU"""
         manager = RTX2070LLMManager(mock_gpu_manager)
@@ -73,6 +80,7 @@ class TestRTX2070LLMManager:
         assert "available_vram_gb" in info
         assert "device" in info
 
+
 class TestRTX2070RAGSystem:
     """Tests für RTX 2070 RAG System"""
 
@@ -82,11 +90,12 @@ class TestRTX2070RAGSystem:
         corpus_data = [
             {"text": "Deutschland hat ehrgeizige Klimaziele bis 2030.", "id": 1},
             {"text": "Die Energiewende ist ein zentrales Projekt der Regierung.", "id": 2},
-            {"text": "Die Bundesregierung setzt auf erneuerbare Energien.", "id": 3}
+            {"text": "Die Bundesregierung setzt auf erneuerbare Energien.", "id": 3},
         ]
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             import json
+
             json.dump(corpus_data, f)
             temp_path = f.name
 
@@ -110,7 +119,7 @@ class TestRTX2070RAGSystem:
         assert len(rag.corpus) == 3
         assert len(rag.id_to_text) == 3
 
-    @patch('rtx2070_rag_system.torch.cuda.is_available', return_value=False)
+    @patch("rtx2070_rag_system.torch.cuda.is_available", return_value=False)
     def test_rag_index_building_cpu(self, mock_cuda, temp_corpus):
         """Test Index-Erstellung auf CPU"""
         rag = RTX2070OptimizedRAG(corpus_path=temp_corpus)
@@ -152,6 +161,7 @@ class TestRTX2070RAGSystem:
         assert "sources" in result
         assert isinstance(result["sources"], list)
 
+
 class TestRTX2070BundeskanzlerKI:
     """Tests für RTX 2070 Bundeskanzler-KI Integration"""
 
@@ -161,7 +171,7 @@ class TestRTX2070BundeskanzlerKI:
         return RTX2070Config(
             enable_llm_integration=False,  # Für Tests deaktivieren
             enable_rag_optimization=True,
-            vram_safety_margin_gb=0.5
+            vram_safety_margin_gb=0.5,
         )
 
     def test_ki_initialization(self, rtx_config):
@@ -181,7 +191,9 @@ class TestRTX2070BundeskanzlerKI:
         assert complexity == "simple"
 
         # Komplexe Query
-        complexity = ki._analyze_query_complexity("Was ist die Bedeutung der Klimapolitik für Deutschland?")
+        complexity = ki._analyze_query_complexity(
+            "Was ist die Bedeutung der Klimapolitik für Deutschland?"
+        )
         assert complexity in ["moderate", "complex", "expert"]
 
     def test_agent_selection(self, rtx_config):
@@ -237,6 +249,7 @@ class TestRTX2070BundeskanzlerKI:
         # Bei Test-Konfiguration sollte LLM deaktiviert sein
         assert status["rtx2070_llm"] == False
 
+
 class TestRTX2070Integration:
     """Integrationstests für RTX 2070 Komponenten"""
 
@@ -278,6 +291,7 @@ class TestRTX2070Integration:
         assert "response" in result
         assert len(result["response"]) > 0
 
+
 # Benchmarks für RTX 2070 Performance
 class TestRTX2070Performance:
     """Performance-Tests für RTX 2070 Optimierungen"""
@@ -286,9 +300,7 @@ class TestRTX2070Performance:
     def performance_config(self):
         """Performance-Test Konfiguration"""
         return RTX2070Config(
-            enable_llm_integration=True,
-            enable_rag_optimization=True,
-            dynamic_model_loading=True
+            enable_llm_integration=True, enable_rag_optimization=True, dynamic_model_loading=True
         )
 
     @pytest.mark.benchmark
@@ -298,6 +310,7 @@ class TestRTX2070Performance:
         rag.build_index(force_rebuild=True)
 
         import time
+
         start_time = time.time()
 
         for _ in range(10):
@@ -315,6 +328,7 @@ class TestRTX2070Performance:
         manager = RTX2070LLMManager()
 
         import time
+
         start_time = time.time()
 
         # Schnelles Modell laden (German GPT-2)
@@ -326,6 +340,7 @@ class TestRTX2070Performance:
         # Sollte unter 30 Sekunden laden
         assert load_time < 30.0, f"Ladezeit: {load_time:.1f}s"
         assert success
+
 
 if __name__ == "__main__":
     # Direkter Test-Launch

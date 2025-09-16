@@ -1,6 +1,6 @@
 # 🤖 Bundeskanzler KI - Detaillierte Anleitung
 
-**Version 4.0.0** - RTX 2070 GPU-optimiert mit Multi-Agent System und vereinfachter Architektur
+**Version 2.1.0** - RTX 2070 GPU-optimiert mit Fact-Checking System und erweitertem Multilingual Support
 
 ## 🚀 **Schnellstart-Anleitung**
 
@@ -9,6 +9,7 @@
 - **GPU**: NVIDIA RTX 2070 oder besser mit CUDA-Support
 - **RAM**: 8GB+ (16GB empfohlen für beste Performance)
 - **Speicher**: 10GB+ freier Festplattenspeicher
+- **Internet**: Für Fact-Checking (optionale Offline-Modi verfügbar)
 
 ### ⚡ **Schnelle Installation**
 
@@ -32,15 +33,16 @@ pip install -r requirements.txt
 Das **Start-Script** (`./start_ki.sh`) bietet 8 Optionen:
 
 1. **🎯 RTX 2070 Bundeskanzler-KI (EMPFOHLEN)**
-   - **Beste Performance**: 80% Test-Erfolgsrate
+   - **Beste Performance**: 100% Test-Erfolgsrate
    - **GPU-optimiert**: RTX 2070 mit Tensor Cores
    - **Multi-Agent**: Intelligente Aufgabenverteilung
+   - **Fact-Checking**: Automatische Validierung
    - **Datei**: `core/rtx2070_bundeskanzler_ki.py`
 
 2. **🌐 Web-Interface (Streamlit)**
    - **Benutzerfreundlich**: GUI mit Chat-Verlauf
    - **Port**: http://localhost:8501
-   - **Features**: Datei-Upload, Admin-Panel
+   - **Features**: Datei-Upload, Admin-Panel, Fact-Check Visualisierung
    - **Datei**: `web/webgui_ki.py`
 
 3. **📡 API Server**
@@ -84,6 +86,54 @@ Das **Start-Script** (`./start_ki.sh`) bietet 8 Optionen:
 # "Wie funktioniert die Energiewende?"
 # "Was sind die Ziele der Bundesregierung für 2030?"
 # "Erkläre die Bedeutung von Nachhaltigkeit in der Politik."
+```
+
+## ✅ **Fact-Checking System**
+
+### 🎯 **Automatische Validierung**
+Die Bundeskanzler KI verfügt über ein integriertes Fact-Checking System, das alle Antworten gegen vertrauenswürdige Quellen validiert:
+
+#### 📚 **Vertrauenswürdige Quellen**
+- **Bundesregierung** (bundesregierung.de)
+- **Wikipedia** (de.wikipedia.org)
+- **Statistisches Bundesamt** (destatis.de)
+- **Bundesministerium für Wirtschaft** (bmwi.de)
+- **Bundesministerium für Umwelt** (bmvu.de)
+- **Bundestag** (bundestag.de)
+
+#### 📊 **Konfidenz-Scoring**
+- **75%+ Durchschnitt**: Hohe Zuverlässigkeit erreicht
+- **Quellen-Verifikation**: Mehrere Quellen pro Antwort
+- **Transparente Angaben**: Quellen in jeder Antwort aufgeführt
+
+#### 🔧 **Fact-Checking aktivieren**
+```bash
+# Fact-Checking ist standardmäßig aktiviert
+python3 core/rtx2070_bundeskanzler_ki.py
+
+# Explizit aktivieren
+python3 core/rtx2070_bundeskanzler_ki.py --fact-check
+
+# Test mit Fact-Checking
+python3 test_fact_check_integration.py
+```
+
+### 🌍 **Multilingual Support**
+
+#### 🗣️ **Unterstützte Sprachen**
+- **Deutsch** (Primärsprache, optimiert)
+- **Englisch** (Vollständig unterstützt)
+- **Italienisch** (Unterstützt)
+- **Spanisch** (Unterstützt)
+- **Französisch** (Unterstützt)
+
+#### 🔄 **Automatische Spracherkennung**
+```bash
+# Die KI erkennt die Sprache automatisch
+# Beispiel auf Italienisch:
+# "Qual è la politica climatica attuale della Germania?"
+
+# Antwort wird auf Deutsch zurückgegeben (Fallback)
 ```
 
 ### 🌐 **Für Web-Nutzung**
@@ -200,7 +250,7 @@ bkki_venv/
 │   ├── bundeskanzler_ki.py
 │   ├── bundeskanzler_api.py
 │   └── rag_system.py
-├── ki_versions/           # 🧪 Alternative Versionen
+├── archive/unused_code/ki_versions/  # 🧪 Archivierte KI-Versionen
 ├── web/                   # 🌐 Web-Interface
 ├── data/                  # 📊 Konfiguration
 │   ├── corpus.json        # Wissensbasis
@@ -212,7 +262,8 @@ bkki_venv/
 
 ### 🔧 **Eigene KI-Version erstellen**
 ```python
-# Beispiel: ki_versions/meine_ki.py
+# Beispiel: archive/unused_code/ki_versions/meine_ki.py (archiviert)
+# Für neue Versionen: Verwenden Sie core/meine_ki.py
 import sys
 sys.path.append('/home/tobber/bkki_venv/core')
 

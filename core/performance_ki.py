@@ -18,7 +18,8 @@ project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
 # Security utilities
-from utils.security import validate_user_input, sanitize_log_message
+from utils.security import sanitize_log_message, validate_user_input
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
@@ -228,7 +229,7 @@ class PerformanceOptimizedKI:
         """
         start_time = time.time()
         self.stats["total_queries"] += 1
-        
+
         # Input-Validation für Security
         try:
             frage = validate_user_input(frage, max_length=2000)
@@ -325,9 +326,7 @@ class PerformanceOptimizedKI:
         """Gibt Performance-Statistiken zurück"""
         cache_hit_rate = 0.0
         if self.stats["total_queries"] > 0:
-            cache_hit_rate = (
-                self.stats["cache_hits"] / self.stats["total_queries"] * 100
-            )
+            cache_hit_rate = self.stats["cache_hits"] / self.stats["total_queries"] * 100
 
         return {
             **self.stats,

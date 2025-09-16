@@ -13,24 +13,22 @@ Autor: Claude-3.5-Sonnet
 Datum: 16. September 2025
 """
 
-import torch
-import logging
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    BitsAndBytesConfig,
-    pipeline
-)
-from peft import PeftModel, PeftConfig
 import gc
+import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Union
+
+import torch
+from peft import PeftConfig, PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, pipeline
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class RTX2070ModelConfig:
     """RTX 2070 optimierte Modell-Konfigurationen"""
+
     name: str
     huggingface_id: str
     max_memory_gb: float
@@ -42,6 +40,7 @@ class RTX2070ModelConfig:
         """Prüft ob Modell auf verfügbarem VRAM läuft"""
         return available_vram_gb >= self.max_memory_gb
 
+
 # RTX 2070 optimierte Modelle (getestet für 8GB VRAM)
 RTX2070_MODELS = {
     "mistral_7b": RTX2070ModelConfig(
@@ -49,14 +48,14 @@ RTX2070_MODELS = {
         huggingface_id="mistralai/Mistral-7B-Instruct-v0.1",
         max_memory_gb=4.2,
         context_length=4096,
-        description="Ausgewogene Leistung für deutsche Texte"
+        description="Ausgewogene Leistung für deutsche Texte",
     ),
     "llama2_7b": RTX2070ModelConfig(
         name="Llama 2 7B Chat",
         huggingface_id="meta-llama/Llama-2-7b-chat-hf",
         max_memory_gb=4.0,
         context_length=4096,
-        description="Meta's optimiertes Chat-Modell"
+        description="Meta's optimiertes Chat-Modell",
     ),
     "german_gpt2": RTX2070ModelConfig(
         name="German GPT-2 Large",
@@ -64,9 +63,10 @@ RTX2070_MODELS = {
         max_memory_gb=1.5,
         context_length=1024,
         quantization="none",
-        description="Schnell für einfache Aufgaben"
-    )
+        description="Schnell für einfache Aufgaben",
+    ),
 }
+
 
 class RTX2070LLMManager:
     """
@@ -85,12 +85,12 @@ class RTX2070LLMManager:
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4"
+            bnb_4bit_quant_type="nf4",
         )
 
     def get_available_vram_gb(self) -> float:
         """Ermittelt verfügbaren VRAM in GB"""
-        if self.gpu_manager and hasattr(self.gpu_manager, 'get_gpu_stats'):
+        if self.gpu_manager and hasattr(self.gpu_manager, "get_gpu_stats"):
             stats = self.gpu_manager.get_gpu_stats()
             return stats.memory_total_gb - stats.memory_used_gb
         elif torch.cuda.is_available():
@@ -151,10 +151,7 @@ class RTX2070LLMManager:
 
                 # Modell laden
                 self.tokenizer = AutoTokenizer.from_pretrained(config.huggingface_id)
-                model = AutoModelForCausalLM.from_pretrained(
-                    config.huggingface_id,
-                    **model_kwargs
-                )
+                model = AutoModelForCausalLM.from_pretrained(config.huggingface_id, **model_kwargs)
 
                 # Pipeline für Text-Generation erstellen
                 self.pipeline = pipeline(
@@ -166,7 +163,7 @@ class RTX2070LLMManager:
                     max_new_tokens=512,
                     temperature=0.7,
                     do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
+                    pad_token_id=self.tokenizer.eos_token_id,
                 )
 
                 self.current_model = model_key
@@ -187,7 +184,7 @@ class RTX2070LLMManager:
                 model="dbmdz/german-gpt2",
                 device=-1,  # CPU
                 max_new_tokens=256,
-                temperature=0.8
+                temperature=0.8,
             )
             self.current_model = "cpu_fallback"
             logger.info("✅ CPU-Fallback-Modell geladen")
@@ -205,21 +202,23 @@ class RTX2070LLMManager:
 
         try:
             # Kontext in Prompt integrieren
-            full_prompt = f"Kontext: {context}\n\nFrage: {prompt}\n\nAntwort:" if context else prompt
+            full_prompt = (
+                f"Kontext: {context}\n\nFrage: {prompt}\n\nAntwort:" if context else prompt
+            )
 
             # RTX 2070 optimierte Generation
             with torch.no_grad():
                 outputs = self.pipeline(
                     full_prompt,
-                    max_new_tokens=kwargs.get('max_new_tokens', 256),
-                    temperature=kwargs.get('temperature', 0.7),
+                    max_new_tokens=kwargs.get("max_new_tokens", 256),
+                    temperature=kwargs.get("temperature", 0.7),
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id if self.tokenizer else 50256,
-                    **kwargs
+                    **kwargs,
                 )
 
             # Antwort extrahieren
-            generated_text = outputs[0]['generated_text']
+            generated_text = outputs[0]["generated_text"]
             response = generated_text.replace(full_prompt, "").strip()
 
             return response
@@ -254,20 +253,22 @@ class RTX2070LLMManager:
 
         for key, config in RTX2070_MODELS.items():
             if config.can_run_on_rtx2070(available_vram):
-                available_models.append({
-                    'key': key,
-                    'name': config.name,
-                    'max_memory_gb': config.max_memory_gb,
-                    'description': config.description
-                })
+                available_models.append(
+                    {
+                        "key": key,
+                        "name": config.name,
+                        "max_memory_gb": config.max_memory_gb,
+                        "description": config.description,
+                    }
+                )
 
         return {
-            'gpu_memory_gb': available_vram,
-            'device': self.device,
-            'current_model': self.current_model,
-            'available_models': available_models,
-            'quantization_enabled': True,
-            'cuda_available': torch.cuda.is_available()
+            "gpu_memory_gb": available_vram,
+            "device": self.device,
+            "current_model": self.current_model,
+            "available_models": available_models,
+            "quantization_enabled": True,
+            "cuda_available": torch.cuda.is_available(),
         }
 
     def get_model_info(self) -> Dict[str, Any]:
@@ -282,17 +283,19 @@ class RTX2070LLMManager:
                 "max_memory_gb": config.max_memory_gb,
                 "available_vram_gb": available_vram,
                 "context_length": config.context_length,
-                "device": self.device
+                "device": self.device,
             }
         else:
             return {
                 "model": self.current_model or "none",
                 "available_vram_gb": available_vram,
-                "device": self.device
+                "device": self.device,
             }
+
 
 # Globale Instanz für einfachen Zugriff
 _rtx2070_llm_manager = None
+
 
 def get_rtx2070_llm_manager(gpu_manager=None) -> RTX2070LLMManager:
     """Factory-Funktion für RTX 2070 LLM Manager"""
@@ -301,8 +304,11 @@ def get_rtx2070_llm_manager(gpu_manager=None) -> RTX2070LLMManager:
         _rtx2070_llm_manager = RTX2070LLMManager(gpu_manager)
     return _rtx2070_llm_manager
 
+
 # Kompatibilitätsfunktionen für bestehende Codebasis
-def generate_llm_response(prompt: str, context: str = "", model_preference: str = None, max_tokens: int = 100) -> str:
+def generate_llm_response(
+    prompt: str, context: str = "", model_preference: str = None, max_tokens: int = 100
+) -> str:
     """
     Kompatibilitätsfunktion für bestehende generate_response Aufrufe
     """
@@ -322,6 +328,7 @@ def generate_llm_response(prompt: str, context: str = "", model_preference: str 
             return "❌ Modell konnte nicht geladen werden"
 
     return manager.generate_response(prompt, context, max_new_tokens=max_tokens)
+
 
 if __name__ == "__main__":
     # Test der RTX 2070 LLM Integration

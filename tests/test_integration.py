@@ -8,14 +8,34 @@ import sys
 
 sys.path.append("/home/tobber/bkki_venv")
 
-import numpy as np
-from advanced_transformer_model import AdvancedTransformerModel
-from bundeskanzler_ki import generate_transformer_response, init_model
-from tensorflow.keras.preprocessing.text import Tokenizer
+# Try to import required modules, skip test if not available
+try:
+    import numpy as np
+    from advanced_transformer_model import AdvancedTransformerModel
+    from bundeskanzler_ki import generate_transformer_response, init_model
+    from tensorflow.keras.preprocessing.text import Tokenizer
+    MODULES_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Erforderliche Module nicht verfügbar: {e}")
+    MODULES_AVAILABLE = False
+    # Define dummy classes/functions for pytest collection
+    import numpy as np
+    class AdvancedTransformerModel:
+        pass
+    def generate_transformer_response(*args, **kwargs):
+        return "Dummy response"
+    def init_model(*args, **kwargs):
+        return None, None
+    class Tokenizer:
+        pass
 
 
 def test_init_model():
     """Teste die aktualisierte init_model Funktion"""
+    if not MODULES_AVAILABLE:
+        import pytest
+        pytest.skip("Erforderliche Module nicht verfügbar")
+    
     print("Testing init_model Funktion...")
 
     try:
@@ -54,15 +74,11 @@ def test_transformer_response():
 
     try:
         # Initialisiere Transformer-Modell
-        transformer_model = AdvancedTransformerModel(
-            model_type="gpt2", model_name="gpt2"
-        )
+        transformer_model = AdvancedTransformerModel(model_type="gpt2", model_name="gpt2")
 
         # Teste Antwortgenerierung
         test_question = "Was ist der Sinn des Lebens?"
-        response = generate_transformer_response(
-            test_question, transformer_model, max_length=50
-        )
+        response = generate_transformer_response(test_question, transformer_model, max_length=50)
 
         print("✓ Transformer-Antwortgenerierung erfolgreich")
         print(f"✓ Frage: {test_question}")

@@ -376,9 +376,7 @@ class TestCacheManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = CacheManager()
 
-            cache = manager.create_cache(
-                "test_cache", l2_config={"cache_dir": temp_dir}
-            )
+            cache = manager.create_cache("test_cache", l2_config={"cache_dir": temp_dir})
             assert isinstance(cache, MultiLevelCache)
             assert "test_cache" in manager.caches
 

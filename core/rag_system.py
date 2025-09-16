@@ -266,9 +266,7 @@ class RAGSystem:
         # 3. Generation: Generiere Antwort basierend auf Kontext
         if generation_model and generation_tokenizer:
             # Verwende bereitgestelltes Modell
-            answer = self._generate_with_model(
-                context, generation_model, generation_tokenizer
-            )
+            answer = self._generate_with_model(context, generation_model, generation_tokenizer)
         else:
             # Fallback: Verwende einfache Extraktion
             answer = self._extract_answer_from_context(context, relevant_docs)
@@ -283,9 +281,7 @@ class RAGSystem:
             "method": "model_generation" if generation_model else "context_extraction",
         }
 
-        logging.info(
-            f"✅ RAG-Antwort generiert: {len(relevant_docs)} Dokumente verwendet"
-        )
+        logging.info(f"✅ RAG-Antwort generiert: {len(relevant_docs)} Dokumente verwendet")
         return result
 
     def _generate_with_model(self, context: str, model, tokenizer) -> str:
@@ -361,7 +357,7 @@ class RAGSystem:
                 topics.append(topic)
 
             # Extrahiere Schlüsselinformationen
-            sentences = text.split('.')
+            sentences = text.split(".")
             for sentence in sentences[:2]:  # Erste 2 Sätze pro Dokument
                 sentence = sentence.strip()
                 if len(sentence) > 20 and len(sentence) < 150:
@@ -456,9 +452,7 @@ class RAGSystem:
         """Gibt Statistiken über das RAG-System zurück"""
         return {
             "total_documents": len(self.corpus_entries),
-            "embedding_dimension": (
-                self.embeddings.shape[1] if self.embeddings is not None else 0
-            ),
+            "embedding_dimension": (self.embeddings.shape[1] if self.embeddings is not None else 0),
             "index_size": self.index.ntotal if self.index else 0,
             "embedding_model": self.embedding_model_name,
             "config": self.config,

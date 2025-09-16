@@ -57,9 +57,7 @@ class AdvancedMonitor:
     """
 
     def __init__(self, project_root: str = None):
-        self.project_root = (
-            Path(project_root) if project_root else Path(__file__).parent.parent
-        )
+        self.project_root = Path(project_root) if project_root else Path(__file__).parent.parent
         self.metrics_dir = self.project_root / "monitoring" / "metrics"
         self.logs_dir = self.project_root / "logs"
 
@@ -121,9 +119,7 @@ class AdvancedMonitor:
             "%(asctime)s [%(name)s] [%(levelname)s] [%(filename)s:%(lineno)d] - %(message)s"
         )
 
-        simple_formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] - %(message)s"
-        )
+        simple_formatter = logging.Formatter("%(asctime)s [%(levelname)s] - %(message)s")
 
         # Create handlers
         # Main log file
@@ -178,9 +174,7 @@ class AdvancedMonitor:
                 )
 
             except Exception as e:
-                self.logger.warning(
-                    f"Fehler beim Laden der Monitoring-Konfiguration: {e}"
-                )
+                self.logger.warning(f"Fehler beim Laden der Monitoring-Konfiguration: {e}")
         else:
             # Create default configuration
             self._create_default_config()
@@ -234,9 +228,7 @@ class AdvancedMonitor:
 
     def add_metric(self, name: str, value: Any, tags: Dict[str, str] = None):
         """Add a metric entry"""
-        entry = MetricEntry(
-            timestamp=datetime.now(), metric_name=name, value=value, tags=tags
-        )
+        entry = MetricEntry(timestamp=datetime.now(), metric_name=name, value=value, tags=tags)
 
         self.metrics[name].append(entry)
 
@@ -279,19 +271,14 @@ class AdvancedMonitor:
         # Check if alert is already active
         if alert_key in self.active_alerts:
             # Check if duration threshold is met
-            if now - self.active_alerts[alert_key] >= timedelta(
-                minutes=rule.duration_minutes
-            ):
+            if now - self.active_alerts[alert_key] >= timedelta(minutes=rule.duration_minutes):
                 self._send_alert(rule, current_value)
         else:
             # New alert
             self.active_alerts[alert_key] = now
 
             # Immediate alert for critical metrics
-            if (
-                rule.metric_name in ["error_rate", "memory_usage"]
-                and rule.threshold > 90
-            ):
+            if rule.metric_name in ["error_rate", "memory_usage"] and rule.threshold > 90:
                 self._send_alert(rule, current_value)
 
     def _send_alert(self, rule: AlertRule, current_value: Any):
@@ -337,9 +324,7 @@ class AdvancedMonitor:
             # Memory Usage
             memory = psutil.virtual_memory()
             self.add_metric("memory_usage", memory.percent, {"type": "system"})
-            self.add_metric(
-                "memory_available_gb", memory.available / (1024**3), {"type": "system"}
-            )
+            self.add_metric("memory_available_gb", memory.available / (1024**3), {"type": "system"})
 
             # Disk Usage
             disk = psutil.disk_usage("/")
@@ -354,9 +339,7 @@ class AdvancedMonitor:
                 if gpus:
                     gpu = gpus[0]
                     gpu_memory_percent = (gpu.memoryUsed / gpu.memoryTotal) * 100
-                    self.add_metric(
-                        "gpu_memory_usage", gpu_memory_percent, {"type": "gpu"}
-                    )
+                    self.add_metric("gpu_memory_usage", gpu_memory_percent, {"type": "gpu"})
                     self.add_metric("gpu_utilization", gpu.load * 100, {"type": "gpu"})
             except ImportError:
                 pass  # GPU monitoring not available
@@ -368,9 +351,7 @@ class AdvancedMonitor:
                 process.memory_info().rss / (1024**2),
                 {"type": "process"},
             )
-            self.add_metric(
-                "process_cpu_percent", process.cpu_percent(), {"type": "process"}
-            )
+            self.add_metric("process_cpu_percent", process.cpu_percent(), {"type": "process"})
 
         except Exception as e:
             self.error_logger.error(f"Error collecting system metrics: {e}")
@@ -379,15 +360,11 @@ class AdvancedMonitor:
         """Track application request metrics"""
         response_time = time.time() - start_time
 
-        self.add_metric(
-            "response_time_ms", response_time * 1000, {"type": "application"}
-        )
+        self.add_metric("response_time_ms", response_time * 1000, {"type": "application"})
         self.add_metric("request_success", 1 if success else 0, {"type": "application"})
 
         if confidence is not None:
-            self.add_metric(
-                "confidence_score", confidence * 100, {"type": "application"}
-            )
+            self.add_metric("confidence_score", confidence * 100, {"type": "application"})
 
         # Update aggregated metrics
         self.app_metrics["requests_total"] += 1
@@ -395,9 +372,7 @@ class AdvancedMonitor:
         # Calculate error rate (last 100 requests)
         recent_requests = list(self.metrics["request_success"])[-100:]
         if recent_requests:
-            error_rate = (
-                1 - sum(r.value for r in recent_requests) / len(recent_requests)
-            ) * 100
+            error_rate = (1 - sum(r.value for r in recent_requests) / len(recent_requests)) * 100
             self.add_metric("error_rate", error_rate, {"type": "application"})
 
     def start_monitoring(self, interval: int = 30):
@@ -406,9 +381,7 @@ class AdvancedMonitor:
             return
 
         self.monitoring_active = True
-        self.monitor_thread = threading.Thread(
-            target=self._monitoring_loop, args=(interval,)
-        )
+        self.monitor_thread = threading.Thread(target=self._monitoring_loop, args=(interval,))
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
 
@@ -441,9 +414,7 @@ class AdvancedMonitor:
             recent_entries = [e for e in entries if e.timestamp >= cutoff_time]
 
             if recent_entries:
-                values = [
-                    e.value for e in recent_entries if isinstance(e.value, (int, float))
-                ]
+                values = [e.value for e in recent_entries if isinstance(e.value, (int, float))]
 
                 if values:
                     summary[metric_name] = {
@@ -510,8 +481,7 @@ class AdvancedMonitor:
                 [
                     e
                     for e in self.metrics.get("request_success", [])
-                    if e.timestamp >= datetime.now() - timedelta(minutes=5)
-                    and e.value == 0
+                    if e.timestamp >= datetime.now() - timedelta(minutes=5) and e.value == 0
                 ]
             )
 
@@ -554,9 +524,7 @@ class AdvancedMonitor:
         for metric_name, entries in self.metrics.items():
             original_count = len(entries)
             # Keep only recent entries
-            recent_entries = deque(
-                [e for e in entries if e.timestamp >= cutoff_time], maxlen=1000
-            )
+            recent_entries = deque([e for e in entries if e.timestamp >= cutoff_time], maxlen=1000)
             self.metrics[metric_name] = recent_entries
             cleaned_count += original_count - len(recent_entries)
 
@@ -641,9 +609,7 @@ if __name__ == "__main__":
 
     summary = monitor.get_metrics_summary(hours=1)
     for metric, stats in summary.items():
-        print(
-            f"{metric}: avg={stats['avg']:.2f}, min={stats['min']:.2f}, max={stats['max']:.2f}"
-        )
+        print(f"{metric}: avg={stats['avg']:.2f}, min={stats['min']:.2f}, max={stats['max']:.2f}")
 
     health = monitor.generate_health_check()
     print(f"\n🏥 Health Status: {health['status']}")

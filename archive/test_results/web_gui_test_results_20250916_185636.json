@@ -1,0 +1,161 @@
+{
+  "connectivity": {
+    "suite_name": "Konnektivitätstests",
+    "total_tests": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "duration": 0.0073359012603759766,
+    "results": [
+      {
+        "test_name": "GUI Konnektivität",
+        "status": "PASS",
+        "duration": 0.003924131393432617,
+        "message": "GUI erfolgreich erreichbar",
+        "details": {
+          "status_code": 200
+        },
+        "timestamp": "2025-09-16T18:56:34.785000"
+      },
+      {
+        "test_name": "API Konnektivität",
+        "status": "PASS",
+        "duration": 0.0030241012573242188,
+        "message": "API erfolgreich erreichbar",
+        "details": {
+          "api_status": {
+            "status": "healthy",
+            "ki_initialized": true
+          }
+        },
+        "timestamp": "2025-09-16T18:56:34.788151"
+      }
+    ],
+    "timestamp": "2025-09-16T18:56:34.788433"
+  },
+  "performance": {
+    "suite_name": "Performance-Tests",
+    "total_tests": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "duration": 0.03539013862609863,
+    "results": [
+      {
+        "test_name": "GUI Ladezeiten",
+        "status": "PASS",
+        "duration": 0.003634214401245117,
+        "message": ".2f",
+        "details": {
+          "load_time": 0.0034627914428710938
+        },
+        "timestamp": "2025-09-16T18:56:34.792459"
+      },
+      {
+        "test_name": "API Antwortzeiten",
+        "status": "PASS",
+        "duration": 0.031260013580322266,
+        "message": ".2f",
+        "details": {
+          "response_time": 0.031070470809936523
+        },
+        "timestamp": "2025-09-16T18:56:34.823935"
+      }
+    ],
+    "timestamp": "2025-09-16T18:56:34.824227"
+  },
+  "functionality": {
+    "suite_name": "Funktionalitätstests",
+    "total_tests": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "duration": 1.5748529434204102,
+    "results": [
+      {
+        "test_name": "Fact-Checking Integration",
+        "status": "PASS",
+        "duration": 0.012468099594116211,
+        "message": "Fact-Checking funktioniert (Konfidenz: 0.7)",
+        "details": {
+          "confidence": 0.7,
+          "has_sources": true
+        },
+        "timestamp": "2025-09-16T18:56:34.837057"
+      },
+      {
+        "test_name": "Chat-Funktionalität",
+        "status": "PASS",
+        "duration": 1.5617585182189941,
+        "message": "Chat funktioniert (3/3 erfolgreich)",
+        "details": {
+          "successful_queries": 3,
+          "total_queries": 3
+        },
+        "timestamp": "2025-09-16T18:56:36.399084"
+      }
+    ],
+    "timestamp": "2025-09-16T18:56:36.399451"
+  },
+  "ui": {
+    "suite_name": "UI/UX-Tests",
+    "total_tests": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "duration": 0.008168458938598633,
+    "results": [
+      {
+        "test_name": "Responsive Design",
+        "status": "PASS",
+        "duration": 0.00393223762512207,
+        "message": "Responsive Design gefunden (2 Indikatoren)",
+        "details": {
+          "responsive_indicators": 2
+        },
+        "timestamp": "2025-09-16T18:56:36.403773"
+      },
+      {
+        "test_name": "Security-Headers",
+        "status": "PASS",
+        "duration": 0.0037605762481689453,
+        "message": "Security-Headers geprüft (0 gefunden)",
+        "details": {
+          "security_headers": [],
+          "note": "Für Produktion sollten Security-Headers hinzugefügt werden"
+        },
+        "timestamp": "2025-09-16T18:56:36.407775"
+      }
+    ],
+    "timestamp": "2025-09-16T18:56:36.408016"
+  },
+  "integration": {
+    "suite_name": "Integrationstests",
+    "total_tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "duration": 0.03000926971435547,
+    "results": [
+      {
+        "test_name": "Vollständige User-Journey",
+        "status": "PASS",
+        "duration": 0.029724836349487305,
+        "message": "Vollständige User-Journey erfolgreich",
+        "details": {
+          "steps_completed": 4,
+          "response_length": 90,
+          "confidence": 0.7,
+          "sources_count": 1
+        },
+        "timestamp": "2025-09-16T18:56:36.438117"
+      }
+    ],
+    "timestamp": "2025-09-16T18:56:36.438411"
+  }
+}

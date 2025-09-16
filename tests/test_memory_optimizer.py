@@ -240,9 +240,7 @@ class TestChunkedProcessor:
             results.extend(processed)
             return processed
 
-        result = processor.process_in_chunks(
-            data, test_processor, multiplier=3, offset=10
-        )
+        result = processor.process_in_chunks(data, test_processor, multiplier=3, offset=10)
 
         assert result == [13, 16, 19, 22]  # (1*3)+10, (2*3)+10, (3*3)+10, (4*3)+10
         assert results == [13, 16, 19, 22]

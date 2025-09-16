@@ -14,9 +14,7 @@ def test_check_fact_basic():
     result = fc.check_fact("Die Bundesregierung hat 2023 ein Klimapaket verabschiedet.")
 
     assert isinstance(result, FactCheckResult)
-    assert (
-        result.statement == "Die Bundesregierung hat 2023 ein Klimapaket verabschiedet."
-    )
+    assert result.statement == "Die Bundesregierung hat 2023 ein Klimapaket verabschiedet."
     assert 0.0 <= result.confidence_score <= 1.0
     assert isinstance(result.sources, list)
     assert -1.0 <= result.bias_score <= 1.0
@@ -59,9 +57,7 @@ def test_bias_analysis():
     assert left_bias_result.bias_score < -0.1  # Sollte linke Tendenz zeigen
 
     # Test rechte Bias-Indikatoren
-    right_bias_result = fc.check_fact(
-        "Sicherheit und Ordnung haben Priorität vor Migration."
-    )
+    right_bias_result = fc.check_fact("Sicherheit und Ordnung haben Priorität vor Migration.")
     assert right_bias_result.bias_score > 0.1  # Sollte rechte Tendenz zeigen
 
 

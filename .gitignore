@@ -64,6 +64,14 @@ reports/
 # Lock-Dateien
 .locks/
 
-# Logs
-logs/
-*.log
+# Test-Ergebnisse (außer neueste)
+web_gui_test_results_*.json
+!web_gui_test_results_20250916_*.json
+
+# CI/CD Artefakte
+test_results/test_output_*.txt
+test_results/test_report_*.json
+
+# Temporäre Test-Dateien
+temp/
+tmp/

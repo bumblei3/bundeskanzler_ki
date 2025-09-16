@@ -85,9 +85,7 @@ class DebugSystem:
         self.api_calls.append(entry)
 
         level = DebugLevel.SUCCESS if entry["success"] else DebugLevel.ERROR
-        self.log(
-            level, f"API {method} {endpoint} -> {status_code} ({response_time:.2f}s)"
-        )
+        self.log(level, f"API {method} {endpoint} -> {status_code} ({response_time:.2f}s)")
 
     def render_debug_ui(self):
         """Zeige Debug-Interface"""
@@ -101,13 +99,9 @@ class DebugSystem:
                 st.subheader("📝 Debug Messages")
                 if self.messages:
                     for msg in self.messages[-20:]:  # Zeige letzte 20 Nachrichten
-                        st.write(
-                            f"{msg['time_str']} {msg['level'].value} {msg['message']}"
-                        )
+                        st.write(f"{msg['time_str']} {msg['level'].value} {msg['message']}")
                         if msg["data"]:
-                            with st.expander(
-                                f"📊 Data ({msg['time_str']})", expanded=False
-                            ):
+                            with st.expander(f"📊 Data ({msg['time_str']})", expanded=False):
                                 st.json(msg["data"])
                 else:
                     st.info("Keine Debug-Nachrichten")
@@ -117,12 +111,9 @@ class DebugSystem:
                 if self.api_calls:
                     # API-Call Übersicht
                     total_calls = len(self.api_calls)
-                    successful_calls = sum(
-                        1 for call in self.api_calls if call["success"]
-                    )
+                    successful_calls = sum(1 for call in self.api_calls if call["success"])
                     avg_response_time = (
-                        sum(call["response_time"] for call in self.api_calls)
-                        / total_calls
+                        sum(call["response_time"] for call in self.api_calls) / total_calls
                     )
 
                     col_a, col_b, col_c = st.columns(3)
@@ -167,9 +158,7 @@ class DebugSystem:
 debug_system = DebugSystem()
 
 
-def api_request(
-    method: str, endpoint: str, headers=None, data=None, json_data=None, timeout=10
-):
+def api_request(method: str, endpoint: str, headers=None, data=None, json_data=None, timeout=10):
     """Wrapper für API-Requests mit Debug-Logging"""
     start_time = time.time()
 
@@ -181,17 +170,11 @@ def api_request(
             response = requests.get(url, headers=headers, timeout=timeout)
         elif method.upper() == "POST":
             if json_data:
-                response = requests.post(
-                    url, headers=headers, json=json_data, timeout=timeout
-                )
+                response = requests.post(url, headers=headers, json=json_data, timeout=timeout)
             else:
-                response = requests.post(
-                    url, headers=headers, data=data, timeout=timeout
-                )
+                response = requests.post(url, headers=headers, data=data, timeout=timeout)
         elif method.upper() == "PUT":
-            response = requests.put(
-                url, headers=headers, json=json_data, timeout=timeout
-            )
+            response = requests.put(url, headers=headers, json=json_data, timeout=timeout)
         elif method.upper() == "DELETE":
             response = requests.delete(url, headers=headers, timeout=timeout)
         else:
@@ -329,9 +312,7 @@ def show_admin_interface():
         return
 
     admin_token = st.session_state["admin_token"]
-    debug_system.log(
-        DebugLevel.SUCCESS, "Admin-Token gefunden", {"token_prefix": admin_token[:20]}
-    )
+    debug_system.log(DebugLevel.SUCCESS, "Admin-Token gefunden", {"token_prefix": admin_token[:20]})
 
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
@@ -421,9 +402,7 @@ def show_dashboard_tab(admin_headers):
     # Auto-Refresh Toggle
     col_refresh, col_alerts, col_export = st.columns([1, 2, 1])
     with col_refresh:
-        auto_refresh = st.checkbox(
-            "🔄 Auto-Refresh (5s)", value=True, key="dashboard_refresh"
-        )
+        auto_refresh = st.checkbox("🔄 Auto-Refresh (5s)", value=True, key="dashboard_refresh")
     with col_alerts:
         show_alerts = st.checkbox("🚨 Show Alerts", value=True, key="dashboard_alerts")
     with col_export:
@@ -460,17 +439,11 @@ def show_dashboard_tab(admin_headers):
 
         for alert in reversed(alerts[-5:]):  # Zeige die letzten 5 Alerts
             if alert["level"] == "critical":
-                st.error(
-                    f"🚨 {alert['timestamp'].strftime('%H:%M:%S')} - {alert['message']}"
-                )
+                st.error(f"🚨 {alert['timestamp'].strftime('%H:%M:%S')} - {alert['message']}")
             elif alert["level"] == "warning":
-                st.warning(
-                    f"⚠️ {alert['timestamp'].strftime('%H:%M:%S')} - {alert['message']}"
-                )
+                st.warning(f"⚠️ {alert['timestamp'].strftime('%H:%M:%S')} - {alert['message']}")
             else:
-                st.info(
-                    f"ℹ️ {alert['timestamp'].strftime('%H:%M:%S')} - {alert['message']}"
-                )
+                st.info(f"ℹ️ {alert['timestamp'].strftime('%H:%M:%S')} - {alert['message']}")
 
     # === METRICS CHARTS ===
     st.markdown("---")
@@ -530,9 +503,7 @@ def show_users_tab(admin_headers):
 
         if resp.status_code == 200:
             users_data = resp.json()
-            debug_system.log(
-                DebugLevel.SUCCESS, "Benutzer-Daten erfolgreich geladen", users_data
-            )
+            debug_system.log(DebugLevel.SUCCESS, "Benutzer-Daten erfolgreich geladen", users_data)
 
             if isinstance(users_data, dict) and "users" in users_data:
                 users = users_data["users"]
@@ -559,9 +530,7 @@ def show_users_tab(admin_headers):
                 st.warning("⚠️ Unerwartete API-Antwort")
                 st.json(users_data)
         else:
-            debug_system.log(
-                DebugLevel.ERROR, f"Benutzer-API Fehler: {resp.status_code}"
-            )
+            debug_system.log(DebugLevel.ERROR, f"Benutzer-API Fehler: {resp.status_code}")
             st.error(f"❌ Fehler beim Laden der Benutzer: {resp.status_code}")
             st.code(resp.text)
 
@@ -577,16 +546,12 @@ def show_logs_tab(admin_headers):
 
     col1, col2 = st.columns([1, 2])
     with col1:
-        log_type = st.selectbox(
-            "Log Type", ["api.log", "error.log", "access.log"], key="log_type"
-        )
+        log_type = st.selectbox("Log Type", ["api.log", "error.log", "access.log"], key="log_type")
     with col2:
         lines_count = st.slider("Lines to show", 10, 1000, 100, key="log_lines")
 
     try:
-        debug_system.log(
-            DebugLevel.DEBUG, f"Lade Logs: {log_type}, {lines_count} Zeilen"
-        )
+        debug_system.log(DebugLevel.DEBUG, f"Lade Logs: {log_type}, {lines_count} Zeilen")
         resp = api_request(
             "GET", f"/admin/logs/{log_type}?lines={lines_count}", headers=admin_headers
         )
@@ -613,9 +578,7 @@ def show_logs_tab(admin_headers):
                             key="log_levels",
                         )
                         filtered_entries = [
-                            e
-                            for e in entries
-                            if any(level in e.upper() for level in levels)
+                            e for e in entries if any(level in e.upper() for level in levels)
                         ]
                         st.text_area(
                             "Filtered Logs",
@@ -650,9 +613,7 @@ def show_memory_tab(admin_headers):
 
         if resp.status_code == 200:
             memory_stats = resp.json()
-            debug_system.log(
-                DebugLevel.SUCCESS, "Memory-Stats erfolgreich geladen", memory_stats
-            )
+            debug_system.log(DebugLevel.SUCCESS, "Memory-Stats erfolgreich geladen", memory_stats)
 
             # Zeige Memory-Übersicht
             col1, col2 = st.columns(2)
@@ -695,9 +656,7 @@ def show_memory_tab(admin_headers):
             st.code(resp.text)
 
     except Exception as e:
-        debug_system.log(
-            DebugLevel.ERROR, f"Exception beim Laden der Memory-Stats: {e}"
-        )
+        debug_system.log(DebugLevel.ERROR, f"Exception beim Laden der Memory-Stats: {e}")
         st.error(f"❌ Fehler beim Laden der Memory-Stats: {e}")
 
 
@@ -713,15 +672,11 @@ def show_config_tab(admin_headers):
 
         if resp.status_code == 200:
             config_data = resp.json()
-            debug_system.log(
-                DebugLevel.SUCCESS, "Konfiguration erfolgreich geladen", config_data
-            )
+            debug_system.log(DebugLevel.SUCCESS, "Konfiguration erfolgreich geladen", config_data)
 
             # Zeige Konfiguration in Kategorien
             if isinstance(config_data, dict):
-                tabs = st.tabs(
-                    ["API Settings", "Memory Settings", "Logging Settings", "Other"]
-                )
+                tabs = st.tabs(["API Settings", "Memory Settings", "Logging Settings", "Other"])
 
                 with tabs[0]:
                     st.subheader("🔗 API Settings")
@@ -753,8 +708,7 @@ def show_config_tab(admin_headers):
                     other_config = {
                         k: v
                         for k, v in config_data.items()
-                        if k
-                        not in ["api_settings", "memory_settings", "logging_settings"]
+                        if k not in ["api_settings", "memory_settings", "logging_settings"]
                     }
                     if other_config:
                         st.json(other_config)
@@ -774,9 +728,7 @@ def show_config_tab(admin_headers):
             st.code(resp.text)
 
     except Exception as e:
-        debug_system.log(
-            DebugLevel.ERROR, f"Exception beim Laden der Konfiguration: {e}"
-        )
+        debug_system.log(DebugLevel.ERROR, f"Exception beim Laden der Konfiguration: {e}")
         st.error(f"❌ Fehler beim Laden der Konfiguration: {e}")
 
 
@@ -862,13 +814,9 @@ def show_multilingual_tab(admin_headers):
 
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.metric(
-                            "Erkannte Sprache", result["detected_language"].upper()
-                        )
+                        st.metric("Erkannte Sprache", result["detected_language"].upper())
                     with col2:
-                        st.metric(
-                            "Verarbeitungszeit", f"{result['processing_time']:.2f}s"
-                        )
+                        st.metric("Verarbeitungszeit", f"{result['processing_time']:.2f}s")
                     with col3:
                         st.metric(
                             "Übersetzung verwendet",
@@ -880,22 +828,16 @@ def show_multilingual_tab(admin_headers):
                     st.info(result["response"])
 
                     # Detaillierte Informationen (ausklappbar)
-                    with st.expander(
-                        "📊 Detaillierte Verarbeitungsinformationen", expanded=False
-                    ):
+                    with st.expander("📊 Detaillierte Verarbeitungsinformationen", expanded=False):
                         st.write("**Original-Anfrage:**", result["original_query"])
 
                         if result.get("german_query") != result["original_query"]:
-                            st.write(
-                                "**Deutsche Übersetzung:**", result["german_query"]
-                            )
+                            st.write("**Deutsche Übersetzung:**", result["german_query"])
 
                         st.write("**Deutsche Antwort:**", result["german_response"])
 
                         if result.get("translation_used"):
-                            st.write(
-                                "**Zurückübersetzte Antwort:**", result["response"]
-                            )
+                            st.write("**Zurückübersetzte Antwort:**", result["response"])
 
                         # Debug-Informationen
                         if "error" in result:
@@ -934,9 +876,7 @@ def show_multilingual_tab(admin_headers):
     except Exception as e:
         debug_system.log(DebugLevel.ERROR, f"Exception im Multilingual-Tab: {e}")
         st.error(f"❌ Fehler beim Laden des Multilingual-Tabs: {e}")
-        st.info(
-            "💡 Stellen Sie sicher, dass die multilingualen Services installiert sind."
-        )
+        st.info("💡 Stellen Sie sicher, dass die multilingualen Services installiert sind.")
 
 
 def show_login_interface():

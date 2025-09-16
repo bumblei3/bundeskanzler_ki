@@ -30,9 +30,7 @@ def patch_dependencies(monkeypatch):
 
 
 def test_train_model_runs(monkeypatch, tmp_path):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     model = MagicMock()
@@ -48,18 +46,14 @@ def test_train_model_runs(monkeypatch, tmp_path):
     )
     # train_transformer mocken
     train_transformer = MagicMock(return_value="history")
-    monkeypatch.setattr(
-        sys.modules["transformer_model"], "train_transformer", train_transformer
-    )
+    monkeypatch.setattr(sys.modules["transformer_model"], "train_transformer", train_transformer)
     # Test: Funktion läuft ohne Fehler durch
     result = bundeskanzler_ki.train_model(model, X, Y, args)
     assert result is model
 
 
 def test_validate_model_runs(monkeypatch):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     tokenizer = MagicMock()
@@ -71,16 +65,12 @@ def test_validate_model_runs(monkeypatch):
     validate_model = MagicMock()
     monkeypatch.setattr(sys.modules["validation"], "validate_model", validate_model)
     # Test: Funktion läuft ohne Fehler durch
-    bundeskanzler_ki.validate_model(
-        tokenizer, model, maxlen, preprocess, detect_language
-    )
+    bundeskanzler_ki.validate_model(tokenizer, model, maxlen, preprocess, detect_language)
     validate_model.assert_not_called()  # Die Funktion ruft das Mock direkt auf, kein Fehler
 
 
 def test_main_config_missing(monkeypatch):
-    pytest.skip(
-        "Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung"
-    )
+    pytest.skip("Test übersprungen wegen TensorFlow/transformers Import-Konflikten in Testumgebung")
     import bundeskanzler_ki
 
     # Simuliere fehlende Konfigurationswerte

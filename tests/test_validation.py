@@ -48,9 +48,7 @@ def test_validate_model_no_file(tmp_path):
     assert res is None
 
 
-@pytest.mark.xfail(
-    reason="Stub interference from other tests - works when run individually"
-)
+@pytest.mark.xfail(reason="Stub interference from other tests - works when run individually")
 def test_validate_model_basic(tmp_path, monkeypatch):
     # create simple test file with two valid lines
     # both expect class '0'
@@ -73,9 +71,7 @@ def test_validate_model_basic(tmp_path, monkeypatch):
         return "de"
 
     # patch pad_sequences for test
-    monkeypatch.setattr(
-        validation, "pad_sequences", lambda seq, maxlen, padding="post": seq
-    )
+    monkeypatch.setattr(validation, "pad_sequences", lambda seq, maxlen, padding="post": seq)
 
     csv_out = str(tmp_path / "out.csv")
 
