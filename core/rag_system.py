@@ -26,6 +26,7 @@ class RAGSystem:
         self,
         corpus_path: str = None,
         embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2",
+        models_path: str = None,
     ):
         """
         Initialisiert das RAG-System
@@ -33,6 +34,7 @@ class RAGSystem:
         Args:
             corpus_path: Pfad zur Corpus-Datei
             embedding_model: Name des Sentence Transformer Modells
+            models_path: Pfad zum models/ Verzeichnis (für Tests)
         """
         # Dynamischer Pfad basierend auf dem aktuellen Skript-Verzeichnis
         if corpus_path is None:
@@ -40,7 +42,13 @@ class RAGSystem:
             project_root = os.path.dirname(script_dir)
             corpus_path = os.path.join(project_root, "data", "corpus.json")
 
+        if models_path is None:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            models_path = os.path.join(project_root, "models")
+
         self.corpus_path = corpus_path
+        self.models_path = models_path
         self.embedding_model_name = embedding_model
         self.embedding_model = None
         self.index = None
@@ -104,13 +112,9 @@ class RAGSystem:
 
     def _setup_vector_index(self):
         """Erstellt oder lädt den FAISS Vektor-Index"""
-        # Dynamische Pfade zu den Modell-Dateien
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(script_dir)
-        models_dir = os.path.join(project_root, "models")
-
-        index_path = os.path.join(models_dir, "rag_index.faiss")
-        embeddings_path = os.path.join(models_dir, "rag_embeddings.pkl")
+        # Verwende den konfigurierten models_path
+        index_path = os.path.join(self.models_path, "rag_index.faiss")
+        embeddings_path = os.path.join(self.models_path, "rag_embeddings.pkl")
 
         if os.path.exists(index_path) and os.path.exists(embeddings_path):
             # Lade vorhandenen Index
@@ -148,15 +152,11 @@ class RAGSystem:
         self.index.add(self.embeddings)
 
         # Speichere Index und Embeddings in models/ Verzeichnis
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(script_dir)
-        models_dir = os.path.join(project_root, "models")
+        # Verwende den konfigurierten models_path
+        os.makedirs(self.models_path, exist_ok=True)
 
-        # Erstelle models/ Verzeichnis falls es nicht existiert
-        os.makedirs(models_dir, exist_ok=True)
-
-        index_path = os.path.join(models_dir, "rag_index.faiss")
-        embeddings_path = os.path.join(models_dir, "rag_embeddings.pkl")
+        index_path = os.path.join(self.models_path, "rag_index.faiss")
+        embeddings_path = os.path.join(self.models_path, "rag_embeddings.pkl")
 
         faiss.write_index(self.index, index_path)
 

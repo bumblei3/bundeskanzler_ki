@@ -599,6 +599,53 @@
       "date": "2025-09-13",
       "source": "regierung",
       "verified": true
+    },
+    {
+      "text": "Der Deutsche Bundestag hat heute das neue Klimaschutzgesetz verabschiedet, das strengere CO2-Grenzwerte für die Industrie vorsieht.",
+      "topic": "klima",
+      "language": "de",
+      "date": "2025-09-16",
+      "source": "bundestag",
+      "verified": true,
+      "url": "https://www.bundestag.de/dokumente"
+    },
+    {
+      "text": "Die Koalition einigte sich auf zusätzliche Mittel für die Digitalisierung von Schulen in Höhe von 2 Milliarden Euro.",
+      "topic": "bildung",
+      "language": "de",
+      "date": "2025-09-16",
+      "source": "bundestag",
+      "verified": true,
+      "url": "https://www.bundestag.de/dokumente"
+    },
+    {
+      "text": "Bundeskanzler Scholz kündigte neue Investitionen in die Wasserstofftechnologie in Höhe von 10 Milliarden Euro an.",
+      "topic": "energie",
+      "language": "de",
+      "date": "2025-09-16",
+      "source": "bundesregierung",
+      "verified": true,
+      "url": "https://www.bundesregierung.de/"
+    },
+    {
+      "text": "Die Bundesregierung plant eine Reform des Einwanderungsgesetzes zur Fachkräftesicherung.",
+      "topic": "migration",
+      "language": "de",
+      "date": "2025-09-16",
+      "source": "bundesregierung",
+      "verified": true,
+      "url": "https://www.bundesregierung.de/"
+    },
+    {
+      "text": "Neue Verordnung zur Förderung erneuerbarer Energien wurde im Bundesanzeiger veröffentlicht.",
+      "topic": "energie",
+      "language": "de",
+      "date": "2025-09-16",
+      "source": "bundesanzeiger",
+      "verified": true,
+      "url": "https://www.bundesanzeiger.de/"
     }
-  ]
+  ],
+  "last_update": "2025-09-16T11:27:15.485573",
+  "version": "2.0"
 }

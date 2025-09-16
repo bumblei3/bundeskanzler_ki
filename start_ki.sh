@@ -42,8 +42,9 @@ show_options() {
     echo "4) 🔧 Original KI (Interaktiv)"
     echo "5) 🧪 Einfache KI (Test)"
     echo "6) 📊 Status & Logs"
-    echo "7) 🧹 Cache bereinigen"
-    echo "8) ❌ Beenden"
+    echo "7) 📡 Daten aktualisieren"
+    echo "8) 🧹 Cache bereinigen"
+    echo "9) ❌ Beenden"
     echo ""
 }
 
@@ -86,18 +87,20 @@ print('RAG-System OK')
     fi
 }
 
-# Funktion: Cache bereinigen
-clean_cache() {
-    echo -e "${YELLOW}🧹 Bereinige Cache...${NC}"
-    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-    find . -name "*.pyc" -delete 2>/dev/null || true
-    echo -e "${GREEN}✅ Cache bereinigt${NC}"
+# Funktion: Daten aktualisieren
+update_data() {
+    echo -e "${BLUE}📡 Aktualisiere Wissensbasis...${NC}"
+    if python core/data_updater.py; then
+        echo -e "${GREEN}✅ Wissensbasis aktualisiert${NC}"
+    else
+        echo -e "${RED}❌ Fehler bei der Datenaktualisierung${NC}"
+    fi
 }
 
 # Hauptmenü
 while true; do
     show_options
-    read -p "Wählen Sie eine Option (1-8): " choice
+    read -p "Wählen Sie eine Option (1-9): " choice
     
     case $choice in
         1)
@@ -126,14 +129,17 @@ while true; do
             check_status
             ;;
         7)
-            clean_cache
+            update_data
             ;;
         8)
+            clean_cache
+            ;;
+        9)
             echo -e "${GREEN}👋 Auf Wiedersehen!${NC}"
             exit 0
             ;;
         *)
-            echo -e "${RED}❌ Ungültige Option. Bitte 1-8 wählen.${NC}"
+            echo -e "${RED}❌ Ungültige Option. Bitte 1-9 wählen.${NC}"
             ;;
     esac
     

@@ -15,6 +15,11 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+# Unterdrücke PyTorch pynvml DeprecationWarning
+import warnings
+warnings.filterwarnings("ignore", message=".*pynvml package is deprecated.*", category=FutureWarning)
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch.cuda")
+
 # Add project root to path
 current_dir = Path(__file__).parent
 project_root = current_dir.parent
@@ -243,73 +248,44 @@ class TestRAGSystem:
             with open(tmp_path / "corpus.json", "w", encoding="utf-8") as f:
                 json.dump(corpus, f, ensure_ascii=False)
 
+            # Create unique models directory to avoid conflicts with existing files
+            models_dir = tmp_path / "models"
+            models_dir.mkdir()
+
             yield tmp_path
 
-    @patch("sentence_transformers.SentenceTransformer")
-    @patch("faiss.IndexFlatIP")
-    def test_rag_initialization(
-        self, mock_faiss, mock_sentence_transformer, temp_rag_dir
-    ):
+    def test_rag_initialization(self, temp_rag_dir):
         """Test RAG-System Initialisierung"""
-        import numpy as np
-
-        # Mock sentence transformer
-        mock_model = Mock()
-        mock_model.encode.return_value = np.array(
-            [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]
-        )
-        mock_sentence_transformer.return_value = mock_model
-
-        # Mock FAISS index
-        mock_index = Mock()
-        mock_faiss.return_value = mock_index
-
         from core.rag_system import RAGSystem
 
         corpus_path = str(temp_rag_dir / "corpus.json")
-        rag = RAGSystem(corpus_path=corpus_path)
+        models_path = str(temp_rag_dir / "models")
+        rag = RAGSystem(corpus_path=corpus_path, models_path=models_path)
 
         assert rag.corpus_entries is not None
         assert len(rag.corpus_entries) == 3
-        mock_sentence_transformer.assert_called_once()
+        assert rag.corpus_texts is not None
+        assert len(rag.corpus_texts) == 3
 
-    @patch("sentence_transformers.SentenceTransformer")
-    @patch("faiss.IndexFlatIP")
-    @patch("core.rag_system.faiss")
-    def test_document_retrieval(
-        self, mock_faiss_module, mock_faiss, mock_sentence_transformer, temp_rag_dir
-    ):
+    def test_document_retrieval(self, temp_rag_dir):
         """Test Dokument-Retrieval"""
-        import numpy as np
-
-        # Mock setup
-        mock_model = Mock()
-        mock_model.encode.return_value = np.array(
-            [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]
-        )
-        mock_sentence_transformer.return_value = mock_model
-
-        mock_index = Mock()
-        mock_index.search.return_value = (
-            np.array([[0.9, 0.8, 0.7]]),
-            np.array([[0, 1, 2]]),
-        )
-        mock_faiss.return_value = mock_index
-
-        # Mock faiss module functions
-        mock_faiss_module.normalize_L2 = Mock()
-
         from core.rag_system import RAGSystem
 
         corpus_path = str(temp_rag_dir / "corpus.json")
-        rag = RAGSystem(corpus_path=corpus_path)
+        models_path = str(temp_rag_dir / "models")
+        rag = RAGSystem(corpus_path=corpus_path, models_path=models_path)
 
         # Test retrieval
         docs = rag.retrieve_relevant_documents("Klimaziele", top_k=2)
 
         assert isinstance(docs, list)
-        mock_model.encode.assert_called()
-        mock_index.search.assert_called()
+        assert len(docs) <= 2  # Should return at most 2 documents
+        if docs:  # If documents are found
+            for doc in docs:
+                assert "document" in doc
+                assert "score" in doc
+                assert "text" in doc
+                assert isinstance(doc["score"], float)
 
 
 class TestCodeQuality:

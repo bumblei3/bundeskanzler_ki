@@ -25,6 +25,7 @@ from dataclasses import dataclass
 # Verhindere NVIDIA-ML Deprecation Warnings
 import warnings
 warnings.filterwarnings("ignore", message=".*pynvml.*deprecated.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch.cuda")
 
 try:
     import nvidia_ml_py as nvml

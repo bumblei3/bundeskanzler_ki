@@ -94,6 +94,7 @@ class GPUAcceleratedRAG:
         # Model Storage
         self.model = None
         self.corpus = []
+        self.corpus_entries = []  # Für erweiterte Metadaten
         self.embeddings = None
         self.faiss_index = None
         self.bm25 = None
@@ -176,12 +177,21 @@ class GPUAcceleratedRAG:
                 with open(self.corpus_path, 'r', encoding='utf-8') as f:
                     raw_data = json.load(f)
                     if isinstance(raw_data, list):
+                        # Alte Format: Liste von Strings
                         self.corpus = raw_data
+                        self.corpus_entries = [{'text': text, 'topic': 'unbekannt', 'source': 'unbekannt', 'date': 'unbekannt', 'verified': False} for text in raw_data]
+                    elif isinstance(raw_data, dict) and 'entries' in raw_data:
+                        # Neue Format: Dictionary mit entries
+                        self.corpus_entries = raw_data['entries']
+                        self.corpus = [entry['text'] for entry in self.corpus_entries]
                     else:
+                        # Einzelnes Dictionary
                         self.corpus = [raw_data]
+                        self.corpus_entries = [raw_data]
             else:
                 with open(self.corpus_path, 'r', encoding='utf-8') as f:
                     self.corpus = [line.strip() for line in f if line.strip()]
+                    self.corpus_entries = [{'text': text, 'topic': 'unbekannt', 'source': 'unbekannt', 'date': 'unbekannt', 'verified': False} for text in self.corpus]
             
             logger.info(f"📊 Corpus geladen: {len(self.corpus)} Dokumente")
             
@@ -287,22 +297,32 @@ class GPUAcceleratedRAG:
                     # Versuche GPU FAISS 
                     import faiss
                     
-                    # Standard FAISS CPU Index (FAISS-GPU nicht über pip verfügbar)
-                    self.faiss_index = faiss.IndexFlatIP(dimension)  # Inner Product
-                    self.faiss_index.add(self.embeddings.astype('float32'))
+                    # Verwende L2-Normalized Index für bessere Scores mit normalisierten Embeddings
+                    self.faiss_index = faiss.IndexFlatIP(dimension)  # Inner Product für normalisierte Vektoren
+                    # Zusätzliche Normalisierung der Embeddings
+                    norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+                    norms[norms == 0] = 1  # Vermeide Division durch 0
+                    normalized_embeddings = self.embeddings / norms
+                    self.faiss_index.add(normalized_embeddings.astype('float32'))
                     
-                    logger.info(f"✅ FAISS Index erstellt: {dimension}D, {len(self.corpus)} docs")
+                    logger.info(f"✅ FAISS Index erstellt: {dimension}D, {len(self.corpus)} docs (normalisiert)")
                     
                 except Exception as gpu_faiss_error:
                     logger.warning(f"⚠️ GPU FAISS nicht verfügbar: {gpu_faiss_error}")
                     # Fallback zu CPU FAISS
                     self.faiss_index = faiss.IndexFlatIP(dimension)
-                    self.faiss_index.add(self.embeddings.astype('float32'))
+                    norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+                    norms[norms == 0] = 1
+                    normalized_embeddings = self.embeddings / norms
+                    self.faiss_index.add(normalized_embeddings.astype('float32'))
             else:
                 # CPU FAISS Index
                 self.faiss_index = faiss.IndexFlatIP(dimension)
-                self.faiss_index.add(self.embeddings.astype('float32'))
-                logger.info(f"✅ CPU FAISS Index erstellt: {dimension}D")
+                norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+                norms[norms == 0] = 1
+                normalized_embeddings = self.embeddings / norms
+                self.faiss_index.add(normalized_embeddings.astype('float32'))
+                logger.info(f"✅ CPU FAISS Index erstellt: {dimension}D (normalisiert)")
             
             # 2. BM25 Index für Keyword Search
             if self.use_hybrid_search:
@@ -393,21 +413,34 @@ class GPUAcceleratedRAG:
                     normalize_embeddings=True
                 )
             
+            # Zusätzliche Normalisierung für Konsistenz
+            query_norm = np.linalg.norm(query_embedding, axis=1, keepdims=True)
+            query_norm[query_norm == 0] = 1
+            query_embedding = query_embedding / query_norm
+            
             # FAISS Search
             scores, indices = self.faiss_index.search(
                 query_embedding.astype('float32'), 
                 top_k
             )
             
-            # Format Results
+            # Format Results mit erweiterten Metadaten
             results = []
             for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
-                if idx < len(self.corpus):
+                if idx < len(self.corpus_entries):
+                    entry = self.corpus_entries[idx]
                     results.append({
-                        'text': self.corpus[idx],
+                        'text': entry['text'],
                         'score': float(score),
                         'rank': i + 1,
-                        'method': 'semantic'
+                        'method': 'semantic',
+                        'topic': entry.get('topic', 'unbekannt'),
+                        'source': entry.get('source', 'unbekannt'),
+                        'date': entry.get('date', 'unbekannt'),
+                        'language': entry.get('language', 'de'),
+                        'verified': entry.get('verified', False),
+                        'confidence_level': self._calculate_confidence_level(float(score)),
+                        'explanation': self._generate_explanation(entry, float(score))
                     })
             
             return results
@@ -432,12 +465,20 @@ class GPUAcceleratedRAG:
             bm25_results = []
             
             for i, idx in enumerate(bm25_indices):
-                if idx < len(self.corpus):
+                if idx < len(self.corpus_entries):
+                    entry = self.corpus_entries[idx]
                     bm25_results.append({
-                        'text': self.corpus[idx],
+                        'text': entry['text'],
                         'score': float(bm25_scores[idx]),
                         'rank': i + 1,
-                        'method': 'bm25'
+                        'method': 'bm25',
+                        'topic': entry.get('topic', 'unbekannt'),
+                        'source': entry.get('source', 'unbekannt'),
+                        'date': entry.get('date', 'unbekannt'),
+                        'language': entry.get('language', 'de'),
+                        'verified': entry.get('verified', False),
+                        'confidence_level': self._calculate_confidence_level(float(bm25_scores[idx])),
+                        'explanation': self._generate_explanation(entry, float(bm25_scores[idx]))
                     })
             
             # 3. Reciprocal Rank Fusion (RRF)
@@ -492,6 +533,36 @@ class GPUAcceleratedRAG:
             final_results.append(result)
         
         return final_results
+    
+    def _calculate_confidence_level(self, score: float) -> str:
+        """Berechnet Vertrauenslevel basierend auf Score"""
+        # Normalisiere Score auf 0-1 Bereich falls nötig
+        if score > 1.0:
+            score = score / 100.0  # Falls Score in Prozent angegeben
+        
+        if score >= 0.8:
+            return "sehr hoch"
+        elif score >= 0.7:
+            return "hoch"
+        elif score >= 0.6:
+            return "mittel"
+        elif score >= 0.5:
+            return "niedrig"
+        else:
+            return "sehr niedrig"
+    
+    def _generate_explanation(self, entry: Dict[str, Any], score: float) -> str:
+        """Generiert Erklärung für das Suchergebnis"""
+        confidence = self._calculate_confidence_level(score)
+        source = entry.get('source', 'unbekannt')
+        date = entry.get('date', 'unbekannt')
+        verified = "verifiziert" if entry.get('verified', False) else "nicht verifiziert"
+        
+        explanation = f"Dieses Dokument stammt aus der Quelle '{source}' vom {date} "
+        explanation += f"und ist {verified}. "
+        explanation += f"Die Übereinstimmung mit Ihrer Frage ist {confidence}."
+        
+        return explanation
     
     def _preprocess_text(self, text: str) -> str:
         """Text Preprocessing für Deutsche Texte"""
@@ -627,6 +698,149 @@ class GPUAcceleratedRAG:
         except Exception as e:
             logger.error(f"❌ Benchmark fehlgeschlagen: {e}")
             return {'error': str(e)}
+    
+    def _calculate_confidence_level(self, score: float) -> str:
+        """
+        Berechnet Konfidenz-Level basierend auf Score
+        
+        Args:
+            score: FAISS Inner Product Score (0-1 bei normalisierten Vektoren)
+            
+        Returns:
+            Konfidenz-Level als String
+        """
+        try:
+            # Bei normalisierten Vektoren mit Inner Product:
+            # Score = 1.0 bedeutet perfekte Übereinstimmung
+            # Score = 0.0 bedeutet keine Übereinstimmung
+            # Typische Scores liegen zwischen 0.0 und 0.8
+            
+            confidence_percent = score * 100
+            
+            if confidence_percent >= 70:
+                return "sehr hoch"
+            elif confidence_percent >= 50:
+                return "hoch"
+            elif confidence_percent >= 30:
+                return "mittel"
+            elif confidence_percent >= 15:
+                return "niedrig"
+            else:
+                return "sehr niedrig"
+        except Exception as e:
+            logger.warning(f"Fehler bei Konfidenzberechnung: {e}")
+            return "unbekannt"
+    
+    def _generate_explanation(self, entry: Dict[str, Any], score: float) -> str:
+        """
+        Generiert Erklärung für Retrieval-Ergebnis
+        
+        Args:
+            entry: Dokument-Eintrag
+            score: Retrieval-Score
+            
+        Returns:
+            Erklärung als String
+        """
+        try:
+            confidence_percent = score * 100
+            
+            explanation_parts = []
+            
+            # Basis-Erklärung
+            explanation_parts.append("Dieses Dokument stammt aus der Quelle '{source}' vom {date} und ist {verified}.".format(
+                source=entry.get('source', 'unbekannt'),
+                date=entry.get('date', 'unbekannt'),
+                verified="verifiziert" if entry.get('verified', False) else "nicht verifiziert"
+            ))
+            
+            # Übereinstimmungsgrad
+            if confidence_percent >= 70:
+                explanation_parts.append("Die Übereinstimmung mit Ihrer Frage ist sehr hoch.")
+            elif confidence_percent >= 50:
+                explanation_parts.append("Die Übereinstimmung mit Ihrer Frage ist hoch.")
+            elif confidence_percent >= 30:
+                explanation_parts.append("Die Übereinstimmung mit Ihrer Frage ist mittel.")
+            elif confidence_percent >= 15:
+                explanation_parts.append("Die Übereinstimmung mit Ihrer Frage ist niedrig.")
+            else:
+                explanation_parts.append("Die Übereinstimmung mit Ihrer Frage ist sehr niedrig.")
+            
+            return " ".join(explanation_parts)
+            
+        except Exception as e:
+            logger.warning(f"Fehler bei Erklärungsgenerierung: {e}")
+            return "Keine detaillierte Erklärung verfügbar."
+    
+    def _preprocess_text(self, text: str) -> str:
+        """
+        Preprocessing für BM25
+        
+        Args:
+            text: Rohtext
+            
+        Returns:
+            Vorverarbeiteter Text
+        """
+        try:
+            # Kleinschreibung
+            text = text.lower()
+            
+            # Entferne Sonderzeichen und Zahlen
+            text = re.sub(r'[^\w\säöüß]', ' ', text)
+            text = re.sub(r'\d+', ' ', text)
+            
+            # Entferne extra Leerzeichen
+            text = ' '.join(text.split())
+            
+            return text
+            
+        except Exception as e:
+            logger.warning(f"Fehler bei Text-Preprocessing: {e}")
+            return text
+    
+    def _update_cache(self, key: str, results: List[Dict[str, Any]]):
+        """
+        Aktualisiert Embedding Cache
+        
+        Args:
+            key: Cache-Schlüssel
+            results: Suchergebnisse
+        """
+        try:
+            # Cache Größe begrenzen
+            if len(self.embedding_cache) >= self.cache_max_size:
+                # Entferne ältesten Eintrag (FIFO)
+                oldest_key = next(iter(self.embedding_cache))
+                del self.embedding_cache[oldest_key]
+            
+            self.embedding_cache[key] = results
+            
+        except Exception as e:
+            logger.warning(f"Fehler bei Cache-Aktualisierung: {e}")
+    
+    def _save_embeddings(self):
+        """Speichert Embeddings für spätere Verwendung"""
+        try:
+            if self.embeddings is not None:
+                embeddings_path = os.path.join(
+                    os.path.dirname(self.corpus_path) if self.corpus_path else ".",
+                    "gpu_rag_embeddings.pkl"
+                )
+                
+                with open(embeddings_path, 'wb') as f:
+                    pickle.dump({
+                        'embeddings': self.embeddings,
+                        'corpus_size': len(self.corpus),
+                        'model_name': self.german_model_name,
+                        'timestamp': datetime.now().isoformat()
+                    }, f)
+                
+                logger.info(f"💾 Embeddings gespeichert: {embeddings_path}")
+                
+        except Exception as e:
+            logger.warning(f"Fehler beim Speichern der Embeddings: {e}")
+
 
 # Convenience Functions
 def create_gpu_rag(

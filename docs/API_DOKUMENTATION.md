@@ -1,10 +1,10 @@
 # 📡 API Dokumentation - Bundeskanzler KI
 
-**Version 3.0.0** - RESTful API für die Bundeskanzler KI
+**Version 4.0.0** - RESTful API für RTX 2070 GPU-optimierte Bundeskanzler KI
 
 ## 🚀 **API Übersicht**
 
-Die Bundeskanzler KI bietet eine vollständige RESTful API für die Integration in externe Anwendungen. Die API ist FastAPI-basiert und bietet automatische Dokumentation.
+Die Bundeskanzler KI bietet eine vollständige RESTful API für die Integration in externe Anwendungen. Die API ist FastAPI-basiert und bietet automatische Dokumentation mit RTX 2070 GPU-Optimierung.
 
 ### 🌐 **Base URL**
 ```
@@ -12,11 +12,12 @@ http://localhost:8000
 ```
 
 ### 📋 **Verfügbare Endpunkte**
-- **POST** `/chat` - Haupt-Chat-Endpunkt
+- **POST** `/chat` - Haupt-Chat-Endpunkt (RTX 2070 KI)
 - **POST** `/api/chat` - Alternative Chat-Route
-- **GET** `/health` - System-Status
+- **GET** `/health` - System-Status & GPU-Monitoring
 - **GET** `/docs` - Automatische API-Dokumentation
 - **GET** `/redoc` - Alternative API-Dokumentation
+- **GET** `/system/status` - Detaillierte System-Informationen
 
 ## 🔧 **API starten**
 
@@ -28,24 +29,25 @@ http://localhost:8000
 
 ### ⚡ **Direkt starten**
 ```bash
-# API-Server starten
-uvicorn core/bundeskanzler_api:app --host 0.0.0.0 --port 8000 --reload
+# RTX 2070 API-Server starten
+uvicorn core/bundeskanzler_api.py:app --host 0.0.0.0 --port 8000 --reload
 
-# Mit Debug-Modus
-uvicorn core/bundeskanzler_api:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+# Mit GPU-Monitoring
+uvicorn core/bundeskanzler_api.py:app --host 0.0.0.0 --port 8000 --reload --log-level info
 ```
 
 ### 🌐 **Zugriff**
 - **API**: http://localhost:8000
 - **Dokumentation**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
+- **System-Status**: http://localhost:8000/system/status
 
 ## 📋 **Endpunkt-Details**
 
 ### 💬 **Chat Endpunkt**
 
 #### **POST /chat**
-Hauptendpunkt für Chat-Anfragen mit der verbesserten KI.
+Hauptendpunkt für Chat-Anfragen mit RTX 2070 GPU-optimierter KI.
 
 **Request Body:**
 ```json

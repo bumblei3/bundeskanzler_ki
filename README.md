@@ -1,6 +1,6 @@
-# 🤖 Bundeskanzler KI - Intelligente politische Beratung mit RAG-System
+# 🤖 Bundeskanzler KI - RTX 2070 optimierte politische Beratung
 
-Eine fortschrittliche KI für politische Fragen und Beratung mit semantischer Suche (RAG), optimiert für GPU-Beschleunigung und professionelle Anwendungen.
+Eine fortschrittliche KI für politische Fragen und Beratung mit semantischer Suche (RAG), optimiert für RTX 2070 GPU-Beschleunigung und professionelle Anwendungen.
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.8+-orange.svg)](https://tensorflow.org)
@@ -12,25 +12,26 @@ Eine fortschrittliche KI für politische Fragen und Beratung mit semantischer Su
 
 Die Bundeskanzler KI ist ein hochmodernes KI-System für politische Fragen, Beratung und Analyse. Sie kombiniert Retrieval-Augmented Generation (RAG) mit fortschrittlichen Sprachmodellen für präzise, vertrauenswürdige Antworten zu deutschen politischen Themen.
 
-### 🚀 **Kernfeatures (2025)**
+### 🚀 **Kernfeatures (September 2025)**
 
-#### 🧠 **Intelligente KI-Systeme**
-- 🎯 **Verbesserte KI**: RAG-basiert mit 60-75% Vertrauenswerten
-- 🔍 **Semantische Suche**: FAISS-Index mit 75 politischen Dokumenten
-- 🤖 **Multiple Versionen**: Original, Verbesserte, Einfache, Multimodale KI
+#### 🧠 **RTX 2070 GPU-Optimierte KI-Systeme**
+- 🎯 **RTX 2070 Bundeskanzler-KI**: GPU-optimierte Hauptversion mit Tensor Cores
+- 🔍 **Advanced RAG System 2.0**: Semantische Suche mit FAISS-Index
+- 🤖 **Multi-Agent Intelligence System**: Intelligente Aufgabenverteilung
 - 📱 **Web-Interface**: Benutzerfreundliche Streamlit-Oberfläche
+- 🌍 **Simple Multilingual Support**: Deutsche/Englische Spracherkennung
 
 #### ⚡ **GPU-Optimierte Performance**
-- 🚀 **CUDA-Beschleunigung**: RTX 2070 optimiert
-- 🧠 **Sentence Transformers**: paraphrase-multilingual-MiniLM-L12-v2
+- 🚀 **CUDA-Beschleunigung**: RTX 2070 mit 8GB VRAM
+- 🧠 **Tensor Cores**: FP16-Optimierung für bessere Performance
 - 📊 **FAISS-Indexierung**: Ultraschnelle semantische Suche
-- 🔧 **TensorFlow Integration**: Optimierte Modell-Pipeline
+- 🔧 **NVIDIA ML Monitoring**: Live-GPU-Überwachung
 
 #### 🎮 **Benutzerfreundlichkeit**
 - 🚀 **Start-Script**: Interaktives Menü mit 8 Optionen
-- 📊 **Logging-System**: Detaillierte Performance-Metriken
+- 📊 **Comprehensive Testing**: Vollständige Test-Suite (80% Erfolgsrate)
 - 🌐 **API-Server**: RESTful API für Integration
-- 🔧 **Admin-Panel**: Live-Monitoring und Systemstatistiken
+- 🔧 **System-Monitoring**: Live-Performance-Metriken
 
 ## 🏗️ **System-Architektur**
 
@@ -43,13 +44,13 @@ Die Bundeskanzler KI ist ein hochmodernes KI-System für politische Fragen, Bera
          └───────────────────────┼───────────────────────┘
                                  │
                     ┌─────────────────────┐
-                    │  Verbesserte KI     │
-                    │  (RAG-basiert)      │
+                    │ RTX 2070 KI-System  │
+                    │ (GPU-optimiert)     │
                     │                     │
-                    │ • 74% Vertrauen     │
-                    │ • FAISS Suche       │
-                    │ • GPU-optimiert     │
-                    │ • 75 Dokumente      │
+                    │ • 80% Test-Erfolg   │
+                    │ • Tensor Cores      │
+                    │ • Multi-Agent       │
+                    │ • RAG-System        │
                     └─────────────────────┘
 ```
 
@@ -57,8 +58,8 @@ Die Bundeskanzler KI ist ein hochmodernes KI-System für politische Fragen, Bera
 
 ### 📋 **Voraussetzungen**
 - **Python**: 3.12+ (Virtual Environment empfohlen)
-- **GPU**: NVIDIA GPU mit CUDA-Support (optional, aber empfohlen)
-- **RAM**: 8GB+ empfohlen
+- **GPU**: NVIDIA RTX 2070 oder besser mit CUDA-Support
+- **RAM**: 8GB+ (16GB empfohlen für beste Performance)
 - **Speicher**: 10GB+ freier Festplattenspeicher
 
 ### ⚡ **Installation & Start**
@@ -82,11 +83,11 @@ pip install -r requirements.txt
 
 Das Start-Script bietet folgende Optionen:
 
-1. **🎯 Verbesserte KI (EMPFOHLEN)** - Beste Performance mit RAG
+1. **🎯 RTX 2070 Bundeskanzler-KI (EMPFOHLEN)** - Beste GPU-Performance
 2. **🌐 Web-Interface (Streamlit)** - Benutzerfreundliche GUI
 3. **📡 API Server** - RESTful API für Integration
-4. **🔧 Original KI (Interaktiv)** - Classic Version
-5. **🧪 Einfache KI (Test)** - Minimal Version für Tests
+4. **🔧 Verbesserte KI** - Alternative Version
+5. **🧪 Performance-KI** - Performance-Optimierte Version
 6. **📊 Status & Logs** - System-Monitoring
 7. **🧹 Cache bereinigen** - Performance-Optimierung
 8. **❌ Beenden** - Programm verlassen
@@ -94,60 +95,78 @@ Das Start-Script bietet folgende Optionen:
 ### 🎯 **Direkter Start (Empfohlen)**
 
 ```bash
-# Beste Performance - Verbesserte KI starten
-python3 core/verbesserte_ki.py
+# Beste Performance - RTX 2070 KI starten
+python3 core/rtx2070_bundeskanzler_ki.py
 
 # Web-Interface starten
 streamlit run web/webgui_ki.py --server.port 8501
 
 # API-Server starten
-uvicorn api_server:app --host 0.0.0.0 --port 8000
+uvicorn core/bundeskanzler_api.py:app --host 0.0.0.0 --port 8000
 ```
 
 ## 📊 **Performance-Metriken (September 2025)**
 
-### 🎯 **Verbesserte KI (Empfohlen)**
-- **Klimapolitik**: 74.0% Vertrauen
-- **Wirtschaftspolitik**: 74.8% Vertrauen
-- **Gesundheitspolitik**: 72.7% Vertrauen
-- **Bildungspolitik**: 60.7% Vertrauen
-- **Europa-Politik**: 74.4% Vertrauen
+### 🎯 **RTX 2070 Bundeskanzler-KI (Empfohlen)**
+- **Test-Erfolgsrate**: 80% (12/15 Tests erfolgreich)
+- **Query-Verarbeitung**: 5/5 erfolgreich (Ø 0.22s)
+- **Performance-Baseline**: 10/10 Läufe (Ø 0.16s)
+- **Stress-Tests**: 8 parallele Queries + 10-Minuten Session
+- **GPU-Auslastung**: 8-20% (RTX 2070, 8GB VRAM)
 
 ### 🔍 **RAG-System**
-- **Dokumente**: 75 politische Einträge
-- **Ähnlichkeits-Scores**: 0.6-0.8
+- **Dokumente**: 80 politische Einträge
+- **FAISS-Index**: GPU-optimiert verfügbar
 - **Suchzeit**: <1 Sekunde
 - **GPU-Beschleunigung**: CUDA aktiviert
 
 ### ⚡ **System-Performance**
-- **Ladezeit**: ~8-15 Sekunden
-- **Antwortzeit**: ~2-5 Sekunden
-- **GPU-Speicher**: ~774MB (RTX 2070)
+- **Initialisierung**: ~8-15 Sekunden
+- **Query-Antwortzeit**: ~0.2-0.6 Sekunden
+- **GPU-Speicher**: ~1.7GB (RTX 2070)
 - **Speicher-Effizienz**: Optimiert für 8GB VRAM
+- **Tensor Cores**: Aktiv (9.6% Auslastung)
 
-## 📁 **Projekt-Struktur**
+### 🌍 **Multilingual-Support**
+- **Sprachen**: Deutsch, Englisch
+- **Erkennung**: Automatische Spracherkennung
+- **Übersetzung**: Vereinfacht (DeepL entfernt)
+- **Fallback**: Deutsche Ausgabe bei Mehrsprachigkeit
 
+## � **System-Status & Wartung**
+
+### ✅ **Aktuelle System-Konfiguration**
+- **Python-Version**: 3.12+ (Virtual Environment)
+- **GPU-Support**: RTX 2070 (8GB VRAM) mit CUDA
+- **Tensor Cores**: Aktiviert (FP16-Optimierung)
+- **RAG-System**: FAISS-Index mit 80 Dokumenten
+- **Multi-Agent**: Aktiviert mit intelligenter Routing
+- **Multilingual**: Vereinfacht (Deutsch/Englisch ohne DeepL)
+
+### 🧹 **Letzte Wartungsarbeiten**
+- ✅ **DeepL-Integration entfernt**: Komplette Deinstallation
+- ✅ **Arbeitsumgebung aufgeräumt**: Cache & temporäre Dateien entfernt
+- ✅ **Test-Suite aktualisiert**: 80% Erfolgsrate erreicht
+- ✅ **Dokumentation aktualisiert**: Aktuelle Architektur dokumentiert
+- ✅ **Performance optimiert**: RTX 2070 GPU vollständig genutzt
+
+### 📊 **System-Monitoring**
+```bash
+# Live-System-Status prüfen
+python3 core/rtx2070_bundeskanzler_ki.py --status
+
+# Vollständige Tests ausführen
+python3 comprehensive_ki_test.py --all --verbose
+
+# GPU-Monitoring
+nvidia-smi
 ```
-bkki_venv/
-├── 🎯 HAUPTKOMPONENTEN
-│   ├── core/
-│   │   ├── verbesserte_ki.py      # ⭐ EMPFOHLEN - Beste KI (74% Vertrauen)
-│   │   ├── bundeskanzler_ki.py    # Original KI-System
-│   │   ├── bundeskanzler_api.py   # FastAPI Backend
-│   │   └── rag_system.py          # RAG-Suche (75 Dokumente)
-│   │
-│   ├── ki_versions/               # Alternative KI-Versionen
-│   │   ├── einfache_ki.py         # Minimal-Version
-│   │   ├── multimodal_ki.py       # Multimodale Features
-│   │   └── multilingual_ki.py     # Mehrsprachig (experimentell)
-│   │
-│   ├── 🌐 WEB & API
-│   │   ├── web/
-│   │   │   ├── webgui_ki.py       # Streamlit Interface
-│   │   │   └── admin_panel.py     # Admin-Bereich
-│   │   └── api_memory/            # API-Speicher
-│   │
-│   ├── 📊 DATEN & KONFIGURATION
+
+### � **Regelmäßige Wartung**
+- **Tägliche Tests**: `comprehensive_ki_test.py` ausführen
+- **Wöchentliche Aufräumung**: Cache-Verzeichnisse leeren
+- **Monatliche Updates**: Abhängigkeiten aktualisieren
+- **GPU-Monitoring**: Temperatur und Auslastung überwachen
 │   │   ├── data/
 │   │   │   ├── corpus.json        # 75 Wissensbasis-Einträge
 │   │   │   ├── config.yaml        # Systemkonfiguration
@@ -315,6 +334,50 @@ Verwenden Sie die **Verbesserte KI** (`core/verbesserte_ki.py`) für optimale Pe
 Weitere Details und alle Optimierungsmetriken findest du im [MEGA_OPTIMIERUNG_ABSCHLUSSBERICHT](docs/MEGA_OPTIMIERUNG_ABSCHLUSSBERICHT.md) und in der [ANLEITUNG.md](docs/ANLEITUNG.md).
 
 ---
+
+## 🗺️ Roadmap: Nächste Verbesserungszyklen (2025/2026)
+
+### 1. Wissensbasis & Aktualität
+- Automatisierte Integration neuer politischer Dokumente (z.B. Bundestagsprotokolle, Gesetzesänderungen)
+- Tägliche Aktualisierung der Datenbasis per Scraper/API
+- Erweiterung um internationale Politikquellen
+
+### 2. Antwortqualität & Kontext
+- Multi-Turn-Dialoge und Kontext-Tracking
+- Faktencheck-Integration (z.B. externe Fact-Checking-APIs)
+- Adaptive Antwortlänge und -tiefe je nach Nutzerprofil
+
+### 3. Erklärbarkeit & Transparenz
+- Quellenangaben und Entscheidungsweg für jede Antwort
+- Confidence-Score und Begründung ausgeben
+- Visualisierung der Antwortentstehung (z.B. Graphen)
+
+### 4. Personalisierung & Interaktivität
+- Nutzerprofile, Interessen und Präferenzen berücksichtigen
+- Live-Feedback-Buttons und User-Rating-System
+- Integration mit Messenger, Voice-Assistants, Chatbots
+
+### 5. Multimodalität & Mehrsprachigkeit
+- Unterstützung für weitere Sprachen (EN, FR, TR, etc.)
+- Multimodale Antworten: Diagramme, Tabellen, Bilder, Audio
+
+### 6. Performance & Skalierung
+- Model Distillation, Quantisierung, ONNX/TensorRT für noch schnellere Inferenz
+- Kubernetes- und Cloud-Deployment für Skalierbarkeit
+- Edge-Deployment für mobile/embedded Nutzung
+
+### 7. Sicherheit & Ethik
+- Bias-Detection und -Mitigation
+- Missbrauchserkennung und Logging
+- Transparente Ethik- und Fairness-Reports
+
+### 8. Qualitätssicherung & CI/CD
+- Erweiterte Testabdeckung (adversarial, regression, usability)
+- Automatisierte Deployments, Rollbacks und Monitoring
+
+---
+
+**Details und Fortschritt werden regelmäßig im [MEGA_OPTIMIERUNG_ABSCHLUSSBERICHT](docs/MEGA_OPTIMIERUNG_ABSCHLUSSBERICHT.md) dokumentiert.**
 
 ## 🤝 **Beitragen**
 

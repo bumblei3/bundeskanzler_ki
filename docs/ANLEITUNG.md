@@ -1,12 +1,12 @@
 # 🤖 Bundeskanzler KI - Detaillierte Anleitung
 
-**Version 3.0.0** - Aufgeräumte Struktur mit RAG-System und GPU-Optimierung
+**Version 4.0.0** - RTX 2070 GPU-optimiert mit Multi-Agent System und vereinfachter Architektur
 
 ## 🚀 **Schnellstart-Anleitung**
 
 ### 📋 **System-Anforderungen**
 - **Python**: 3.12+ (Virtual Environment empfohlen)
-- **GPU**: NVIDIA GPU mit CUDA-Support (optional, aber stark empfohlen)
+- **GPU**: NVIDIA RTX 2070 oder besser mit CUDA-Support
 - **RAM**: 8GB+ (16GB empfohlen für beste Performance)
 - **Speicher**: 10GB+ freier Festplattenspeicher
 
@@ -31,11 +31,11 @@ pip install -r requirements.txt
 
 Das **Start-Script** (`./start_ki.sh`) bietet 8 Optionen:
 
-1. **🎯 Verbesserte KI (EMPFOHLEN)**
-   - **Beste Performance**: 60-75% Vertrauenswerte
-   - **RAG-basiert**: 75 politische Dokumente
-   - **GPU-optimiert**: CUDA-Beschleunigung
-   - **Datei**: `core/verbesserte_ki.py`
+1. **🎯 RTX 2070 Bundeskanzler-KI (EMPFOHLEN)**
+   - **Beste Performance**: 80% Test-Erfolgsrate
+   - **GPU-optimiert**: RTX 2070 mit Tensor Cores
+   - **Multi-Agent**: Intelligente Aufgabenverteilung
+   - **Datei**: `core/rtx2070_bundeskanzler_ki.py`
 
 2. **🌐 Web-Interface (Streamlit)**
    - **Benutzerfreundlich**: GUI mit Chat-Verlauf
@@ -49,15 +49,15 @@ Das **Start-Script** (`./start_ki.sh`) bietet 8 Optionen:
    - **Dokumentation**: /docs Endpoint
    - **Datei**: `core/bundeskanzler_api.py`
 
-4. **🔧 Original KI (Interaktiv)**
-   - **Legacy-Version**: Original Implementierung
-   - **Terminal-basiert**: Direkte Eingabe
-   - **Datei**: `core/bundeskanzler_ki.py`
+4. **🔧 Verbesserte KI**
+   - **Alternative Version**: Legacy-optimiert
+   - **RAG-basiert**: 75 politische Dokumente
+   - **Datei**: `core/verbesserte_ki.py`
 
-5. **🧪 Einfache KI (Test)**
-   - **Minimal-Version**: Für schnelle Tests
-   - **RAG-basiert**: Vereinfachte Ausgabe
-   - **Datei**: `ki_versions/einfache_ki.py`
+5. **🧪 Performance-KI**
+   - **Performance-optimiert**: Schnelle Ausführung
+   - **Minimalistisch**: Für Benchmarking
+   - **Datei**: `core/performance_ki.py`
 
 6. **📊 Status & Logs**
    - **System-Monitoring**: Live-Status
@@ -75,14 +75,15 @@ Das **Start-Script** (`./start_ki.sh`) bietet 8 Optionen:
 
 ### 💡 **Für Einsteiger**
 ```bash
-# Starten Sie mit der verbesserten KI
+# Starten Sie mit der RTX 2070 KI (empfohlen)
 ./start_ki.sh
-# Wählen Sie Option 1: Verbesserte KI
+# Wählen Sie Option 1: RTX 2070 Bundeskanzler-KI
 
 # Beispiel-Fragen:
-# "Was ist die Klimapolitik der Bundesregierung?"
-# "Welche Wirtschaftsreformen sind geplant?"
-# "Wie steht Deutschland zur EU-Politik?"
+# "Was ist die aktuelle Klimapolitik Deutschlands?"
+# "Wie funktioniert die Energiewende?"
+# "Was sind die Ziele der Bundesregierung für 2030?"
+# "Erkläre die Bedeutung von Nachhaltigkeit in der Politik."
 ```
 
 ### 🌐 **Für Web-Nutzung**
@@ -98,6 +99,17 @@ Das **Start-Script** (`./start_ki.sh`) bietet 8 Optionen:
 # API-Server für Integration
 ./start_ki.sh
 # Wählen Sie Option 3: API Server
+# API-Dokumentation: http://localhost:8000/docs
+```
+
+### 🧪 **Für Tests und Entwicklung**
+```bash
+# Vollständige Test-Suite ausführen
+python3 comprehensive_ki_test.py --all --verbose
+
+# Einzelne Komponenten testen
+python3 core/rtx2070_bundeskanzler_ki.py
+```
 # API-Dokumentation unter http://localhost:8000/docs
 ```
 
