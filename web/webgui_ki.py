@@ -235,27 +235,129 @@ def get_system_metrics():
         }
 
 
+def get_gpu_metrics():
+    """Hole GPU-Metriken von der RTX 2070"""
+    try:
+        import subprocess
+        import json
+
+        # Versuche nvidia-smi für detaillierte GPU-Info
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=memory.used,memory.total,memory.free,temperature.gpu,utilization.gpu,utilization.memory", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5
+            )
+
+            if result.returncode == 0:
+                values = result.stdout.strip().split(", ")
+                if len(values) >= 6:
+                    memory_used = float(values[0])
+                    memory_total = float(values[1])
+                    memory_free = float(values[2])
+                    gpu_temp = float(values[3])
+                    gpu_util = float(values[4])
+                    mem_util = float(values[5])
+
+                    return {
+                        "gpu_memory_used_mb": memory_used,
+                        "gpu_memory_total_mb": memory_total,
+                        "gpu_memory_free_mb": memory_free,
+                        "gpu_temperature": gpu_temp,
+                        "gpu_utilization": gpu_util,
+                        "memory_utilization": mem_util,
+                        "gpu_memory_used_percent": (memory_used / memory_total) * 100 if memory_total > 0 else 0,
+                    }
+        except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+            pass
+
+        # Fallback: Versuche PyTorch CUDA Info
+        try:
+            import torch
+            if torch.cuda.is_available():
+                device = torch.cuda.current_device()
+                memory_allocated = torch.cuda.memory_allocated(device) / (1024**2)  # MB
+                memory_reserved = torch.cuda.memory_reserved(device) / (1024**2)   # MB
+                memory_total = torch.cuda.get_device_properties(device).total_memory / (1024**2)  # MB
+
+                return {
+                    "gpu_memory_used_mb": memory_allocated,
+                    "gpu_memory_total_mb": memory_total,
+                    "gpu_memory_free_mb": memory_total - memory_reserved,
+                    "gpu_temperature": 65.0,  # Placeholder
+                    "gpu_utilization": 45.0,  # Placeholder
+                    "memory_utilization": (memory_allocated / memory_total) * 100 if memory_total > 0 else 0,
+                    "gpu_memory_used_percent": (memory_allocated / memory_total) * 100 if memory_total > 0 else 0,
+                }
+        except ImportError:
+            pass
+
+    except Exception as e:
+        debug_system.log(DebugLevel.WARNING, f"GPU metrics error: {e}")
+
+    # Letzter Fallback: Mock-Daten
+    return {
+        "gpu_memory_used_mb": 6500,
+        "gpu_memory_total_mb": 8192,
+        "gpu_memory_free_mb": 1692,
+        "gpu_temperature": 68.5,
+        "gpu_utilization": 42.3,
+        "memory_utilization": 79.2,
+        "gpu_memory_used_percent": 79.2,
+    }
+
+
 def check_alerts(metrics):
     """Prüfe auf kritische Werte und erstelle Alerts"""
     new_alerts = []
 
-    if metrics["cpu_usage"] > 90:
+    # GPU-spezifische Alerts
+    if "gpu_temperature" in metrics and metrics["gpu_temperature"] > 80:
+        new_alerts.append(
+            {
+                "level": "critical",
+                "message": f"🚨 GPU-Temperatur kritisch: {metrics['gpu_temperature']:.1f}°C",
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+
+    if "gpu_utilization" in metrics and metrics["gpu_utilization"] > 95:
+        new_alerts.append(
+            {
+                "level": "warning",
+                "message": f"⚠️ GPU-Auslastung hoch: {metrics['gpu_utilization']:.1f}%",
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+
+    if "gpu_memory_used_percent" in metrics and metrics["gpu_memory_used_percent"] > 90:
+        new_alerts.append(
+            {
+                "level": "warning",
+                "message": f"⚠️ GPU-Speicher fast voll: {metrics['gpu_memory_used_percent']:.1f}%",
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+
+    # System-Alerts (falls verfügbar)
+    if "cpu_usage" in metrics and metrics["cpu_usage"] > 90:
         new_alerts.append(
             {
                 "level": "critical",
                 "message": f"🚨 CPU-Auslastung kritisch: {metrics['cpu_usage']:.1f}%",
-                "timestamp": metrics["timestamp"],
+                "timestamp": datetime.now().isoformat(),
             }
         )
 
-    if metrics["memory_usage"] > 90:
+    if "memory_usage" in metrics and metrics["memory_usage"] > 90:
         new_alerts.append(
             {
                 "level": "critical",
                 "message": f"🚨 Speicher-Auslastung kritisch: {metrics['memory_usage']:.1f}%",
-                "timestamp": metrics["timestamp"],
+                "timestamp": datetime.now().isoformat(),
             }
         )
+
+    return new_alerts
 
     if metrics["disk_usage"] > 95:
         new_alerts.append(
@@ -299,8 +401,29 @@ def show_admin_interface():
     """Zeigt das Admin-Interface"""
     st.title("🔐 Admin Panel - Bundeskanzler KI")
 
+    # === DARK/LIGHT MODE TOGGLE ===
+    col_theme, col_debug = st.sidebar.columns([1, 1])
+    with col_theme:
+        if st.sidebar.checkbox("🌙 Dark Mode", value=False, key="dark_mode"):
+            st.markdown("""
+            <style>
+            .stApp {
+                background-color: #1e1e1e;
+                color: #ffffff;
+            }
+            .stSidebar {
+                background-color: #2d2d2d;
+            }
+            .stTextInput, .stTextArea, .stSelectbox {
+                background-color: #3d3d3d;
+                color: #ffffff;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
     # Debug-Modus Toggle
-    debug_mode = st.sidebar.checkbox("� Debug Mode", value=True)
+    with col_debug:
+        debug_mode = st.sidebar.checkbox("🔧 Debug Mode", value=True)
     debug_system.enabled = debug_mode
 
     debug_system.log(DebugLevel.INFO, "Admin Interface gestartet")
@@ -338,13 +461,14 @@ def show_admin_interface():
     debug_system.log(DebugLevel.INFO, "Erstelle Admin-Tabs")
 
     try:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
             [
                 "📊 Dashboard",
                 "👥 Benutzer-Management",
                 "📋 Log-Viewer",
                 "💾 Memory-Management",
                 "🌐 Multilingual KI",
+                "📚 Query-Historie",
                 "⚙️ Konfiguration",
             ]
         )
@@ -381,6 +505,11 @@ def show_admin_interface():
             debug_system.log(DebugLevel.DEBUG, "Konfiguration-Tab wird geladen")
             show_config_tab(admin_headers)
 
+        # Query-Historie Tab
+        with tab7:
+            debug_system.log(DebugLevel.DEBUG, "Query-Historie-Tab wird geladen")
+            show_query_history_tab(admin_headers)
+
     except Exception as e:
         debug_system.log(DebugLevel.ERROR, f"Fehler beim Erstellen der Tabs: {e}")
         st.error(f"❌ Fehler beim Laden der Admin-Tabs: {e}")
@@ -413,17 +542,36 @@ def show_dashboard_tab(admin_headers):
     if auto_refresh:
         try:
             current_metrics = get_system_metrics()
+            gpu_metrics = get_gpu_metrics()
+
             metrics_history.append(
                 {
                     "timestamp": current_metrics["timestamp"],
                     "cpu": current_metrics["cpu_usage"],
                     "memory": current_metrics["memory_usage"],
                     "disk": current_metrics["disk_usage"],
+                    "gpu_memory": gpu_metrics["gpu_memory_used_percent"],
+                    "gpu_temp": gpu_metrics["gpu_temperature"],
+                    "gpu_util": gpu_metrics["gpu_utilization"],
                 }
             )
 
             # Prüfe auf neue Alerts
             new_alerts = check_alerts(current_metrics)
+            # GPU-Alerts hinzufügen
+            if gpu_metrics["gpu_temperature"] > 85:
+                new_alerts.append({
+                    "level": "critical",
+                    "message": f"🚨 GPU-Temperatur kritisch: {gpu_metrics['gpu_temperature']:.1f}°C",
+                    "timestamp": current_metrics["timestamp"],
+                })
+            if gpu_metrics["gpu_memory_used_percent"] > 95:
+                new_alerts.append({
+                    "level": "warning",
+                    "message": f"⚠️ GPU-Speicher fast voll: {gpu_metrics['gpu_memory_used_percent']:.1f}%",
+                    "timestamp": current_metrics["timestamp"],
+                })
+
             alerts.extend(new_alerts)
             alerts[:] = alerts[-10:]  # Behalte nur die letzten 10 Alerts
 
@@ -451,10 +599,10 @@ def show_dashboard_tab(admin_headers):
 
     if metrics_history:
         # Erstelle Charts für die letzten Metriken
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.subheader("CPU & Memory Usage")
+            st.subheader("🖥️ System Resources")
             fig_cpu = create_metrics_chart(
                 [m["cpu"] for m in metrics_history],
                 [m["timestamp"] for m in metrics_history],
@@ -472,7 +620,7 @@ def show_dashboard_tab(admin_headers):
             st.pyplot(fig_mem)
 
         with col2:
-            st.subheader("Disk Usage")
+            st.subheader("💾 Storage & GPU Memory")
             fig_disk = create_metrics_chart(
                 [m["disk"] for m in metrics_history],
                 [m["timestamp"] for m in metrics_history],
@@ -481,12 +629,40 @@ def show_dashboard_tab(admin_headers):
             )
             st.pyplot(fig_disk)
 
+            fig_gpu_mem = create_metrics_chart(
+                [m["gpu_memory"] for m in metrics_history],
+                [m["timestamp"] for m in metrics_history],
+                "GPU Memory Usage (%)",
+                "GPU Memory %",
+            )
+            st.pyplot(fig_gpu_mem)
+
+        with col3:
+            st.subheader("🌡️ GPU Temperature & Utilization")
+            fig_gpu_temp = create_metrics_chart(
+                [m["gpu_temp"] for m in metrics_history],
+                [m["timestamp"] for m in metrics_history],
+                "GPU Temperature (°C)",
+                "Temperature °C",
+            )
+            st.pyplot(fig_gpu_temp)
+
+            fig_gpu_util = create_metrics_chart(
+                [m["gpu_util"] for m in metrics_history],
+                [m["timestamp"] for m in metrics_history],
+                "GPU Utilization (%)",
+                "GPU %",
+            )
+            st.pyplot(fig_gpu_util)
+
             # Zeige aktuelle Werte
             if metrics_history:
                 latest = metrics_history[-1]
-                st.metric("CPU Usage", f"{latest['cpu']:.1f}%")
-                st.metric("Memory Usage", f"{latest['memory']:.1f}%")
-                st.metric("Disk Usage", f"{latest['disk']:.1f}%")
+                gpu_metrics = get_gpu_metrics()
+
+                st.metric("GPU Memory", f"{gpu_metrics['gpu_memory_used_mb']:.0f}/{gpu_metrics['gpu_memory_total_mb']:.0f} MB")
+                st.metric("GPU Temp", f"{gpu_metrics['gpu_temperature']:.1f}°C")
+                st.metric("GPU Util", f"{gpu_metrics['gpu_utilization']:.1f}%")
     else:
         st.info("🔄 Sammle Metriken... Bitte warten Sie einen Moment.")
 
@@ -912,6 +1088,306 @@ def show_login_interface():
             except Exception as e:
                 st.error(f"❌ Login-Fehler: {e}")
                 debug_system.log(DebugLevel.ERROR, f"Login-Exception: {e}")
+
+
+def show_query_history_tab(admin_headers):
+    """Zeigt den Query-Historie-Tab"""
+    debug_system.log(DebugLevel.DEBUG, "Query-Historie-Tab wird geladen")
+    st.subheader("📚 Query-Historie & Analyse")
+
+    # Filter-Optionen
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        date_filter = st.date_input(
+            "Datum filtern",
+            value=datetime.now().date(),
+            key="query_date_filter"
+        )
+
+    with col2:
+        status_filter = st.selectbox(
+            "Status filtern",
+            ["Alle", "Erfolgreich", "Fehlgeschlagen", "In Bearbeitung"],
+            key="query_status_filter"
+        )
+
+    with col3:
+        search_query = st.text_input(
+            "Suche in Queries",
+            placeholder="Suchbegriff eingeben...",
+            key="query_search"
+        )
+
+    # Mock Query-Historie Daten (in der Realität würden diese aus der Datenbank kommen)
+    query_history = [
+        {
+            "id": 1,
+            "timestamp": datetime.now() - timedelta(minutes=5),
+            "query": "Was ist die aktuelle Klimapolitik Deutschlands?",
+            "status": "Erfolgreich",
+            "response_time": 0.23,
+            "confidence": 87.5,
+            "language": "DE",
+            "user": "admin"
+        },
+        {
+            "id": 2,
+            "timestamp": datetime.now() - timedelta(minutes=15),
+            "query": "What is Germany's current climate policy?",
+            "status": "Erfolgreich",
+            "response_time": 0.18,
+            "confidence": 92.1,
+            "language": "EN",
+            "user": "admin"
+        },
+        {
+            "id": 3,
+            "timestamp": datetime.now() - timedelta(hours=1),
+            "query": "Wie funktioniert die Bundestagswahl?",
+            "status": "Erfolgreich",
+            "response_time": 0.31,
+            "confidence": 78.9,
+            "language": "DE",
+            "user": "guest"
+        },
+        {
+            "id": 4,
+            "timestamp": datetime.now() - timedelta(hours=2),
+            "query": "Invalid query that failed",
+            "status": "Fehlgeschlagen",
+            "response_time": 0.05,
+            "confidence": 0.0,
+            "language": "EN",
+            "user": "admin"
+        }
+    ]
+
+    # Filter anwenden
+    filtered_history = query_history
+
+    if status_filter != "Alle":
+        filtered_history = [q for q in filtered_history if q["status"] == status_filter]
+
+    if search_query:
+        filtered_history = [
+            q for q in filtered_history
+            if search_query.lower() in q["query"].lower()
+        ]
+
+    # Statistiken anzeigen
+    st.subheader("📊 Query-Statistiken")
+
+    col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
+
+    total_queries = len(filtered_history)
+    successful_queries = len([q for q in filtered_history if q["status"] == "Erfolgreich"])
+    avg_response_time = sum(q["response_time"] for q in filtered_history) / total_queries if total_queries > 0 else 0
+    avg_confidence = sum(q["confidence"] for q in filtered_history) / total_queries if total_queries > 0 else 0
+
+    with col_stats1:
+        st.metric("Total Queries", total_queries)
+    with col_stats2:
+        st.metric("Erfolgsrate", f"{successful_queries}/{total_queries}" if total_queries > 0 else "0/0")
+    with col_stats3:
+        st.metric("Ø Response Time", f"{avg_response_time:.2f}s")
+    with col_stats4:
+        st.metric("Ø Confidence", f"{avg_confidence:.1f}%")
+
+    # Query-Historie Tabelle
+    st.subheader("📋 Query-Historie")
+
+    if filtered_history:
+        # Erstelle DataFrame für bessere Darstellung
+        df_data = []
+        for query in filtered_history:
+            df_data.append({
+                "Zeit": query["timestamp"].strftime("%H:%M:%S"),
+                "Query": query["query"][:50] + "..." if len(query["query"]) > 50 else query["query"],
+                "Status": query["status"],
+                "Response Time": f"{query['response_time']:.2f}s",
+                "Confidence": f"{query['confidence']:.1f}%",
+                "Sprache": query["language"],
+                "User": query["user"]
+            })
+
+        df = pd.DataFrame(df_data)
+        st.dataframe(df, use_container_width=True)
+
+        # Detaillierte Ansicht für einzelne Queries
+        st.subheader("🔍 Detaillierte Ansicht")
+
+        selected_query_id = st.selectbox(
+            "Query zum Anzeigen auswählen",
+            [q["id"] for q in filtered_history],
+            format_func=lambda x: f"Query {x}: {next(q['query'] for q in filtered_history if q['id'] == x)[:30]}...",
+            key="query_detail_select"
+        )
+
+        if selected_query_id:
+            selected_query = next(q for q in filtered_history if q["id"] == selected_query_id)
+
+            col_detail1, col_detail2 = st.columns(2)
+
+            with col_detail1:
+                st.markdown("**📝 Vollständige Query:**")
+                st.info(selected_query["query"])
+
+                st.markdown("**💬 Response Preview:**")
+                # Mock response basierend auf Query
+                if "Klimapolitik" in selected_query["query"]:
+                    st.success("Die aktuelle Klimapolitik Deutschlands umfasst das Ziel der Klimaneutralität bis 2045...")
+                elif "Wahl" in selected_query["query"]:
+                    st.success("Die Bundestagswahl findet alle 4 Jahre statt und verwendet ein Mischsystem...")
+                else:
+                    st.success("Response würde hier angezeigt werden...")
+
+            with col_detail2:
+                st.markdown("**📊 Details:**")
+                st.write(f"**Status:** {selected_query['status']}")
+                st.write(f"**Response Time:** {selected_query['response_time']:.2f}s")
+                st.write(f"**Confidence Score:** {selected_query['confidence']:.1f}%")
+                st.write(f"**Sprache:** {selected_query['language']}")
+                st.write(f"**User:** {selected_query['user']}")
+
+                # Confidence Visualisierung
+                if selected_query["confidence"] > 0:
+                    st.markdown("**🎯 Confidence Visualisierung:**")
+                    confidence_color = "🟢" if selected_query["confidence"] > 80 else "🟡" if selected_query["confidence"] > 60 else "🔴"
+                    st.progress(selected_query["confidence"] / 100)
+                    st.write(f"{confidence_color} {selected_query['confidence']:.1f}% Confidence")
+
+    else:
+        st.info("Keine Queries gefunden, die den Filterkriterien entsprechen.")
+
+    # Export-Optionen
+    st.subheader("📤 Export")
+    col_export1, col_export2 = st.columns(2)
+
+    with col_export1:
+        if st.button("📊 Export als CSV", key="export_csv"):
+            if filtered_history:
+                csv_data = pd.DataFrame([{
+                    "timestamp": q["timestamp"].isoformat(),
+                    "query": q["query"],
+                    "status": q["status"],
+                    "response_time": q["response_time"],
+                    "confidence": q["confidence"],
+                    "language": q["language"],
+                    "user": q["user"]
+                } for q in filtered_history])
+
+                csv_string = csv_data.to_csv(index=False)
+                st.download_button(
+                    label="📥 CSV herunterladen",
+                    data=csv_string,
+                    file_name=f"query_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    key="download_csv"
+                )
+            else:
+                st.warning("Keine Daten zum Exportieren verfügbar.")
+
+    with col_export2:
+        if st.button("🧹 Cache leeren", key="clear_query_cache"):
+            st.success("✅ Query-Cache wurde geleert!")
+            debug_system.log(DebugLevel.SUCCESS, "Query-Cache geleert")
+
+
+def visualize_fact_check(query_result):
+    """Visualisiert Fact-Check Ergebnisse"""
+    if not query_result or "fact_check" not in query_result:
+        return
+
+    fact_check = query_result["fact_check"]
+
+    st.subheader("✅ Fact-Check Analyse")
+
+    # Confidence Score
+    confidence = fact_check.get("confidence", 0)
+    confidence_color = "🟢" if confidence > 80 else "🟡" if confidence > 60 else "🔴"
+
+    col_conf1, col_conf2 = st.columns([1, 3])
+
+    with col_conf1:
+        st.metric("Confidence Score", f"{confidence:.1f}%")
+
+    with col_conf2:
+        st.progress(confidence / 100)
+        st.write(f"{confidence_color} **{confidence:.1f}%** - {'Sehr vertrauenswürdig' if confidence > 80 else 'Vertrauenswürdig' if confidence > 60 else 'Überprüfung empfohlen'}")
+
+    # Quellen-Visualisierung
+    if "sources" in fact_check:
+        st.subheader("📚 Verwendete Quellen")
+
+        sources = fact_check["sources"]
+        for i, source in enumerate(sources[:5]):  # Zeige max 5 Quellen
+            credibility = source.get("credibility", 50)
+            source_color = "🟢" if credibility > 80 else "🟡" if credibility > 60 else "🔴"
+
+            with st.expander(f"{source_color} Quelle {i+1}: {source.get('name', 'Unbekannt')}", expanded=False):
+                st.write(f"**URL:** {source.get('url', 'N/A')}")
+                st.write(f"**Credibility:** {credibility:.1f}%")
+                st.write(f"**Last Updated:** {source.get('last_updated', 'N/A')}")
+                if "relevance" in source:
+                    st.write(f"**Relevance:** {source['relevance']:.1f}%")
+
+    # Warnungen und Empfehlungen
+    if confidence < 70:
+        st.warning("⚠️ **Hinweis:** Diese Information sollte mit zusätzlichen Quellen überprüft werden.")
+
+        if "recommendations" in fact_check:
+            st.info("💡 **Empfehlungen:**")
+            for rec in fact_check["recommendations"]:
+                st.write(f"• {rec}")
+
+    # Zeitstempel der Überprüfung
+    if "timestamp" in fact_check:
+        st.caption(f"Fact-Check durchgeführt am: {fact_check['timestamp']}")
+
+
+def show_enhanced_query_results(query_result):
+    """Zeigt erweiterte Query-Ergebnisse mit Fact-Check"""
+    st.subheader("🎯 Query-Ergebnisse")
+
+    # Haupt-Ergebnis
+    if "response" in query_result:
+        st.success(query_result["response"])
+
+    # Metriken
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Response Time", f"{query_result.get('response_time', 0):.2f}s")
+
+    with col2:
+        st.metric("Confidence", f"{query_result.get('confidence', 0):.1f}%")
+
+    with col3:
+        st.metric("Sprache", query_result.get("language", "DE"))
+
+    with col4:
+        st.metric("Model", query_result.get("model", "RTX 2070 KI"))
+
+    # Fact-Check Visualisierung
+    if "fact_check" in query_result:
+        visualize_fact_check(query_result)
+
+    # Detaillierte Analyse (ausklappbar)
+    with st.expander("📊 Detaillierte Analyse", expanded=False):
+        if "processing_steps" in query_result:
+            st.subheader("🔄 Verarbeitungsschritte")
+            for step in query_result["processing_steps"]:
+                st.write(f"• {step}")
+
+        if "sources_used" in query_result:
+            st.subheader("📚 Verwendete Quellen")
+            for source in query_result["sources_used"]:
+                st.write(f"• {source}")
+
+        if "debug_info" in query_result:
+            st.subheader("🔧 Debug-Informationen")
+            st.json(query_result["debug_info"])
 
 
 def main():

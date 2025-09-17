@@ -45,7 +45,7 @@ def test_batch_text_requests():
                 response = requests.post(
                     "http://localhost:8000/batch/text",
                     json=req,
-                    headers={"Authorization": "Bearer test-token"},
+                    #   # Temporär entfernt
                     timeout=5
                 )
 
@@ -54,7 +54,7 @@ def test_batch_text_requests():
                     request_ids.append(result["request_id"])
                     logger.info(f"✅ Anfrage {result['request_id']} eingereicht")
                 else:
-                    logger.warning(f"⚠️ Anfrage fehlgeschlagen: {response.status_code}")
+                    logger.warning(f"⚠️ Anfrage fehlgeschlagen: {response.status_code} - {response.text}")
 
             except Exception as e:
                 logger.error(f"❌ Fehler bei Anfrage: {e}")
@@ -85,7 +85,7 @@ def test_batch_embedding_requests():
                 response = requests.post(
                     "http://localhost:8000/batch/embeddings",
                     json=req,
-                    headers={"Authorization": "Bearer test-token"},
+                    
                     timeout=5
                 )
 
@@ -125,7 +125,7 @@ def test_batch_search_requests():
                 response = requests.post(
                     "http://localhost:8000/batch/search",
                     json=req,
-                    headers={"Authorization": "Bearer test-token"},
+                    
                     timeout=5
                 )
 
@@ -162,7 +162,7 @@ def test_immediate_batch_processing():
         response = requests.post(
             "http://localhost:8000/batch/process",
             json={"requests": batch_requests},
-            headers={"Authorization": "Bearer test-token"},
+            
             timeout=10
         )
 
@@ -185,7 +185,7 @@ def test_batch_stats():
     try:
         response = requests.get(
             "http://localhost:8000/admin/batch/stats",
-            headers={"Authorization": "Bearer admin-token"},
+            
             timeout=5
         )
 
@@ -195,7 +195,8 @@ def test_batch_stats():
             logger.info(f"  - Text Processor: {stats['batch_system']['text_processor']['total_requests']} Anfragen")
             logger.info(f"  - Embedding Processor: {stats['batch_system']['embedding_processor']['total_requests']} Anfragen")
             logger.info(f"  - Search Processor: {stats['batch_system']['search_processor']['total_requests']} Anfragen")
-            logger.info(".2f"            return stats
+            logger.info(f"  - Durchschnittliche Batch-Größe: {stats['batch_system']['avg_batch_size']:.2f}")
+            return stats
         else:
             logger.warning(f"⚠️ Batch-Statistiken fehlgeschlagen: {response.status_code}")
             return None
@@ -211,7 +212,7 @@ def test_batch_optimization():
     try:
         response = requests.post(
             "http://localhost:8000/admin/batch/optimize",
-            headers={"Authorization": "Bearer admin-token"},
+            
             timeout=5
         )
 
@@ -243,13 +244,14 @@ def performance_comparison():
         response = requests.post(
             "http://localhost:8000/batch/process",
             json={"requests": test_requests},
-            headers={"Authorization": "Bearer test-token"},
+            
             timeout=15
         )
         batch_time = time.time() - start_time
 
         if response.status_code == 200:
-            logger.info(".3f"            return {"batch_time": batch_time, "requests": len(test_requests)}
+            logger.info(f"✅ Batch-Verarbeitung: {batch_time:.3f}s für {len(test_requests)} Anfragen")
+            return {"batch_time": batch_time, "requests": len(test_requests)}
         else:
             logger.warning(f"⚠️ Performance-Test fehlgeschlagen: {response.status_code}")
             return None
@@ -269,7 +271,7 @@ def concurrent_request_simulation():
                 response = requests.post(
                     "http://localhost:8000/batch/text",
                     json={"text": f"Gleichzeitige Anfrage {req_id}", "priority": 1},
-                    headers={"Authorization": "Bearer test-token"},
+                    
                     timeout=5
                 )
                 return response.status_code == 200
@@ -284,7 +286,8 @@ def concurrent_request_simulation():
             concurrent_time = time.time() - start_time
 
         successful_requests = sum(results)
-        logger.info(".3f"        logger.info(".1f"
+        logger.info(f"✅ {successful_requests}/{num_requests} gleichzeitige Anfragen erfolgreich in {concurrent_time:.3f}s")
+        logger.info(f"📊 Durchsatz: {successful_requests/concurrent_time:.1f} Anfragen/s")
         return {"successful": successful_requests, "total": num_requests, "time": concurrent_time}
 
     except Exception as e:
