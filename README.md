@@ -27,6 +27,8 @@ Die Bundeskanzler-KI basiert vollständig auf Open-Source-Komponenten. Alle Tech
 - 🎨 **Multimodale KI** - Text, Bilder, Audio, Video-Unterstützung
 - 🚀 **Intelligent Caching** - Mehrstufiges Cache-System
 - 📊 **Monitoring & Analytics** - Umfassende System-Metriken
+- 🛑 **Graceful Shutdown System** - Automatisches sauberes Beenden
+- 🔄 **Auto-Scaling System** - Dynamische Performance-Optimierung
 
 ## 🏗️ **System-Architektur**
 
@@ -188,9 +190,43 @@ python -m pytest tests/ -v
 - [API-Dokumentation](http://localhost:8000/docs) - Nach dem Start verfügbar
 - [Test-Berichte](TEST_COVERAGE_REPORT.md) - Test-Ergebnisse
 - [Architektur-Roadmap](NEXT_GENERATION_ROADMAP.md) - Zukünftige Entwicklungen
+- [Verbesserungs-Roadmap](docs/IMPROVEMENT_ROADMAP_2025.md) - Konkrete Verbesserungsmöglichkeiten
+- [System-Architektur](docs/SYSTEM_ARCHITECTURE_2025.md) - Aktuelle Architektur
 - [Request Batching Guide](test_request_batching.py) - Batch-System Dokumentation
 - [RTX 2070 Optimierung](RTX_2070_OPTIMIZATION_ROADMAP.md) - GPU-Optimierungen
 - [Multimodal KI](multimodal_ki.py) - Multimodale Features
+
+## 🛑 **Graceful Shutdown System**
+
+Das KI-System verfügt über ein fortschrittliches Graceful Shutdown System, das eine saubere und automatische Beendigung gewährleistet.
+
+### **Features**
+- ✅ **Automatisches Beenden** - Kein manuelles Strg+C mehr nötig
+- ✅ **Signal-Handling** - Reagiert auf SIGINT, SIGTERM
+- ✅ **Ressourcen-Cleanup** - GPU-Memory, Threads, Caches
+- ✅ **Koordiniertes Shutdown** - Verhindert doppelte Cleanup-Aufrufe
+- ✅ **Monitoring-Integration** - Nahtlose Integration mit Monitoring-System
+
+### **Funktionsweise**
+```bash
+# Das System beendet sich automatisch bei:
+# - Strg+C (SIGINT)
+# - System-Shutdown (SIGTERM)
+# - Programm-Ende (atexit)
+
+# Beispiel-Ausgabe:
+✅ Programm ordnungsgemäß beendet
+🎯 Das Programm hat sich AUTOMATISCH beendet - kein manuelles Strg+C nötig!
+```
+
+### **Testen**
+```bash
+# Graceful Shutdown Tests
+python test_graceful_shutdown.py
+
+# Signal-Handling Test
+python test_graceful_shutdown.py  # Sendet automatisch SIGINT
+```
 
 ## 🆘 **Support**
 

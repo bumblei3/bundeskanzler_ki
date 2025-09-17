@@ -445,4 +445,23 @@ def get_request_batcher() -> RequestBatcher:
     return request_batcher
 
 # Registriere Cleanup beim Programmende
-atexit.register(lambda: request_batcher.shutdown())
+def _cleanup_request_batcher():
+    """Cleanup für RequestBatcher beim Programmende"""
+    try:
+        # Prüfe ob bereits Graceful Shutdown durchgeführt wurde
+        try:
+            from graceful_shutdown import is_graceful_shutdown_completed
+            if is_graceful_shutdown_completed():
+                logger.debug("🧹 Graceful Shutdown bereits durchgeführt - überspringe RequestBatcher Cleanup")
+                return
+        except ImportError:
+            pass  # Graceful Shutdown nicht verfügbar
+
+        logger.info("🛑 Cleanup RequestBatcher beim Programmende...")
+        request_batcher.shutdown()
+        logger.info("✅ RequestBatcher Cleanup abgeschlossen")
+
+    except Exception as e:
+        logger.warning(f"⚠️ Fehler beim RequestBatcher Cleanup: {e}")
+
+atexit.register(_cleanup_request_batcher)

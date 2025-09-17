@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import psutil
+import signal
 import threading
 import time
 from collections import deque
@@ -82,7 +83,46 @@ class LocalMonitoringSystem:
         # RTX 2070 spezifische Optimierungen
         self.is_rtx2070 = self._detect_rtx2070()
 
+        # Signal-Handler für ordnungsgemäßes Beenden
+        self._setup_signal_handlers()
+
         logger.info(f"✅ Lokales Monitoring-System initialisiert (RTX 2070: {self.is_rtx2070})")
+
+    def __del__(self):
+        """Cleanup beim Löschen des Objekts"""
+        self.stop_monitoring()
+
+    def __enter__(self):
+        """Context-Manager Entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context-Manager Exit - Cleanup"""
+        self.stop_monitoring()
+
+    def _setup_signal_handlers(self):
+        """Richtet Signal-Handler für ordnungsgemäßes Beenden ein"""
+        try:
+            signal.signal(signal.SIGINT, self._signal_handler)
+            signal.signal(signal.SIGTERM, self._signal_handler)
+        except (OSError, ValueError):
+            # Signal-Handler können in einigen Umgebungen nicht eingerichtet werden
+            pass
+
+    def _signal_handler(self, signum, frame):
+        """Signal-Handler für ordnungsgemäßes Beenden"""
+        # Kein Logging im Signal-Handler um Deadlocks zu vermeiden
+        try:
+            self.monitoring_active = False
+            if self.monitor_thread and self.monitor_thread.is_alive():
+                # Thread als Daemon markieren für sofortiges Beenden
+                self.monitor_thread.daemon = True
+        except:
+            pass  # Im Signal-Handler keine Exceptions
+        
+        # Sofortiges Beenden ohne sys.exit im Signal-Handler
+        import os
+        os._exit(0)
 
     def _detect_rtx2070(self) -> bool:
         """Erkennt RTX 2070 GPU"""
@@ -107,14 +147,29 @@ class LocalMonitoringSystem:
         logger.info(f"📊 Monitoring gestartet (Intervall: {interval_seconds}s)")
 
     def stop_monitoring(self):
-        """Stoppt Monitoring"""
+        """Stoppt Monitoring ordnungsgemäß"""
+        if not self.monitoring_active:
+            return
+
+        logger.info("📊 Stoppe Monitoring-System...")
         self.monitoring_active = False
-        if self.monitor_thread:
+
+        if self.monitor_thread and self.monitor_thread.is_alive():
+            # Kürzere Wartezeit für schnelleres Beenden
             self.monitor_thread.join(timeout=1.0)
-        logger.info("📊 Monitoring gestoppt")
+
+            if self.monitor_thread.is_alive():
+                logger.warning("⚠️ Monitoring-Thread konnte nicht ordnungsgemäß beendet werden")
+            else:
+                logger.info("✅ Monitoring-Thread erfolgreich beendet")
+
+        self.monitor_thread = None
+        logger.info("📊 Monitoring-System gestoppt")
 
     def _monitor_loop(self, interval: float):
         """Monitoring-Hauptschleife"""
+        logger.info("🔄 Monitoring-Schleife gestartet")
+
         while self.monitoring_active:
             try:
                 # Sammle alle Metriken
@@ -126,11 +181,18 @@ class LocalMonitoringSystem:
                     self.gpu_history.append(gpu_metrics)
                 self.system_history.append(system_metrics)
 
-                time.sleep(interval)
+                # Häufigere Überprüfung des Status für schnelleres Beenden
+                for _ in range(int(interval * 20)):  # 20 Überprüfungen pro Sekunde
+                    if not self.monitoring_active:
+                        break
+                    time.sleep(0.05)
 
             except Exception as e:
                 logger.error(f"Monitoring-Fehler: {e}")
-                time.sleep(interval)
+                if self.monitoring_active:
+                    time.sleep(min(interval, 1.0))  # Bei Fehler warten, aber Status überprüfen
+
+        logger.info("🔄 Monitoring-Schleife beendet")
 
     def get_gpu_metrics(self) -> Optional[GPUMetrics]:
         """Sammelt GPU-Metriken (RTX 2070 optimiert)"""
