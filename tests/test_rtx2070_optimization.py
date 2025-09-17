@@ -61,7 +61,7 @@ class TestRTX2070LLMManager:
         manager = RTX2070LLMManager(mock_gpu_manager)
 
         model = manager.select_optimal_model("complex")
-        assert model in ["mistral_7b", "llama2_7b", "cpu_fallback"]
+        assert model in ["german_gpt2", "cpu_fallback"]
 
     @patch("rtx2070_llm_manager.torch.cuda.is_available", return_value=False)
     def test_cpu_fallback(self, mock_cuda, mock_gpu_manager):

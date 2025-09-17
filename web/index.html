@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundeskanzler KI - Web Interface</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <!-- Font Awesome für Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js für Diagramme -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <h1>Bundeskanzler KI</h1>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="chat">
+                    <i class="fas fa-comments"></i> Chat
+                </button>
+                <button class="nav-btn" data-tab="plugins">
+                    <i class="fas fa-puzzle-piece"></i> Plugins
+                </button>
+                <button class="nav-btn" data-tab="monitoring">
+                    <i class="fas fa-chart-line"></i> Monitoring
+                </button>
+                <button class="nav-btn" data-tab="settings">
+                    <i class="fas fa-cog"></i> Einstellungen
+                </button>
+            </nav>
+            <div class="header-actions">
+                <button class="status-btn" id="connectionStatus">
+                    <i class="fas fa-circle"></i> Verbunden
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hauptinhalt -->
+    <main class="main-content">
+        <!-- Chat Tab -->
+        <div id="chat-tab" class="tab-content active">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2><i class="fas fa-robot"></i> KI-Chat</h2>
+                    <div class="chat-controls">
+                        <select id="modelSelect" class="model-select">
+                            <option value="bundeskanzler">Bundeskanzler KI</option>
+                            <option value="multimodal">Multimodal KI</option>
+                            <option value="fast">Schnell-Modus</option>
+                        </select>
+                        <button class="btn-secondary" id="clearChat">
+                            <i class="fas fa-trash"></i> Chat löschen
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-author">Bundeskanzler KI</span>
+                                <span class="message-time">Jetzt</span>
+                            </div>
+                            <div class="message-text">
+                                Willkommen bei der Bundeskanzler KI! Ich bin hier, um Ihnen bei Ihren Fragen und Anliegen zu helfen.
+                                Wie kann ich Ihnen heute behilflich sein?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="chat-input-wrapper">
+                        <textarea
+                            id="chatInput"
+                            class="chat-input"
+                            placeholder="Stellen Sie Ihre Frage..."
+                            rows="1"
+                        ></textarea>
+                        <button class="send-btn" id="sendMessage">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="input-actions">
+                        <button class="action-btn" id="voiceInput">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <button class="action-btn" id="fileUpload">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                            <span>KI tippt</span>
+                            <div class="dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plugins Tab -->
+        <div id="plugins-tab" class="tab-content">
+            <div class="plugins-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-puzzle-piece"></i> Plugin-Management</h2>
+                    <button class="btn-primary" id="refreshPlugins">
+                        <i class="fas fa-sync"></i> Aktualisieren
+                    </button>
+                </div>
+
+                <div class="plugins-grid" id="pluginsGrid">
+                    <!-- Plugins werden hier dynamisch geladen -->
+                </div>
+
+                <div class="plugin-details" id="pluginDetails" style="display: none;">
+                    <div class="plugin-info">
+                        <h3 id="pluginTitle">Plugin Details</h3>
+                        <div class="plugin-meta">
+                            <span id="pluginVersion"></span>
+                            <span id="pluginAuthor"></span>
+                        </div>
+                        <p id="pluginDescription"></p>
+                        <div class="plugin-config" id="pluginConfig">
+                            <!-- Plugin-Konfiguration -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Tab -->
+        <div id="monitoring-tab" class="tab-content">
+            <div class="monitoring-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-line"></i> System-Monitoring</h2>
+                    <div class="monitoring-controls">
+                        <button class="btn-secondary" id="refreshMonitoring">
+                            <i class="fas fa-sync"></i> Aktualisieren
+                        </button>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="autoRefreshToggle" checked>
+                            Auto-Refresh
+                        </label>
+                        <select id="timeRangeSelect" class="time-select">
+                            <option value="1h">Letzte Stunde</option>
+                            <option value="24h">Letzte 24 Stunden</option>
+                            <option value="7d">Letzte Woche</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="metrics-overview">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h4>CPU</h4>
+                        </div>
+                        <div class="metric-value">
+                            <span id="cpuUsage">--</span>%
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cpuProgress"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h4>Speicher</h4>
+                        </div>
+                        <div class="metric-value">
+                            <span id="memoryUsage">--</span>%
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="memoryProgress"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h4>GPU</h4>
+                        </div>
+                        <div class="metric-value">
+                            <span id="gpuUsage">--</span>%
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="gpuProgress"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h4>Aktive Verbindungen</h4>
+                        </div>
+                        <div class="metric-value">
+                            <span id="activeConnections">--</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h4>Gesamt-Anfragen</h4>
+                        </div>
+                        <div class="metric-value">
+                            <span id="totalRequests">--</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h4>Ø Antwortzeit</h4>
+                        </div>
+                        <div class="metric-value">
+                            <span id="avgResponseTime">--</span>ms
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>CPU-Auslastung</h3>
+                        <div class="chart-container">
+                            <canvas id="cpuChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Speicher-Auslastung</h3>
+                        <div class="chart-container">
+                            <canvas id="memoryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>GPU-Auslastung</h3>
+                        <div class="chart-container">
+                            <canvas id="gpuChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Anfragen pro Minute</h3>
+                        <div class="chart-container">
+                            <canvas id="requestsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Antwortzeit</h3>
+                        <div class="chart-container">
+                            <canvas id="responseTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="system-info">
+                    <div class="info-card">
+                        <h3>System-Informationen</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Uptime:</label>
+                                <span id="systemUptime">--</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Python-Version:</label>
+                                <span id="pythonVersion">--</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Modell:</label>
+                                <span id="modelInfo">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="logs-section">
+                    <div class="logs-header">
+                        <h3>System-Logs</h3>
+                        <div class="logs-controls">
+                            <button class="btn-secondary btn-small" id="exportLogs">
+                                <i class="fas fa-download"></i> Exportieren
+                            </button>
+                            <button class="btn-secondary btn-small" id="clearLogs">
+                                <i class="fas fa-trash"></i> Löschen
+                            </button>
+                        </div>
+                    </div>
+                    <div class="logs-container" id="logsContainer">
+                        <div class="no-logs">Keine Logs verfügbar</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="settings-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i> Einstellungen</h2>
+                    <div class="settings-actions">
+                        <button class="btn-secondary" id="exportSettings">
+                            <i class="fas fa-download"></i> Exportieren
+                        </button>
+                        <input type="file" id="importSettingsFile" accept=".json" style="display: none;">
+                        <button class="btn-secondary" id="importSettings">
+                            <i class="fas fa-upload"></i> Importieren
+                        </button>
+                        <button class="btn-secondary" id="resetSettings">
+                            <i class="fas fa-undo"></i> Zurücksetzen
+                        </button>
+                        <button class="btn-primary" id="saveSettings">
+                            <i class="fas fa-save"></i> Speichern
+                        </button>
+                    </div>
+                </div>
+
+                <form id="settingsForm" class="settings-form">
+                    <div class="settings-grid">
+                        <div class="settings-section">
+                            <h3>Allgemein</h3>
+                            <div class="setting-item">
+                                <label for="systemName">System-Name</label>
+                                <input type="text" id="systemName" class="setting-input" placeholder="Bundeskanzler KI">
+                            </div>
+                            <div class="setting-item">
+                                <label for="themeSelect">Theme</label>
+                                <select id="themeSelect" class="setting-select">
+                                    <option value="light">Hell</option>
+                                    <option value="dark">Dunkel</option>
+                                    <option value="auto">Automatisch</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label for="languageSelect">Sprache</label>
+                                <select id="languageSelect" class="setting-select">
+                                    <option value="de">Deutsch</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enableNotifications">
+                                    Benachrichtigungen aktivieren
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="autoRefreshInterval">Auto-Refresh Intervall (Sekunden)</label>
+                                <input type="number" id="autoRefreshInterval" class="setting-input" value="30" min="5" max="300">
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>KI-Modell</h3>
+                            <div class="setting-item">
+                                <label for="maxTokens">Maximale Token</label>
+                                <input type="number" id="maxTokens" class="setting-input" value="2048" min="1" max="8192">
+                            </div>
+                            <div class="setting-item">
+                                <label for="temperature">Temperatur</label>
+                                <input type="number" id="temperature" class="setting-input" value="0.7" min="0" max="2" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="topP">Top-P</label>
+                                <input type="number" id="topP" class="setting-input" value="0.9" min="0" max="1" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="frequencyPenalty">Frequency Penalty</label>
+                                <input type="number" id="frequencyPenalty" class="setting-input" value="0.0" min="-2" max="2" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="presencePenalty">Presence Penalty</label>
+                                <input type="number" id="presencePenalty" class="setting-input" value="0.0" min="-2" max="2" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>API-Konfiguration</h3>
+                            <div class="setting-item">
+                                <label for="apiHost">API-Host</label>
+                                <input type="text" id="apiHost" class="setting-input" placeholder="localhost">
+                            </div>
+                            <div class="setting-item">
+                                <label for="apiPort">API-Port</label>
+                                <input type="number" id="apiPort" class="setting-input" value="8000" min="1" max="65535">
+                            </div>
+                            <div class="setting-item">
+                                <label for="apiKey">API-Schlüssel</label>
+                                <div class="input-with-button">
+                                    <input type="password" id="apiKey" class="setting-input" placeholder="API-Schlüssel eingeben">
+                                    <button type="button" class="btn-secondary btn-small" id="generateApiKey">
+                                        <i class="fas fa-key"></i> Generieren
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="useHttps">
+                                    HTTPS verwenden
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <button type="button" class="btn-secondary" id="testApiConnection">
+                                    <i class="fas fa-plug"></i> API-Verbindung testen
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Performance</h3>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enableCaching">
+                                    Caching aktivieren
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="cacheSize">Cache-Größe</label>
+                                <input type="number" id="cacheSize" class="setting-input" value="1000" min="10" max="10000">
+                            </div>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enableBatching">
+                                    Request-Batching aktivieren
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="batchSize">Batch-Größe</label>
+                                <input type="number" id="batchSize" class="setting-input" value="10" min="1" max="100">
+                            </div>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enableAutoScaling">
+                                    Auto-Scaling aktivieren
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Sicherheit</h3>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enableRateLimiting">
+                                    Rate-Limiting aktivieren
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="rateLimitRequests">Rate-Limit Anfragen</label>
+                                <input type="number" id="rateLimitRequests" class="setting-input" value="100" min="1" max="1000">
+                            </div>
+                            <div class="setting-item">
+                                <label for="rateLimitWindow">Rate-Limit Fenster (Sekunden)</label>
+                                <input type="number" id="rateLimitWindow" class="setting-input" value="60" min="1" max="3600">
+                            </div>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enableLogging">
+                                    Logging aktivieren
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="logLevel">Log-Level</label>
+                                <select id="logLevel" class="setting-select">
+                                    <option value="DEBUG">DEBUG</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="WARNING">WARNING</option>
+                                    <option value="ERROR">ERROR</option>
+                                    <option value="CRITICAL">CRITICAL</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Plugins</h3>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enablePlugins">
+                                    Plugins aktivieren
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="pluginAutoLoad">
+                                    Plugins automatisch laden
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="maxPluginInstances">Maximale Plugin-Instanzen</label>
+                                <input type="number" id="maxPluginInstances" class="setting-input" value="10" min="1" max="100">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <span>Bundeskanzler KI v1.0.0</span>
+                <span>•</span>
+                <span>© 2025 Bundeskanzler KI Team</span>
+            </div>
+            <div class="footer-links">
+                <a href="/docs" target="_blank">API-Dokumentation</a>
+                <a href="https://github.com/bumblei3/bundeskanzler_ki" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div class="modal" id="pluginModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Plugin konfigurieren</h3>
+                <button class="modal-close" id="closePluginModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="pluginModalBody">
+                <!-- Plugin-Konfiguration -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelPluginConfig">Abbrechen</button>
+                <button class="btn-primary" id="savePluginConfig">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Lade...</span>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/plugins.js"></script>
+    <script src="/static/js/monitoring.js"></script>
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>

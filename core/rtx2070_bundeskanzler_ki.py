@@ -69,7 +69,7 @@ class RTX2070Config:
 
     enable_llm_integration: bool = True
     enable_rag_optimization: bool = True
-    llm_model_preference: str = "auto"  # "mistral_7b", "llama2_7b", "german_gpt2", "auto"
+    llm_model_preference: str = "auto"  # "german_gpt2", "auto"
     rag_hybrid_search: bool = True
     dynamic_model_loading: bool = True
     vram_safety_margin_gb: float = 1.0  # Sicherheitsreserve für VRAM

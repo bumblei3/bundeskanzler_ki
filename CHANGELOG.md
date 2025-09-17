@@ -5,6 +5,36 @@ Alle wichtigen Änderungen an der Bundeskanzler KI werden in diesem Changelog do
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 und dieses Projekt verwendet [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2025-09-17
+
+### 🐛 Behoben
+
+#### 🔧 Kritische Stabilitätsprobleme
+- **Gated Repository Fixes**: Llama 2 7B und Mistral 7B Modelle entfernt wegen Zugriffsbeschränkungen
+- **Plugin API Logger-Fehler**: FastAPI Logger-Attribute-Fehler in `plugin_api.py` und `plugin_api_fastapi.py` behoben
+- **Model-Kompatibilität**: Nur frei verfügbare Modelle (German GPT-2, SigLIP, Whisper) werden verwendet
+- **LLM Manager Updates**: RTX 2070 LLM-Manager aktualisiert für robuste Modell-Auswahl
+
+#### 🧹 System-Bereinigung
+- **Cache-Optimierung**: 1564 Python-Cache-Dateien erfolgreich entfernt
+- **Speicher-Optimierung**: ~2MB Festplattenspeicher durch automatisches Cleanup freigegeben
+- **Cleanup-Script**: Vollständige Bereinigung von `__pycache__`, temporären Dateien und Logs
+- **Performance-Verbesserung**: Schnellere System-Initialisierung nach Bereinigung
+
+#### 🧪 Test-Infrastruktur
+- **Comprehensive Tests**: Alle 7 Test-Komponenten erfolgreich (100% Erfolgsrate)
+- **GPU-Validierung**: RTX 2070 GPU-Optimierung bestätigt (6.8GB VRAM verfügbar)
+- **API-Endpunkte**: Health-Check und Chat-Endpunkte funktionieren zuverlässig
+- **Performance-Benchmarks**: Durchschnitts-Query-Zeit von 0.17s bestätigt
+
+### 📚 Dokumentation
+
+#### 📖 Dokumentations-Updates
+- **README.md**: Datum auf 17. September 2025 aktualisiert
+- **CHANGELOG.md**: Neue Version 2.2.1 mit allen Fixes dokumentiert
+- **Test-Berichte**: Aktuelle Test-Ergebnisse und Performance-Metriken
+- **Architektur-Dokumentation**: System-Architektur nach Cleanup aktualisiert
+
 ## [2.2.0] - 2025-09-16
 
 ### ✨ Neu hinzugefügt

@@ -70,8 +70,49 @@ from typing import Any, Dict, List, Optional
 # Local imports
 from core.adaptive_response import AdaptiveResponseManager
 from core.advanced_cache import cache_manager, get_cache_stats, initialize_caches
+
+# Import Multimodal KI System
+try:
+    from multimodal_ki import MultimodalTransformerModel
+    MULTIMODAL_KI_AVAILABLE = True
+except ImportError:
+    MULTIMODAL_KI_AVAILABLE = False
+
+# Import Intelligent Cache System für erweiterte Caching-Funktionen
+try:
+    from core.intelligent_cache import (
+        IntelligentCacheManager,
+        get_intelligent_cache,
+        get_intelligent_cache_stats,
+        intelligent_cache_manager
+    )
+    INTELLIGENT_CACHE_AVAILABLE = True
+except ImportError:
+    INTELLIGENT_CACHE_AVAILABLE = False
+
+# Import Auto-Scaling System
+try:
+    from core.auto_scaling import get_auto_scaler, AutoScaler
+    AUTO_SCALING_AVAILABLE = True
+except ImportError:
+    AUTO_SCALING_AVAILABLE = False
+
 from core.local_auth_manager import get_auth_manager
-from corpus_manager import CorpusManager
+
+# CorpusManager Import mit Fallback
+try:
+    import sys
+    import os
+    # Füge das aktuelle Verzeichnis zum Python-Pfad hinzu
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    from corpus_manager import CorpusManager  # type: ignore
+except ImportError as e:
+    print(f"⚠️ CorpusManager konnte nicht importiert werden: {e}, verwende Mock")
+    class CorpusManager:  # type: ignore
+        def __init__(self, *args, **kwargs): pass
+        def search_corpus(self, *args, **kwargs): return []
 from database import (
     Conversation,
     SystemLog,
@@ -89,6 +130,15 @@ from fastapi.security import (
     OAuth2PasswordRequestForm,
 )
 from fastapi.staticfiles import StaticFiles
+
+# Plugin-System Integration
+try:
+    from core.plugin_api_fastapi import register_plugin_api_fastapi
+    from core.plugin_integration import initialize_plugin_integration, shutdown_plugin_integration
+    PLUGIN_SYSTEM_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Plugin-System konnte nicht importiert werden: {e}")
+    PLUGIN_SYSTEM_AVAILABLE = False
 
 # GPU und erweiterte Module (Mock für fehlende Module)
 class AsyncBatchManager:
@@ -533,6 +583,7 @@ fact_checker: Optional[FactChecker] = None
 gpu_processor: Optional[GPUBatchProcessor] = None
 async_batch_manager: Optional[AsyncBatchManager] = None
 multilingual_ki: Optional[MultilingualBundeskanzlerKI] = None
+multimodal_model: Optional[MultimodalTransformerModel] = None
 start_time = time.time()
 request_counter = 0
 
@@ -652,6 +703,18 @@ def initialize_ki_components():
     multilingual_ki = MultilingualBundeskanzlerKI()
     print("✅ Multilingual KI initialisiert")
 
+    print("🎯 Initialisiere Multimodal KI...")
+    if MULTIMODAL_KI_AVAILABLE:
+        try:
+            multimodal_model = MultimodalTransformerModel(model_tier="rtx2070")
+            print("✅ Multimodal KI initialisiert")
+        except Exception as e:
+            print(f"⚠️ Multimodal KI Initialisierung fehlgeschlagen: {e}")
+            multimodal_model = None
+    else:
+        print("⚠️ Multimodal KI nicht verfügbar")
+        multimodal_model = None
+
 
 def initialize_gpu_system():
     """Initialisiert das GPU-Batching-System"""
@@ -693,11 +756,31 @@ async def lifespan(app: FastAPI):
     # Caching-System initialisieren
     initialize_caches()
 
+    # Intelligent Cache System initialisieren
+    if INTELLIGENT_CACHE_AVAILABLE:
+        try:
+            # Stelle sicher, dass intelligente Caches verfügbar sind
+            intelligent_cache_manager.get_cache("embeddings")
+            intelligent_cache_manager.get_cache("responses")
+            intelligent_cache_manager.get_cache("api_responses")
+            api_logger.info("✅ Intelligent Cache System in API initialisiert")
+        except Exception as e:
+            api_logger.warning(f"⚠️ Intelligent Cache System Initialisierung fehlgeschlagen: {e}")
+
     try:
         # Initialisiere alle Komponenten
         initialize_ki_components()
         run_auto_import()
         initialize_gpu_system()
+
+        # Plugin-System initialisieren
+        if PLUGIN_SYSTEM_AVAILABLE:
+            try:
+                initialize_plugin_integration()
+                print("✅ Plugin-System initialisiert")
+            except Exception as e:
+                print(f"⚠️ Plugin-System Initialisierung fehlgeschlagen: {e}")
+
         print("✅ Alle KI-Komponenten initialisiert")
 
         memory_optimizer.log_memory_usage("nach Initialisierung")
@@ -717,6 +800,7 @@ async def lifespan(app: FastAPI):
         gpu_processor = None
         async_batch_manager = None
         multilingual_ki = None
+        multimodal_model = None
 
     yield
 
@@ -728,6 +812,14 @@ async def lifespan(app: FastAPI):
             print("✅ Memory gespeichert")
         except Exception as e:
             print(f"⚠️ Fehler beim Speichern des Memory: {e}")
+
+    # Plugin-System herunterfahren
+    if PLUGIN_SYSTEM_AVAILABLE:
+        try:
+            shutdown_plugin_integration()
+            print("✅ Plugin-System heruntergefahren")
+        except Exception as e:
+            print(f"⚠️ Fehler beim Plugin-System-Shutdown: {e}")
 
     # Memory-Optimierung beim Shutdown
     memory_optimizer.force_garbage_collection()
@@ -778,6 +870,13 @@ app.add_middleware(
 # Static files für Admin-Panel
 app.mount("/static", StaticFiles(directory="."), name="static")
 
+# Plugin-API registrieren
+if PLUGIN_SYSTEM_AVAILABLE:
+    try:
+        register_plugin_api_fastapi(app)
+        print("✅ Plugin-API erfolgreich registriert")
+    except Exception as e:
+        print(f"⚠️ Plugin-API Registrierung fehlgeschlagen: {e}")
 
 security = HTTPBearer()
 
@@ -890,7 +989,34 @@ async def check_rate_limit(request: Request, endpoint_type: str = "default"):
 
 
 def generate_embedding(text: str) -> np.ndarray:
-    """Generiert Embedding für Text mit GPU-Batching und Caching"""
+    """
+    Generiert Embedding für Text mit GPU-Batching und Caching.
+
+    Diese Funktion erstellt semantische Vektorrepräsentationen von Texten
+    unter Verwendung von Transformer-Modellen. Implementiert intelligentes
+    Caching und GPU-Batching für optimale Performance.
+
+    Args:
+        text: Der zu embeddende Text
+
+    Returns:
+        np.ndarray: Embedding-Vektor als NumPy Array
+
+    Raises:
+        Exception: Bei kritischen Fehlern während der Embedding-Generierung
+
+    Note:
+        - Verwendet GPU-Batching wenn verfügbar
+        - Implementiert intelligentes Caching zur Performance-Optimierung
+        - Fällt automatisch auf CPU zurück bei GPU-Fehlern
+    """
+    # Cache-Key für Embedding generieren
+    embedding_cache = cache_manager.get_cache("embeddings")
+    if embedding_cache:
+        cache_key = f"embedding:{hashlib.md5(text.encode()).hexdigest()}"
+        cached_embedding = embedding_cache.get(cache_key)
+        if cached_embedding is not None:
+            return cached_embedding
 
     # Cache-Key für Embedding generieren
     embedding_cache = cache_manager.get_cache("embeddings")
@@ -1184,9 +1310,27 @@ API Endpoints
 
 
 @app.get("/")
-async def root():
-    """API Status und Gesundheitscheck"""
-    return {"status": "healthy", "message": "Bundeskanzler KI API läuft"}
+async def root() -> Dict[str, str]:
+    """
+    API Status und Gesundheitscheck.
+
+    Dieser Endpunkt dient als grundlegender Health-Check für die Bundeskanzler KI API.
+    Gibt den aktuellen Status der API zurück und bestätigt, dass alle Kernkomponenten
+    ordnungsgemäß funktionieren.
+
+    Returns:
+        Dict[str, str]: Status-Informationen mit folgenden Schlüsseln:
+            - "status": "healthy" wenn die API funktioniert
+            - "message": Beschreibende Status-Nachricht
+            - "timestamp": ISO-Formatierter Zeitstempel
+            - "version": API-Version (falls verfügbar)
+    """
+    return {
+        "status": "healthy",
+        "message": "Bundeskanzler KI API läuft",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0"
+    }
 
 
 @app.post("/auth/token")
@@ -1738,6 +1882,798 @@ async def get_cache_stats_admin(current_user: str = Depends(verify_admin_token))
         raise HTTPException(
             status_code=500,
             detail=f"Cache-Statistiken konnten nicht abgerufen werden: {str(e)}",
+        )
+
+
+# === INTELLIGENT CACHE ENDPOINTS ===
+
+@app.get("/admin/intelligent-cache/stats")
+async def get_intelligent_cache_stats_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Detaillierte Statistiken des intelligenten Cache-Systems"""
+    api_logger.info(
+        "Admin intelligent cache stats requested",
+        extra={
+            "component": "admin",
+            "action": "intelligent_cache_stats_request",
+            "user_id": current_user,
+        },
+    )
+
+    if not INTELLIGENT_CACHE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Intelligent Cache System nicht verfügbar"
+        )
+
+    try:
+        stats = get_intelligent_cache_stats()
+
+        # Berechne aggregierte Statistiken
+        total_entries = stats.get("total_entries", 0)
+        total_size_mb = stats.get("total_size_mb", 0)
+
+        # Cache-Details analysieren
+        cache_performance = {}
+        for cache_name, cache_stats in stats.get("cache_details", {}).items():
+            hit_rate = cache_stats.get("hit_rate", 0)
+            utilization = cache_stats.get("utilization_percent", 0)
+            entries = cache_stats.get("entries", 0)
+
+            cache_performance[cache_name] = {
+                "hit_rate_percent": hit_rate,
+                "utilization_percent": utilization,
+                "entries": entries,
+                "size_mb": cache_stats.get("size_mb", 0),
+                "compression_ratio": cache_stats.get("compression_ratio", 1.0),
+                "similarity_hits": cache_stats.get("similarity_hits", 0)
+            }
+
+        intelligent_stats = {
+            "system_overview": {
+                "total_caches": stats.get("total_caches", 0),
+                "total_entries": total_entries,
+                "total_size_mb": total_size_mb,
+                "avg_cache_size_mb": total_size_mb / max(stats.get("total_caches", 1), 1)
+            },
+            "cache_performance": cache_performance,
+            "raw_stats": stats
+        }
+
+        return intelligent_stats
+
+    except Exception as e:
+        api_logger.error(
+            f"Intelligent cache stats failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "intelligent_cache_stats_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Intelligente Cache-Statistiken konnten nicht abgerufen werden: {str(e)}",
+        )
+
+
+@app.post("/admin/intelligent-cache/optimize")
+async def optimize_intelligent_cache_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Optimiert alle intelligenten Caches"""
+    api_logger.info(
+        "Admin intelligent cache optimization requested",
+        extra={
+            "component": "admin",
+            "action": "intelligent_cache_optimize_request",
+            "user_id": current_user,
+        },
+    )
+
+    if not INTELLIGENT_CACHE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Intelligent Cache System nicht verfügbar"
+        )
+
+    try:
+        intelligent_cache_manager.optimize_all()
+
+        api_logger.info(
+            "Intelligent cache optimization completed",
+            extra={
+                "component": "admin",
+                "action": "intelligent_cache_optimized",
+                "user_id": current_user,
+            },
+        )
+
+        return {
+            "message": "Intelligente Caches erfolgreich optimiert",
+            "optimized_caches": list(intelligent_cache_manager.caches.keys())
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Intelligent cache optimization failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "intelligent_cache_optimize_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Intelligente Cache-Optimierung fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/admin/intelligent-cache/clear")
+async def clear_intelligent_cache_admin(
+    cache_name: Optional[str] = None,
+    current_user: str = Depends(verify_admin_token)
+):
+    """Admin: Leert intelligente Caches"""
+    api_logger.info(
+        "Admin intelligent cache clear requested",
+        extra={
+            "component": "admin",
+            "action": "intelligent_cache_clear_request",
+            "user_id": current_user,
+            "cache_name": cache_name,
+        },
+    )
+
+    if not INTELLIGENT_CACHE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Intelligent Cache System nicht verfügbar"
+        )
+
+    try:
+        if cache_name:
+            # Einzelnen Cache leeren
+            if cache_name in intelligent_cache_manager.caches:
+                intelligent_cache_manager.caches[cache_name].clear()
+                cleared_caches = [cache_name]
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Cache '{cache_name}' nicht gefunden"
+                )
+        else:
+            # Alle Caches leeren
+            intelligent_cache_manager.clear_all()
+            cleared_caches = list(intelligent_cache_manager.caches.keys())
+
+        api_logger.info(
+            f"Intelligent cache clear completed: {cleared_caches}",
+            extra={
+                "component": "admin",
+                "action": "intelligent_cache_cleared",
+                "user_id": current_user,
+                "cleared_caches": cleared_caches,
+            },
+        )
+
+        return {
+            "message": f"Intelligente Caches erfolgreich geleert: {', '.join(cleared_caches)}",
+            "cleared_caches": cleared_caches
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Intelligent cache clear failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "intelligent_cache_clear_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Intelligentes Cache-Leeren fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.get("/admin/intelligent-cache/{cache_name}/entries")
+async def get_intelligent_cache_entries_admin(
+    cache_name: str,
+    limit: int = 50,
+    current_user: str = Depends(verify_admin_token)
+):
+    """Admin: Zeigt Einträge eines intelligenten Caches"""
+    api_logger.info(
+        "Admin intelligent cache entries requested",
+        extra={
+            "component": "admin",
+            "action": "intelligent_cache_entries_request",
+            "user_id": current_user,
+            "cache_name": cache_name,
+            "limit": limit,
+        },
+    )
+
+    if not INTELLIGENT_CACHE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Intelligent Cache System nicht verfügbar"
+        )
+
+    try:
+        if cache_name not in intelligent_cache_manager.caches:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Cache '{cache_name}' nicht gefunden"
+            )
+
+        cache = intelligent_cache_manager.caches[cache_name]
+
+        # Sammle Cache-Einträge (begrenzt für Performance)
+        entries = []
+        count = 0
+
+        for key, entry in list(cache.cache.items())[:limit]:
+            entries.append({
+                "key": key,
+                "size_bytes": entry.size_bytes,
+                "created_at": entry.created_at,
+                "last_accessed": entry.last_accessed,
+                "access_count": entry.access_count,
+                "ttl": entry.ttl,
+                "compressed": entry.compressed,
+                "metadata": entry.metadata
+            })
+            count += 1
+            if count >= limit:
+                break
+
+        return {
+            "cache_name": cache_name,
+            "entries_count": len(entries),
+            "total_entries": len(cache.cache),
+            "entries": entries
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Intelligent cache entries failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "intelligent_cache_entries_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Cache-Einträge konnten nicht abgerufen werden: {str(e)}",
+        )
+
+
+# ===== REQUEST BATCHING ENDPOINTS =====
+
+@app.post("/batch/text")
+async def submit_batch_text_request(
+    request: dict,
+    current_user: str = Depends(verify_token)
+):
+    """Batch-Verarbeitung für Text-Anfragen"""
+    api_logger.info(
+        "Batch text request submitted",
+        extra={
+            "component": "batch",
+            "action": "text_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        text = request.get("text", "")
+        priority = request.get("priority", 1)
+
+        if not text:
+            raise HTTPException(status_code=400, detail="Text ist erforderlich")
+
+        # Anfrage zur Batch-Verarbeitung hinzufügen
+        request_id = multimodal_model.submit_batch_text_request(text, priority)
+
+        if request_id:
+            return {
+                "request_id": request_id,
+                "status": "submitted",
+                "message": "Text-Anfrage zur Batch-Verarbeitung hinzugefügt"
+            }
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Request Batching System nicht verfügbar"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Batch text request failed: {e}",
+            extra={
+                "component": "batch",
+                "action": "text_request_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch-Text-Anfrage fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/batch/embeddings")
+async def submit_batch_embedding_request(
+    request: dict,
+    current_user: str = Depends(verify_token)
+):
+    """Batch-Verarbeitung für Embedding-Anfragen"""
+    api_logger.info(
+        "Batch embedding request submitted",
+        extra={
+            "component": "batch",
+            "action": "embedding_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        texts = request.get("texts", [])
+        priority = request.get("priority", 1)
+
+        if not texts or not isinstance(texts, list):
+            raise HTTPException(status_code=400, detail="Liste von Texten ist erforderlich")
+
+        # Anfrage zur Batch-Verarbeitung hinzufügen
+        request_id = multimodal_model.submit_batch_embedding_request(texts, priority)
+
+        if request_id:
+            return {
+                "request_id": request_id,
+                "status": "submitted",
+                "message": f"Embedding-Anfrage für {len(texts)} Texte zur Batch-Verarbeitung hinzugefügt"
+            }
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Request Batching System nicht verfügbar"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Batch embedding request failed: {e}",
+            extra={
+                "component": "batch",
+                "action": "embedding_request_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch-Embedding-Anfrage fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/batch/search")
+async def submit_batch_search_request(
+    request: dict,
+    current_user: str = Depends(verify_token)
+):
+    """Batch-Verarbeitung für Suchanfragen"""
+    api_logger.info(
+        "Batch search request submitted",
+        extra={
+            "component": "batch",
+            "action": "search_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        query = request.get("query", "")
+        context = request.get("context", [])
+        priority = request.get("priority", 1)
+
+        if not query:
+            raise HTTPException(status_code=400, detail="Suchanfrage ist erforderlich")
+
+        # Anfrage zur Batch-Verarbeitung hinzufügen
+        request_id = multimodal_model.submit_batch_search_request(query, context, priority)
+
+        if request_id:
+            return {
+                "request_id": request_id,
+                "status": "submitted",
+                "message": "Suchanfrage zur Batch-Verarbeitung hinzugefügt"
+            }
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Request Batching System nicht verfügbar"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Batch search request failed: {e}",
+            extra={
+                "component": "batch",
+                "action": "search_request_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch-Suchanfrage fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/batch/process")
+async def process_batch_immediately(
+    request: dict,
+    current_user: str = Depends(verify_token)
+):
+    """Verarbeitet mehrere Anfragen sofort im Batch-Modus"""
+    api_logger.info(
+        "Immediate batch processing requested",
+        extra={
+            "component": "batch",
+            "action": "immediate_batch",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        requests = request.get("requests", [])
+
+        if not requests or not isinstance(requests, list):
+            raise HTTPException(status_code=400, detail="Liste von Anfragen ist erforderlich")
+
+        if len(requests) > 50:  # Begrenzung für Performance
+            raise HTTPException(status_code=400, detail="Maximal 50 Anfragen pro Batch erlaubt")
+
+        # Batch-Verarbeitung durchführen
+        results = multimodal_model.process_batch_immediately(requests)
+
+        return {
+            "results": results,
+            "total_requests": len(requests),
+            "processed_at": datetime.now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Immediate batch processing failed: {e}",
+            extra={
+                "component": "batch",
+                "action": "immediate_batch_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Sofortige Batch-Verarbeitung fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.get("/admin/batch/stats")
+async def get_batch_stats_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Statistiken des Request Batching Systems"""
+    api_logger.info(
+        "Admin batch stats requested",
+        extra={
+            "component": "admin",
+            "action": "batch_stats_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        stats = multimodal_model.get_batch_stats()
+
+        return {
+            "batch_system": stats,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin batch stats failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "batch_stats_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch-Statistiken konnten nicht abgerufen werden: {str(e)}",
+        )
+
+
+@app.post("/admin/batch/optimize")
+async def optimize_batch_processing_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Optimiert die Batch-Verarbeitung"""
+    api_logger.info(
+        "Admin batch optimization requested",
+        extra={
+            "component": "admin",
+            "action": "batch_optimize_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        multimodal_model.optimize_batch_processing()
+
+        return {
+            "message": "Batch-Verarbeitung wurde optimiert",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin batch optimization failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "batch_optimize_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch-Optimierung fehlgeschlagen: {str(e)}",
+        )
+
+
+# ===== AUTO-SCALING ENDPOINTS =====
+
+@app.get("/admin/auto-scaling/status")
+async def get_auto_scaling_status_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Aktueller Auto-Scaling Status"""
+    api_logger.info(
+        "Admin auto-scaling status requested",
+        extra={
+            "component": "admin",
+            "action": "auto_scaling_status_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        status = multimodal_model.get_system_status()
+
+        return {
+            "auto_scaling_status": status,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin auto-scaling status failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "auto_scaling_status_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Auto-Scaling Status konnte nicht abgerufen werden: {str(e)}",
+        )
+
+
+@app.post("/admin/auto-scaling/enable")
+async def enable_auto_scaling_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Aktiviert Auto-Scaling"""
+    api_logger.info(
+        "Admin auto-scaling enable requested",
+        extra={
+            "component": "admin",
+            "action": "auto_scaling_enable_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        multimodal_model.enable_auto_scaling()
+
+        return {
+            "message": "Auto-Scaling wurde aktiviert",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin auto-scaling enable failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "auto_scaling_enable_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Auto-Scaling Aktivierung fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/admin/auto-scaling/disable")
+async def disable_auto_scaling_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Deaktiviert Auto-Scaling"""
+    api_logger.info(
+        "Admin auto-scaling disable requested",
+        extra={
+            "component": "admin",
+            "action": "auto_scaling_disable_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        multimodal_model.disable_auto_scaling()
+
+        return {
+            "message": "Auto-Scaling wurde deaktiviert",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin auto-scaling disable failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "auto_scaling_disable_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Auto-Scaling Deaktivierung fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/admin/auto-scaling/manual")
+async def manual_scaling_admin(
+    request: dict,
+    current_user: str = Depends(verify_admin_token)
+):
+    """Admin: Manuelle Skalierungsaktion"""
+    api_logger.info(
+        "Admin manual scaling requested",
+        extra={
+            "component": "admin",
+            "action": "manual_scaling_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        action = request.get("action", "")
+        target = request.get("target", "")
+        value = request.get("value")
+
+        if not action or not target:
+            raise HTTPException(status_code=400, detail="Action und Target sind erforderlich")
+
+        multimodal_model.manual_scaling_action(action, target, value)
+
+        return {
+            "message": f"Manuelle Skalierung ausgeführt: {action} {target} -> {value}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Admin manual scaling failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "manual_scaling_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Manuelle Skalierung fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.post("/admin/auto-scaling/optimize")
+async def optimize_performance_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Führt Performance-Optimierungen durch"""
+    api_logger.info(
+        "Admin performance optimization requested",
+        extra={
+            "component": "admin",
+            "action": "performance_optimize_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        multimodal_model.optimize_performance()
+
+        return {
+            "message": "Performance-Optimierung wurde durchgeführt",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin performance optimization failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "performance_optimize_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Performance-Optimierung fehlgeschlagen: {str(e)}",
+        )
+
+
+@app.get("/admin/auto-scaling/metrics")
+async def get_performance_metrics_admin(current_user: str = Depends(verify_admin_token)):
+    """Admin: Detaillierte Performance-Metriken"""
+    api_logger.info(
+        "Admin performance metrics requested",
+        extra={
+            "component": "admin",
+            "action": "performance_metrics_request",
+            "user_id": current_user,
+        },
+    )
+
+    try:
+        metrics = multimodal_model.get_performance_metrics()
+
+        return {
+            "performance_metrics": metrics,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        api_logger.error(
+            f"Admin performance metrics failed: {e}",
+            extra={
+                "component": "admin",
+                "action": "performance_metrics_error",
+                "user_id": current_user,
+                "error": str(e),
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Performance-Metriken konnten nicht abgerufen werden: {str(e)}",
         )
 
 

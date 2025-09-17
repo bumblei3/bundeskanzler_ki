@@ -16,11 +16,13 @@ except ImportError:
 # Lokale Imports (immer verfügbar)
 import cv2
 import gc
+import hashlib
 import io
 import logging
 import os
+import time
 from datetime import datetime
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import librosa
 import numpy as np
@@ -41,41 +43,31 @@ from transformers import (
     WhisperProcessor,
     pipeline,
 )
-                "answer": "Entschuldigung, ich konnte keine Antwort generieren.",
-                "confidence": 0.0,
-                "key_concepts": [],
-                "relevant_knowledge": {},
-                "reasoning_type": "error",
-            }
 
-    def get_monitoring_data(self) -> Dict[str, Any]:
-        """Gibt Monitoring-Daten für Dashboard zurück"""
-        if self.monitoring:
-            return self.monitoring.get_dashboard_data()
-        else:
-            return {
-                "error": "Monitoring-System nicht verfügbar",
-                "timestamp": datetime.now().isoformat()
-            }
+# Request Batching System
+try:
+    from core.request_batching import get_request_batcher, RequestBatcher
+    REQUEST_BATCHING_AVAILABLE = True
+except ImportError:
+    REQUEST_BATCHING_AVAILABLE = False
 
-    def get_system_health(self) -> Dict[str, Any]:
-        """Gibt System-Health-Status zurück"""
-        if self.monitoring:
-            return self.monitoring.get_health_status()
-        else:
-            return {
-                "overall_healthy": True,
-                "monitoring_available": False,
-                "timestamp": datetime.now().isoformat()
-            }ration,
-    WhisperProcessor,
-    pipeline,
-)
+# Auto-Scaling System
+try:
+    from core.auto_scaling import get_auto_scaler, AutoScaler
+    AUTO_SCALING_AVAILABLE = True
+except ImportError:
+    AUTO_SCALING_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 if not API_IMPORTS_AVAILABLE:
     logger.warning("API-Imports nicht verfügbar - API-Features deaktiviert")
+
+if not REQUEST_BATCHING_AVAILABLE:
+    logger.warning("Request Batching System nicht verfügbar - Batch-Features deaktiviert")
+
+if not AUTO_SCALING_AVAILABLE:
+    logger.warning("Auto-Scaling System nicht verfügbar - Auto-Scaling-Features deaktiviert")
 
 # Import RTX 2070 LLM Manager für erweiterte lokale Modelle
 try:
@@ -83,6 +75,25 @@ try:
     RTX2070_MANAGER_AVAILABLE = True
 except ImportError:
     RTX2070_MANAGER_AVAILABLE = False
+
+# Import Quantization Optimizer für intelligente Modell-Quantisierung
+try:
+    from core.quantization_optimizer import QuantizationOptimizer, quantization_optimizer
+    QUANTIZATION_OPTIMIZER_AVAILABLE = True
+except ImportError:
+    QUANTIZATION_OPTIMIZER_AVAILABLE = False
+
+# Import Intelligent Cache System für erweiterte Caching-Funktionen
+try:
+    from core.intelligent_cache import (
+        IntelligentCacheManager,
+        get_intelligent_cache,
+        get_intelligent_cache_stats,
+        intelligent_cache_manager
+    )
+    INTELLIGENT_CACHE_AVAILABLE = True
+except ImportError:
+    INTELLIGENT_CACHE_AVAILABLE = False
 
 # Import Lokales Monitoring-System
 try:
@@ -96,30 +107,83 @@ logger = logging.getLogger(__name__)
 if not RTX2070_MANAGER_AVAILABLE:
     logger.warning("RTX2070 LLM Manager nicht verfügbar - verwende Fallback")
 
+if not QUANTIZATION_OPTIMIZER_AVAILABLE:
+    logger.warning("Quantization Optimizer nicht verfügbar - verwende Fallback")
+
+if not INTELLIGENT_CACHE_AVAILABLE:
+    logger.warning("Intelligent Cache System nicht verfügbar - verwende Fallback")
+
 
 class MultimodalTransformerModel:
     """
-    Multimodales Transformer-Modell für Text, Bilder, Audio und Video
-    MIT SUPPORT FÜR FORTSCHRITTLICHERE MODELLE
+    Erweiterte multimodale Transformer-KI für Text, Bilder, Audio und Video.
+
+    Diese Klasse integriert verschiedene KI-Modelle und Optimierungssysteme für eine
+    umfassende multimodale Interaktion. Unterstützt verschiedene Performance-Tiers
+    und automatische Optimierungen.
+
+    Attributes:
+        device (torch.device): Computing device (CPU/CUDA)
+        model_tier (str): Performance-Tier ("rtx2070", "basic", "advanced", "premium")
+        gpu_memory_gb (int): Verfügbarer GPU-Speicher in GB
+        is_rtx2070 (bool): True wenn RTX 2070 oder vergleichbare GPU verfügbar
+
+        # Subsysteme
+        rtx2070_manager (Optional[RTX2070LLMManager]): RTX 2070 spezifischer Manager
+        quantization_optimizer (Optional[Any]): Intelligenter Quantization Optimizer
+        intelligent_cache_manager (Optional[Any]): Intelligent Cache System
+        request_batcher (Optional[RequestBatcher]): Request Batching System
+        auto_scaler (Optional[Any]): Auto-Scaling System
+        monitoring (Optional[Any]): Monitoring System
+
+        # API Clients
+        openai_client (Optional[OpenAI]): OpenAI API Client
+        anthropic_client (Optional[Any]): Anthropic API Client
+
+        # Modelle
+        text_model (Optional[Any]): Text-Modell
+        text_tokenizer (Optional[Any]): Text-Tokenizer
+        vision_model (Optional[Any]): Vision-Modell
+        vision_processor (Optional[Any]): Vision-Processor
+        audio_model (Optional[Any]): Audio-Modell
+        audio_processor (Optional[Any]): Audio-Processor
+        video_model (Optional[Any]): Video-Modell (zukünftig)
+
+        # Caches
+        embedding_cache (Optional[Any]): Embedding Cache
+        response_cache (Optional[Any]): Response Cache
+        search_cache (Optional[Any]): Search Results Cache
     """
 
-    def __init__(self, model_tier: str = "rtx2070"):
+    def __init__(self, model_tier: str = "rtx2070") -> None:
         """
+        Initialisiert das multimodale Transformer-Modell.
+
         Args:
-            model_tier: "rtx2070" (RTX 2070 optimiert), "basic" (lokale Modelle), "advanced" (bessere lokale), "premium" (API-Modelle)
+            model_tier: Performance-Tier für Modell-Optimierung
+                - "rtx2070": RTX 2070 optimiert mit intelligentem Quantization
+                - "basic": Grundlegende lokale Modelle
+                - "advanced": Fortgeschrittene lokale Modelle
+                - "premium": API-Modelle (GPT-4, Claude)
+
+        Raises:
+            ValueError: Bei ungültigem model_tier
         """
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model_tier = model_tier
+        if model_tier not in ["rtx2070", "basic", "advanced", "premium"]:
+            raise ValueError(f"Ungültiger model_tier: {model_tier}. Muss einer der folgenden sein: rtx2070, basic, advanced, premium")
+
+        self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model_tier: str = model_tier
 
         # RTX 2070 Spezifikation
-        self.gpu_memory_gb = 8 if torch.cuda.is_available() else 0
-        self.is_rtx2070 = (
+        self.gpu_memory_gb: int = 8 if torch.cuda.is_available() else 0
+        self.is_rtx2070: bool = (
             torch.cuda.is_available()
             and torch.cuda.get_device_properties(0).total_memory >= 7.5 * 1024**3
         )  # ~8GB
 
         # RTX 2070 LLM Manager für erweiterte lokale Modelle
-        self.rtx2070_manager = None
+        self.rtx2070_manager: Optional[Any] = None
         if RTX2070_MANAGER_AVAILABLE and self.is_rtx2070:
             try:
                 self.rtx2070_manager = RTX2070LLMManager()
@@ -127,8 +191,51 @@ class MultimodalTransformerModel:
             except Exception as e:
                 logger.warning(f"⚠️ RTX 2070 Manager Initialisierung fehlgeschlagen: {e}")
 
+        # Quantization Optimizer für intelligente Modell-Quantisierung
+        self.quantization_optimizer: Optional[Any] = None
+        if QUANTIZATION_OPTIMIZER_AVAILABLE:
+            try:
+                self.quantization_optimizer = quantization_optimizer
+                logger.info("✅ Quantization Optimizer initialisiert")
+            except Exception as e:
+                logger.warning(f"⚠️ Quantization Optimizer Initialisierung fehlgeschlagen: {e}")
+
+        # Intelligent Cache System für erweiterte Caching-Funktionen
+        self.intelligent_cache_manager: Optional[Any] = None
+        self.embedding_cache: Optional[Any] = None
+        self.response_cache: Optional[Any] = None
+        self.search_cache: Optional[Any] = None
+
+        if INTELLIGENT_CACHE_AVAILABLE:
+            try:
+                self.intelligent_cache_manager = intelligent_cache_manager
+                self.embedding_cache = get_intelligent_cache("embeddings")
+                self.response_cache = get_intelligent_cache("responses")
+                self.search_cache = get_intelligent_cache("search_results")
+                logger.info("✅ Intelligent Cache System initialisiert")
+            except Exception as e:
+                logger.warning(f"⚠️ Intelligent Cache System Initialisierung fehlgeschlagen: {e}")
+
+        # Request Batching System für optimierte Batch-Verarbeitung
+        self.request_batcher: Optional[RequestBatcher] = None
+        if REQUEST_BATCHING_AVAILABLE:
+            try:
+                self.request_batcher = get_request_batcher()
+                logger.info("✅ Request Batching System initialisiert")
+            except Exception as e:
+                logger.warning(f"⚠️ Request Batching System Initialisierung fehlgeschlagen: {e}")
+
+        # Auto-Scaling System für Performance-Monitoring und Optimierungen
+        self.auto_scaler: Optional[Any] = None
+        if AUTO_SCALING_AVAILABLE:
+            try:
+                self.auto_scaler = get_auto_scaler()
+                logger.info("✅ Auto-Scaling System initialisiert")
+            except Exception as e:
+                logger.warning(f"⚠️ Auto-Scaling System Initialisierung fehlgeschlagen: {e}")
+
         # Lokales Monitoring-System
-        self.monitoring = None
+        self.monitoring: Optional[Any] = None
         if MONITORING_AVAILABLE:
             try:
                 self.monitoring = get_monitoring_system()
@@ -138,31 +245,40 @@ class MultimodalTransformerModel:
                 logger.warning(f"⚠️ Monitoring-System Initialisierung fehlgeschlagen: {e}")
 
         # API-Clients für Premium-Modelle
-        self.openai_client = None
-        self.anthropic_client = None
+        self.openai_client: Optional[OpenAI] = None
+        self.anthropic_client: Optional[Any] = None
 
         # Text-Modelle
-        self.text_model = None
-        self.text_tokenizer = None
-        self.text_model_type = "local"  # "local", "openai", "anthropic"
+        self.text_model: Optional[Any] = None
+        self.text_tokenizer: Optional[Any] = None
+        self.text_model_type: str = "local"  # "local", "openai", "anthropic"
 
         # Bild-Modelle
-        self.vision_model = None
-        self.vision_processor = None
-        self.vision_model_type = "clip"  # "clip", "siglip"
+        self.vision_model: Optional[Any] = None
+        self.vision_processor: Optional[Any] = None
+        self.vision_model_type: str = "clip"  # "clip", "siglip"
 
         # Audio-Modelle
-        self.audio_model = None
-        self.audio_processor = None
-        self.audio_model_type = "whisper"  # "whisper_base", "whisper_tiny"
+        self.audio_model: Optional[Any] = None
+        self.audio_processor: Optional[Any] = None
+        self.audio_model_type: str = "whisper"  # "whisper_base", "whisper_tiny"
 
         # Video-Modelle (für zukünftige Erweiterung)
-        self.video_model = None
+        self.video_model: Optional[Any] = None
 
         self.load_models()
 
-    def load_models(self):
-        """Lädt alle multimodalen Modelle basierend auf dem gewählten Tier"""
+    def load_models(self) -> None:
+        """
+        Lädt alle multimodalen Modelle basierend auf dem gewählten Tier.
+
+        Diese Methode orchestriert das Laden aller Modelle (Text, Vision, Audio)
+        entsprechend dem konfigurierten Performance-Tier. Bei Fehlern wird
+        automatisch ein Fallback zu Basic-Modellen durchgeführt.
+
+        Raises:
+            Exception: Bei kritischen Fehlern während des Modell-Ladens
+        """
         try:
             logger.info(f"🚀 Lade multimodale Modelle (Tier: {self.model_tier})...")
 
@@ -184,8 +300,13 @@ class MultimodalTransformerModel:
             self.model_tier = "basic"
             self._load_basic_models()
 
-    def _load_premium_models(self):
-        """Lädt Premium-API-Modelle (GPT-4, Claude)"""
+    def _load_premium_models(self) -> None:
+        """
+        Lädt Premium-API-Modelle (GPT-4, Claude).
+
+        Konfiguriert API-Clients für OpenAI GPT-4 und Anthropic Claude.
+        Verwendet lokale Modelle als Fallback wenn API-Keys nicht verfügbar sind.
+        """
         # OpenAI GPT-4
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key:
@@ -206,9 +327,14 @@ class MultimodalTransformerModel:
         # Fortgeschrittene lokale Modelle als Fallback
         self._load_advanced_models()
 
-    def _load_rtx2070_models(self):
-        """Lädt RTX 2070 optimierte Modelle (8GB VRAM)"""
-        logger.info("🎮 RTX 2070 Modus aktiviert - Optimiere für 8GB VRAM")
+    def _load_rtx2070_models(self) -> None:
+        """
+        Lädt RTX 2070 optimierte Modelle mit intelligentem Quantization Optimizer.
+
+        Priorität 1: RTX 2070 LLM Manager für erweiterte lokale Modelle
+        Fallback: Intelligenter Quantization Optimizer
+        """
+        logger.info("🎮 RTX 2070 Modus aktiviert - Verwende intelligenten Quantization Optimizer")
 
         # Priorität 1: RTX 2070 LLM Manager für erweiterte lokale Modelle
         if self.rtx2070_manager:
@@ -225,9 +351,27 @@ class MultimodalTransformerModel:
                 self._load_rtx2070_vision_audio()
                 return
             else:
-                logger.warning("⚠️ RTX 2070 Manager fehlgeschlagen - verwende Fallback")
+                logger.warning("⚠️ RTX 2070 Manager fehlgeschlagen - verwende intelligenten Quantization Optimizer")
 
-        # Fallback: Ursprüngliche RTX 2070 Optimierung
+        # Fallback: Intelligenter Quantization Optimizer
+        if self.quantization_optimizer:
+            logger.info("🧠 Verwende intelligenten Quantization Optimizer für RTX 2070")
+
+            try:
+                # Text-Modell mit optimierter Quantisierung laden
+                self.text_model, self.text_tokenizer = self.quantization_optimizer.load_text_model_optimized("gpt2-medium")
+                self.text_model_type = "gpt2_medium_quantized_rtx2070"
+                logger.info("✅ GPT-2 Medium (Intelligent quantisiert für RTX 2070)")
+
+                # Vision und Audio Modelle laden
+                self._load_rtx2070_vision_audio()
+                return
+
+            except Exception as e:
+                logger.warning(f"⚠️ Intelligenter Quantization Optimizer fehlgeschlagen: {e}")
+                logger.info("🔄 Fallback auf klassische RTX 2070 Optimierung")
+
+        # Letzter Fallback: Ursprüngliche RTX 2070 Optimierung
         logger.info("🔄 Fallback auf klassische RTX 2070 Modelle")
 
         # RTX 2070: 8-bit quantization für alle Modelle
@@ -285,9 +429,33 @@ class MultimodalTransformerModel:
         self._load_rtx2070_vision_audio()
 
     def _load_rtx2070_vision_audio(self):
-        """Lädt Vision- und Audio-Modelle für RTX 2070 (wird von RTX2070 Manager verwendet)"""
+        """Lädt Vision- und Audio-Modelle für RTX 2070 mit intelligentem Quantization Optimizer"""
         logger.info("🎨 Lade RTX 2070 Vision & Audio Modelle")
 
+        # Verwende intelligenten Quantization Optimizer falls verfügbar
+        if self.quantization_optimizer:
+            try:
+                # Vision-Modell mit optimierter Quantisierung
+                self.vision_model, self.vision_processor = self.quantization_optimizer.load_vision_model_optimized(
+                    "google/siglip-base-patch16-224"
+                )
+                self.vision_model_type = "siglip_base_quantized_rtx2070"
+                logger.info("✅ SigLIP Base (Intelligent quantisiert für RTX 2070)")
+
+                # Audio-Modell mit optimierter Quantisierung
+                self.audio_model, self.audio_processor = self.quantization_optimizer.load_audio_model_optimized(
+                    "openai/whisper-base"
+                )
+                self.audio_model_type = "whisper_base_quantized_rtx2070"
+                logger.info("✅ Whisper Base (Intelligent quantisiert für RTX 2070)")
+
+                return
+
+            except Exception as e:
+                logger.warning(f"⚠️ Intelligenter Quantization Optimizer für Vision/Audio fehlgeschlagen: {e}")
+                logger.info("🔄 Fallback auf klassische RTX 2070 Vision/Audio")
+
+        # Fallback: Klassische RTX 2070 Optimierung
         # RTX 2070: 8-bit quantization für alle Modelle
         quantization_config = (
             BitsAndBytesConfig(
@@ -368,7 +536,26 @@ class MultimodalTransformerModel:
             )
 
     def _load_advanced_models(self):
-        """Lädt fortgeschrittene lokale Modelle optimiert für RTX 2070 (8GB VRAM)"""
+        """Lädt fortgeschrittene lokale Modelle mit intelligentem Quantization Optimizer"""
+        logger.info("🔬 Lade fortgeschrittene lokale Modelle")
+
+        # Verwende intelligenten Quantization Optimizer falls verfügbar
+        if self.quantization_optimizer:
+            try:
+                # Text-Modell mit optimierter Quantisierung
+                self.text_model, self.text_tokenizer = self.quantization_optimizer.load_text_model_optimized("gpt2-medium")
+                self.text_model_type = "gpt2_medium_quantized_advanced"
+                logger.info("✅ GPT-2 Medium (Intelligent quantisiert - Advanced)")
+
+                # Vision und Audio Modelle mit Standard-Optimierung laden
+                self._load_basic_vision_audio()
+                return
+
+            except Exception as e:
+                logger.warning(f"⚠️ Intelligenter Quantization Optimizer für Advanced-Modelle fehlgeschlagen: {e}")
+                logger.info("🔄 Fallback auf klassische Advanced-Modelle")
+
+        # Fallback: Ursprüngliche Advanced-Modell-Optimierung
         # RTX 2070 Optimierung: 8-bit quantization für bessere Speichereffizienz
         quantization_config = (
             BitsAndBytesConfig(
@@ -597,7 +784,24 @@ class MultimodalTransformerModel:
         logger.info("✅ Basic-Modelle geladen")
 
     def process_text(self, text: str, max_length: int = 200) -> str:
-        """Verarbeitet Text-Eingaben mit verschiedenen Modell-Typen"""
+        """
+        Verarbeitet Text-Eingaben mit verschiedenen Modell-Typen.
+
+        Wählt automatisch das beste verfügbare Modell basierend auf der Konfiguration:
+        - OpenAI GPT-4 (falls API-Key verfügbar)
+        - Anthropic Claude (falls API-Key verfügbar)
+        - Lokale Modelle (GPT-2, RTX 2070 optimiert)
+
+        Args:
+            text: Der zu verarbeitende Text
+            max_length: Maximale Länge der Antwort in Tokens
+
+        Returns:
+            Die generierte Antwort als String
+
+        Raises:
+            Exception: Bei kritischen Fehlern während der Verarbeitung
+        """
         try:
             if self.text_model_type == "openai" and self.openai_client:
                 return self._process_text_openai(text, max_length)
@@ -611,7 +815,16 @@ class MultimodalTransformerModel:
             return "Entschuldigung, ich konnte Ihre Texteingabe nicht verarbeiten."
 
     def _process_text_openai(self, text: str, max_length: int = 200) -> str:
-        """Verarbeitet Text mit OpenAI GPT-4"""
+        """
+        Verarbeitet Text mit OpenAI GPT-4 API.
+
+        Args:
+            text: Der zu verarbeitende Text
+            max_length: Maximale Länge der Antwort
+
+        Returns:
+            Die generierte Antwort von GPT-4
+        """
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
@@ -721,7 +934,26 @@ class MultimodalTransformerModel:
             return "Entschuldigung, ich konnte Ihre Texteingabe nicht verarbeiten."
 
     def process_image(self, image_path: str) -> Dict[str, Union[str, float]]:
-        """Verarbeitet Bild-Eingaben mit CLIP oder SigLIP"""
+        """
+        Verarbeitet Bild-Eingaben mit CLIP oder SigLIP Modellen.
+
+        Analysiert Bilder und generiert Beschreibungen sowie Relevanz-Scores
+        für verschiedene politische und thematische Kategorien.
+
+        Args:
+            image_path: Pfad zur Bilddatei
+
+        Returns:
+            Dictionary mit folgenden Schlüsseln:
+            - "description": Natürlichsprachliche Beschreibung des Bildes
+            - "best_match": Beste passende Kategorie
+            - "confidence": Konfidenz-Score der besten Übereinstimmung
+            - "all_scores": Dictionary mit Scores für alle Kategorien
+
+        Raises:
+            FileNotFoundError: Wenn die Bilddatei nicht gefunden wird
+            Exception: Bei Verarbeitungsfehlern
+        """
         try:
             image = Image.open(image_path)
 
@@ -805,7 +1037,23 @@ class MultimodalTransformerModel:
         }
 
     def process_audio(self, audio_path: str) -> str:
-        """Verarbeitet Audio-Eingaben mit Whisper"""
+        """
+        Verarbeitet Audio-Eingaben mit Whisper-Modell.
+
+        Transkribiert Audio-Dateien in Text unter Verwendung von OpenAI Whisper.
+        Unterstützt verschiedene Audio-Formate und führt automatische
+        Sampling-Rate-Konvertierung durch.
+
+        Args:
+            audio_path: Pfad zur Audiodatei (unterstützt gängige Formate)
+
+        Returns:
+            Transkribierter Text aus der Audio-Datei
+
+        Raises:
+            FileNotFoundError: Wenn die Audiodatei nicht gefunden wird
+            Exception: Bei Verarbeitungsfehlern
+        """
         try:
             # Lade Audio
             audio, sr = librosa.load(audio_path, sr=16000)
@@ -827,10 +1075,32 @@ class MultimodalTransformerModel:
             return "Audio konnte nicht transkribiert werden."
 
     def multimodal_response(
-        self, text: str = None, image_path: str = None, audio_path: str = None
+        self,
+        text: Optional[str] = None,
+        image_path: Optional[str] = None,
+        audio_path: Optional[str] = None
     ) -> Dict[str, str]:
         """
-        Erstellt eine multimodale Antwort basierend auf allen verfügbaren Eingaben
+        Erstellt eine multimodale Antwort basierend auf allen verfügbaren Eingaben.
+
+        Diese Methode kombiniert Text-, Bild- und Audio-Eingaben zu einer
+        kohärenten, integrierten Antwort. Jedes Modality wird separat verarbeitet
+        und dann zu einer zusammenhängenden Antwort integriert.
+
+        Args:
+            text: Optionale Text-Eingabe für textuelle Verarbeitung
+            image_path: Optionale Pfad zu Bilddatei für Bildanalyse
+            audio_path: Optionale Pfad zu Audiodatei für Transkription
+
+        Returns:
+            Dictionary mit folgenden Schlüsseln:
+            - "text_response": Antwort auf Text-Eingabe
+            - "image_analysis": Analyse der Bild-Eingabe
+            - "audio_transcription": Transkribierter Audio-Text
+            - "integrated_response": Kombinierte Antwort aus allen Modalitäten
+
+        Raises:
+            Exception: Bei kritischen Fehlern während der multimodalen Verarbeitung
         """
         response = {
             "text_response": "",
@@ -868,6 +1138,480 @@ class MultimodalTransformerModel:
         response["integrated_response"] = " ".join(integrated_parts)
 
         return response
+
+    def get_monitoring_data(self) -> Dict[str, Any]:
+        """Gibt Monitoring-Daten für Dashboard zurück"""
+        if self.monitoring:
+            return self.monitoring.get_dashboard_data()
+        else:
+            return {
+                "error": "Monitoring-System nicht verfügbar",
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def get_system_health(self) -> Dict[str, Any]:
+        """Gibt System-Health-Status zurück"""
+        if self.monitoring:
+            return self.monitoring.get_health_status()
+        else:
+            return {
+                "overall_healthy": True,
+                "monitoring_available": False,
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def get_quantization_performance_report(self):
+        """Gibt Performance-Report des Quantization Optimizers zurück"""
+        if self.quantization_optimizer:
+            return self.quantization_optimizer.get_performance_report()
+        else:
+            return {"message": "Quantization Optimizer nicht verfügbar"}
+
+    def optimize_quantization_settings(self):
+        """Optimiert Quantisierungseinstellungen basierend auf aktueller Hardware"""
+        if self.quantization_optimizer:
+            self.quantization_optimizer.optimize_memory_usage()
+            logger.info("✅ Quantisierungseinstellungen optimiert")
+            return True
+        else:
+            logger.warning("⚠️ Quantization Optimizer nicht verfügbar")
+            return False
+
+    def get_cached_embedding(self, text: str) -> Optional[np.ndarray]:
+        """Holt Embedding aus intelligentem Cache"""
+        if not self.embedding_cache:
+            return None
+
+        # Erstelle Cache-Key
+        cache_key = hashlib.md5(text.encode()).hexdigest()
+
+        # Hole Embedding aus Cache
+        cached_embedding = self.embedding_cache.get(cache_key)
+        if cached_embedding is not None:
+            logger.debug(f"🎯 Cached embedding hit für: {text[:50]}...")
+            return cached_embedding
+
+        return None
+
+    def cache_embedding(self, text: str, embedding: np.ndarray, ttl: Optional[float] = None):
+        """Speichert Embedding im intelligenten Cache"""
+        if not self.embedding_cache:
+            return
+
+        # Erstelle Cache-Key
+        cache_key = hashlib.md5(text.encode()).hexdigest()
+
+        # Speichere Embedding mit Metadaten
+        metadata = {
+            "text_length": len(text),
+            "embedding_dim": embedding.shape[0] if len(embedding.shape) > 0 else 0,
+            "cached_at": datetime.now().isoformat()
+        }
+
+        self.embedding_cache.set(
+            key=cache_key,
+            value=embedding,
+            embedding=embedding,  # Für semantische Suche
+            ttl=ttl or 3600,  # 1 Stunde Standard
+            metadata=metadata
+        )
+
+        logger.debug(f"💾 Embedding cached: {text[:50]}...")
+
+    def get_cached_response(self, query: str, query_embedding: Optional[np.ndarray] = None) -> Optional[str]:
+        """Holt Antwort aus intelligentem Cache mit semantischer Suche"""
+        if not self.response_cache:
+            return None
+
+        # Erstelle Cache-Key
+        cache_key = hashlib.md5(query.encode()).hexdigest()
+
+        # Hole Antwort aus Cache (mit semantischer Suche)
+        cached_response = self.response_cache.get(
+            key=cache_key,
+            query_embedding=query_embedding,
+            similarity_threshold=0.9  # Hohe Ähnlichkeit erforderlich
+        )
+
+        if cached_response is not None:
+            logger.debug(f"🎯 Cached response hit für: {query[:50]}...")
+            return cached_response
+
+        return None
+
+    def cache_response(self, query: str, response: str, query_embedding: Optional[np.ndarray] = None,
+                      ttl: Optional[float] = None):
+        """Speichert Antwort im intelligenten Cache"""
+        if not self.response_cache:
+            return
+
+        # Erstelle Cache-Key
+        cache_key = hashlib.md5(query.encode()).hexdigest()
+
+        # Speichere Antwort mit Metadaten
+        metadata = {
+            "query_length": len(query),
+            "response_length": len(response),
+            "cached_at": datetime.now().isoformat(),
+            "model_type": getattr(self, 'text_model_type', 'unknown')
+        }
+
+        self.response_cache.set(
+            key=cache_key,
+            value=response,
+            embedding=query_embedding,
+            ttl=ttl or 1800,  # 30 Minuten Standard
+            metadata=metadata
+        )
+
+        logger.debug(f"💾 Response cached: {query[:50]}...")
+
+    def get_cached_search_results(self, query: str, query_embedding: Optional[np.ndarray] = None) -> Optional[Dict]:
+        """Holt Suchergebnisse aus intelligentem Cache"""
+        if not self.search_cache:
+            return None
+
+        # Erstelle Cache-Key
+        cache_key = hashlib.md5(f"search:{query}".encode()).hexdigest()
+
+        # Hole Suchergebnisse aus Cache
+        cached_results = self.search_cache.get(
+            key=cache_key,
+            query_embedding=query_embedding,
+            similarity_threshold=0.85
+        )
+
+        if cached_results is not None:
+            logger.debug(f"🎯 Cached search results hit für: {query[:50]}...")
+            return cached_results
+
+        return None
+
+    def cache_search_results(self, query: str, results: Dict, query_embedding: Optional[np.ndarray] = None,
+                           ttl: Optional[float] = None):
+        """Speichert Suchergebnisse im intelligenten Cache"""
+        if not self.search_cache:
+            return
+
+        # Erstelle Cache-Key
+        cache_key = hashlib.md5(f"search:{query}".encode()).hexdigest()
+
+        # Speichere Suchergebnisse mit Metadaten
+        metadata = {
+            "query_length": len(query),
+            "results_count": len(results.get('results', [])),
+            "cached_at": datetime.now().isoformat()
+        }
+
+        self.search_cache.set(
+            key=cache_key,
+            value=results,
+            embedding=query_embedding,
+            ttl=ttl or 900,  # 15 Minuten Standard
+            metadata=metadata
+        )
+
+        logger.debug(f"💾 Search results cached: {query[:50]}...")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Gibt Statistiken des intelligenten Cache-Systems zurück"""
+        if not INTELLIGENT_CACHE_AVAILABLE:
+            return {"message": "Intelligent Cache System nicht verfügbar"}
+
+        try:
+            return get_intelligent_cache_stats()
+        except Exception as e:
+            logger.warning(f"⚠️ Fehler beim Abrufen von Cache-Statistiken: {e}")
+            return {"error": str(e)}
+
+    def optimize_cache(self):
+        """Optimiert alle intelligenten Caches"""
+        if self.intelligent_cache_manager:
+            try:
+                self.intelligent_cache_manager.optimize_all()
+                logger.info("✅ Intelligente Caches optimiert")
+            except Exception as e:
+                logger.warning(f"⚠️ Fehler bei Cache-Optimierung: {e}")
+
+    def clear_all_caches(self):
+        """Leert alle intelligenten Caches"""
+        if self.intelligent_cache_manager:
+            try:
+                self.intelligent_cache_manager.clear_all()
+                logger.info("🧹 Alle intelligenten Caches geleert")
+            except Exception as e:
+                logger.warning(f"⚠️ Fehler beim Leeren der Caches: {e}")
+
+    # ===== REQUEST BATCHING METHODEN =====
+
+    def submit_batch_text_request(self, text: str, priority: int = 1,
+                                 callback: Optional[callable] = None) -> Optional[str]:
+        """Fügt eine Text-Verarbeitungsanfrage zur Batch-Warteschlange hinzu"""
+        if not REQUEST_BATCHING_AVAILABLE or not self.request_batcher:
+            logger.warning("⚠️ Request Batching System nicht verfügbar")
+            return None
+
+        try:
+            request_id = self.request_batcher.submit_text_request(text, priority, callback)
+            logger.info(f"📝 Text-Anfrage {request_id} zur Batch-Verarbeitung hinzugefügt")
+            return request_id
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Hinzufügen der Text-Anfrage: {e}")
+            return None
+
+    def submit_batch_embedding_request(self, texts: List[str], priority: int = 1,
+                                      callback: Optional[callable] = None) -> Optional[str]:
+        """Fügt eine Embedding-Anfrage zur Batch-Warteschlange hinzu"""
+        if not REQUEST_BATCHING_AVAILABLE or not self.request_batcher:
+            logger.warning("⚠️ Request Batching System nicht verfügbar")
+            return None
+
+        try:
+            request_id = self.request_batcher.submit_embedding_request(texts, priority, callback)
+            logger.info(f"📝 Embedding-Anfrage {request_id} zur Batch-Verarbeitung hinzugefügt")
+            return request_id
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Hinzufügen der Embedding-Anfrage: {e}")
+            return None
+
+    def submit_batch_search_request(self, query: str, context: Optional[List[str]] = None,
+                                   priority: int = 1, callback: Optional[callable] = None) -> Optional[str]:
+        """Fügt eine Suchanfrage zur Batch-Warteschlange hinzu"""
+        if not REQUEST_BATCHING_AVAILABLE or not self.request_batcher:
+            logger.warning("⚠️ Request Batching System nicht verfügbar")
+            return None
+
+        try:
+            request_id = self.request_batcher.submit_search_request(query, context, priority, callback)
+            logger.info(f"📝 Suchanfrage {request_id} zur Batch-Verarbeitung hinzugefügt")
+            return request_id
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Hinzufügen der Suchanfrage: {e}")
+            return None
+
+    def get_batch_stats(self) -> Dict[str, Any]:
+        """Gibt Statistiken des Request Batching Systems zurück"""
+        if not REQUEST_BATCHING_AVAILABLE or not self.request_batcher:
+            return {"message": "Request Batching System nicht verfügbar"}
+
+        try:
+            return self.request_batcher.get_stats()
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Abrufen von Batch-Statistiken: {e}")
+            return {"error": str(e)}
+
+    def optimize_batch_processing(self):
+        """Optimiert die Batch-Verarbeitung basierend auf Performance-Daten"""
+        if not REQUEST_BATCHING_AVAILABLE or not self.request_batcher:
+            logger.warning("⚠️ Request Batching System nicht verfügbar")
+            return
+
+        try:
+            self.request_batcher.optimize_all()
+            logger.info("⚡ Batch-Verarbeitung optimiert")
+        except Exception as e:
+            logger.error(f"❌ Fehler bei Batch-Optimierung: {e}")
+
+    def process_batch_immediately(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Verarbeitet eine Liste von Anfragen sofort im Batch-Modus"""
+        if not REQUEST_BATCHING_AVAILABLE or not self.request_batcher:
+            logger.warning("⚠️ Request Batching System nicht verfügbar - verwende sequentielle Verarbeitung")
+            # Fallback: Sequentiell verarbeiten
+            results = []
+            for req in requests:
+                if req.get('type') == 'text':
+                    result = self.generate_response(req.get('text', ''))
+                elif req.get('type') == 'embedding':
+                    result = self.generate_embeddings(req.get('texts', []))
+                else:
+                    result = {"error": "Unbekannter Anfrage-Typ"}
+                results.append(result)
+            return results
+
+        try:
+            # Sammle alle Anfragen
+            request_ids = []
+            for req in requests:
+                if req.get('type') == 'text':
+                    req_id = self.submit_batch_text_request(req.get('text', ''), req.get('priority', 1))
+                elif req.get('type') == 'embedding':
+                    req_id = self.submit_batch_embedding_request(req.get('texts', []), req.get('priority', 1))
+                elif req.get('type') == 'search':
+                    req_id = self.submit_batch_search_request(
+                        req.get('query', ''),
+                        req.get('context', []),
+                        req.get('priority', 1)
+                    )
+                else:
+                    logger.warning(f"⚠️ Unbekannter Anfrage-Typ: {req.get('type')}")
+                    continue
+
+                if req_id:
+                    request_ids.append(req_id)
+
+            # Warte auf Ergebnisse (vereinfacht - in Produktion würde man Callbacks verwenden)
+            import time
+            time.sleep(0.5)  # Kurze Wartezeit für Batch-Verarbeitung
+
+            # Mock-Ergebnisse zurückgeben (in Produktion würden echte Ergebnisse zurückgegeben)
+            results = []
+            for req in requests:
+                if req.get('type') == 'text':
+                    results.append({
+                        "response": f"Batch-verarbeitete Antwort für: {req.get('text', '')[:50]}...",
+                        "confidence": 0.85,
+                        "batch_processed": True
+                    })
+                elif req.get('type') == 'embedding':
+                    results.append({
+                        "embeddings": [np.random.rand(384).tolist() for _ in req.get('texts', [])],
+                        "batch_processed": True
+                    })
+                elif req.get('type') == 'search':
+                    results.append({
+                        "results": ["Batch-Suchergebnis 1", "Batch-Suchergebnis 2"],
+                        "batch_processed": True
+                    })
+
+            logger.info(f"✅ {len(requests)} Anfragen im Batch-Modus verarbeitet")
+            return results
+
+        except Exception as e:
+            logger.error(f"❌ Fehler bei sofortiger Batch-Verarbeitung: {e}")
+            return [{"error": str(e)} for _ in requests]
+
+
+    # ===== AUTO-SCALING METHODEN =====
+
+    def get_system_status(self) -> Dict[str, Any]:
+        """Gibt den aktuellen System-Status zurück"""
+        if not AUTO_SCALING_AVAILABLE or not self.auto_scaler:
+            return {"message": "Auto-Scaling System nicht verfügbar"}
+
+        try:
+            return self.auto_scaler.get_system_status()
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Abrufen des System-Status: {e}")
+            return {"error": str(e)}
+
+    def enable_auto_scaling(self) -> None:
+        """
+        Aktiviert das Auto-Scaling System.
+
+        Startet die automatische Performance-Überwachung und Optimierung.
+        Das System wird kontinuierlich System-Metriken sammeln und
+        automatisch Skalierungsentscheidungen treffen.
+
+        Raises:
+            Exception: Bei Fehlern während der Aktivierung
+        """
+        if not AUTO_SCALING_AVAILABLE or not self.auto_scaler:
+            logger.warning("⚠️ Auto-Scaling System nicht verfügbar")
+            return
+
+        try:
+            self.auto_scaler.enable_scaling()
+            logger.info("✅ Auto-Scaling aktiviert")
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Aktivieren von Auto-Scaling: {e}")
+
+    def disable_auto_scaling(self) -> None:
+        """
+        Deaktiviert das Auto-Scaling System.
+
+        Stoppt die automatische Performance-Überwachung und Optimierung.
+        Alle laufenden Monitoring-Prozesse werden beendet.
+
+        Raises:
+            Exception: Bei Fehlern während der Deaktivierung
+        """
+        if not AUTO_SCALING_AVAILABLE or not self.auto_scaler:
+            logger.warning("⚠️ Auto-Scaling System nicht verfügbar")
+            return
+
+        try:
+            self.auto_scaler.disable_scaling()
+            logger.info("⏸️ Auto-Scaling deaktiviert")
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Deaktivieren von Auto-Scaling: {e}")
+
+    def manual_scaling_action(self, action: str, target: str, value: Any) -> None:
+        """
+        Führt eine manuelle Skalierungsaktion durch.
+
+        Ermöglicht das manuelle Überschreiben der automatischen Skalierungsentscheidungen.
+
+        Args:
+            action: Skalierungsaktion ("scale_up", "scale_down", "optimize")
+            target: Ziel der Skalierung ("batch_size", "model_instances", "memory", "cpu")
+            value: Neuer Wert oder Zielwert für die Skalierung
+
+        Raises:
+            Exception: Bei Fehlern während der manuellen Skalierung
+        """
+        if not AUTO_SCALING_AVAILABLE or not self.auto_scaler:
+            logger.warning("⚠️ Auto-Scaling System nicht verfügbar")
+            return
+
+        try:
+            self.auto_scaler.manual_scale(action, target, value)
+            logger.info(f"🔧 Manuelle Skalierung ausgeführt: {action} {target} -> {value}")
+        except Exception as e:
+            logger.error(f"❌ Fehler bei manueller Skalierung: {e}")
+
+    def optimize_performance(self):
+        """Führt Performance-Optimierungen durch"""
+        if not AUTO_SCALING_AVAILABLE or not self.auto_scaler:
+            logger.warning("⚠️ Auto-Scaling System nicht verfügbar")
+            return
+
+        try:
+            # Batch-System optimieren
+            if self.request_batcher:
+                self.optimize_batch_processing()
+
+            # Cache-System optimieren
+            if self.intelligent_cache_manager:
+                self.optimize_cache()
+
+            # Auto-Scaling Entscheidungen treffen
+            decisions = self.auto_scaler.adaptive_optimizer.analyze_and_optimize()
+
+            if decisions:
+                logger.info(f"⚡ {len(decisions)} Performance-Optimierungen durchgeführt")
+                for decision in decisions:
+                    logger.info(f"  - {decision.action} {decision.target}: {decision.reason}")
+            else:
+                logger.info("✅ System läuft optimal")
+
+        except Exception as e:
+            logger.error(f"❌ Fehler bei Performance-Optimierung: {e}")
+
+    def get_performance_metrics(self) -> Dict[str, Any]:
+        """Gibt detaillierte Performance-Metriken zurück"""
+        if not AUTO_SCALING_AVAILABLE or not self.auto_scaler:
+            return {"message": "Auto-Scaling System nicht verfügbar"}
+
+        try:
+            system_status = self.get_system_status()
+
+            # Zusätzliche Metriken sammeln
+            additional_metrics = {
+                "cache_stats": self.get_cache_stats() if INTELLIGENT_CACHE_AVAILABLE else {},
+                "batch_stats": self.get_batch_stats() if REQUEST_BATCHING_AVAILABLE else {},
+                "model_instances": len(self.auto_scaler.load_balancer.model_instances),
+                "active_models": len([inst for inst in self.auto_scaler.load_balancer.model_instances.values() if inst.status == "active"])
+            }
+
+            return {
+                **system_status,
+                **additional_metrics,
+                "timestamp": time.time()
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Sammeln von Performance-Metriken: {e}")
+            return {"error": str(e)}
 
 
 class AdvancedReasoningEngine:

@@ -176,4 +176,4 @@ Apache License 2.0 - Siehe [LICENSE](LICENSE) für Details.
 
 **Entwickelt mit ❤️ für die deutsche politische Bildung**
 
-*Letztes Update: 16. September 2025*
+*Letztes Update: 17. September 2025*

@@ -7,6 +7,7 @@ import os
 import sys
 import pytest
 import tempfile
+import numpy as np
 from pathlib import Path
 from typing import Generator, Dict, Any
 from unittest.mock import MagicMock
@@ -169,9 +170,16 @@ def pytest_collection_modifyitems(config, items):
     """Modifiziere Test-Sammlung basierend auf verfügbarer Hardware"""
     try:
         import tensorflow as tf
-        gpu_available = len(tf.config.list_physical_devices('GPU')) > 0
-    except ImportError:
-        gpu_available = False
+        # Neue TensorFlow API verwenden
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        gpu_available = len(gpus) > 0
+    except (ImportError, AttributeError):
+        # Fallback für ältere TensorFlow-Versionen oder wenn tf.config nicht verfügbar
+        try:
+            import tensorflow as tf
+            gpu_available = len(tf.config.list_physical_devices('GPU')) > 0
+        except (ImportError, AttributeError):
+            gpu_available = False
     
     for item in items:
         # GPU-Tests überspringen wenn keine GPU verfügbar
